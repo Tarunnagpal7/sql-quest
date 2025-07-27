@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { updateState } from '../redux/gameSlice';
-import { useNavigate } from 'react-router-dom';
-import { levels } from '../assets/data/levels';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { updateState } from "../redux/gameSlice";
+import { useNavigate } from "react-router-dom";
+import { levels, levelPaths, pathUtils } from "../assets/data/levels";
 
 // Helper hook to remember the previous value of a state or prop
 function usePrevious(value) {
@@ -15,334 +15,763 @@ function usePrevious(value) {
 
 // Asset URLs
 const ASSETS = {
-  wizard: '/wizard-character.png',
-  bird: '/magical-bird.png',
-  tree: '/magical-tree.png',
-  castle: '/castle.png',
-  cage: '/cage.png',
-  river: '/river-segment.png',
-  bush: '/bush.png',
-  rock: '/rock.png',
-  portal: '/portal.png',
+  wizard: "/wizard-character.png",
+  bird: "/magical-bird.png",
+  tree: "/magical-tree.png",
+  castle: "/castle.png",
+  cage: "/cage.png",
+  river: "/river-segment.png",
+  bush: "/bush.png",
+  rock: "/rock.png",
+  portal: "/portal.png",
+  bgMap: "/jungle-map-bg.png", // Background map image
+  bgMapMobile: "/bgMap2.png",
 };
 
 const MapMainView = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  const gameState = useSelector(state => state.game || {
-    lives: 3,
-    currentLevel: 1,
-    progress: [],
-    skipCount: 0,
-    videoWatched: false
-  });
+  const getWizardPosition = (level) => {
+    const basePosition = getLevelPosition(level);
+    const isMobileView = window.innerWidth < 768;
+    
+    if (isMobileView) {
+      // Customize these values to adjust wizard position on mobile
+      return {
+        x: basePosition.x +0 ,  // Move 2% to the right
+        y: basePosition.y - 2   // Move 5% up
+      };
+    }
+    
+    return { x: basePosition.x, y: basePosition.y };
+  };
+  
+  
+  // Fixed function to get level position that handles both old and new structure
+  const getLevelPosition = (level) => {
+    const isMobileView = window.innerWidth < 768;
+  
+    if (level.position) {
+      const pos = isMobileView ? level.position.mobile : level.position.desktop;
+      return {
+        left: `${pos.x}%`,
+        top: `${pos.y}%`,
+        x: pos.x,
+        y: pos.y
+      };
+    }
+  
+    // Fallback if structure is missing
+    return {
+      left: `${level.x ?? 0}%`,
+      top: `${level.y ?? 0}%`,
+      x: level.x ?? 0,
+      y: level.y ?? 0
+    };
+  };
 
-  const updatedLevels = useMemo(() => levels.map(level => ({
-    ...level,
-    unlocked: level.id <= gameState.currentLevel || level.id === 1,
-    completed: gameState.progress.includes(level.id)
-  })), [gameState.currentLevel, gameState.progress]);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const gameState = useSelector(
+    (state) =>
+      state.game || {
+        lives: 3,
+        currentLevel: 1,
+        progress: [],
+        skipCount: 0,
+        videoWatched: false,
+      }
+  );
+
+  // FIXED: Proper level access logic
+  const updatedLevels = useMemo(
+    () =>
+      levels.map((level) => {
+        const isCompleted = gameState.progress.includes(level.id);
+        const isCurrentLevel = level.id === gameState.currentLevel;
+        // A level is unlocked if:
+        // 1. It's level 1 (always accessible)
+        // 2. It's completed (user can replay)
+        // 3. It's the current level (user can access current level)
+        const isUnlocked = level.id === 1 || isCompleted || isCurrentLevel;
+        
+        return {
+          ...level,
+          unlocked: isUnlocked,
+          completed: isCompleted,
+          // Add position data to the level object for easier access
+          ...getLevelPosition(level)
+        };
+      }),
+    [gameState.currentLevel, gameState.progress, isMobile]
+  );
 
   // Find the initial level data to correctly position the character on load
-  const initialLevelData = useMemo(() => 
-    updatedLevels.find(level => level.id === gameState.currentLevel), 
+  const initialLevelData = useMemo(
+    () => updatedLevels.find((level) => level.id === gameState.currentLevel),
     [gameState.currentLevel, updatedLevels]
   );
-  
+
   const [characterPosition, setCharacterPosition] = useState(() => {
     if (initialLevelData) {
-      return { x: initialLevelData.x, y: initialLevelData.y };
+      return getWizardPosition(initialLevelData);
     }
-    return { x: 50, y: 15 }; // Default fallback
+    const level1Position = getLevelPosition(levels[0]);
+    return getWizardPosition({ ...levels[0], ...level1Position });
   });
 
   const [isMoving, setIsMoving] = useState(false);
+  const [isFollowingPath, setIsFollowingPath] = useState(false);
+  const [pathTrail, setPathTrail] = useState([]);
   const [mapScale, setMapScale] = useState(1);
-  
-  const previousCurrentLevelId = usePrevious(gameState.currentLevel);
+  const [bgImageLoaded, setBgImageLoaded] = useState(false);
 
-  // --- MODIFIED SECTION ---
+  const previousCurrentLevelId = usePrevious(gameState.currentLevel);
+  const animationRef = useRef();
+
   // Check game win and game over conditions
   const isGameWon = gameState.progress.length >= levels.length;
   const isGameOver = gameState.lives <= 0;
 
   // Function to handle restarting or replaying the game
   const handleRestart = () => {
-    // The user mentioned local storage, so this is a robust way to reset
-    localStorage.removeItem('sql-quest-game');
-    dispatch(updateState({
-      currentLevel: 1,
-      progress: [],
-      lives: 3,
-      skipCount: 0,
-      videoWatched: false,
-    }));
-    // A full reload ensures a clean state, especially with persisted storage
+    localStorage.removeItem("sql-quest-game");
+    dispatch(
+      updateState({
+        currentLevel: 1,
+        progress: [],
+        lives: 3,
+        skipCount: 0,
+        videoWatched: false,
+      })
+    );
     window.location.reload();
   };
-  // --- END MODIFIED SECTION ---
 
   // Enhanced responsive handling
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      if (width < 480) setMapScale(0.7);
-      else if (width < 768) setMapScale(0.8);
-      else if (width < 1024) setMapScale(0.9);
+      if (width < 480) setMapScale(0.65);
+      else if (width < 768) setMapScale(0.75);
+      else if (width < 1024) setMapScale(0.85);
       else setMapScale(1);
     };
 
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // --- MODIFIED SECTION ---
-  // Animate character movement when currentLevel changes
-  useEffect(() => {
-    const currentLevelData = updatedLevels.find(level => level.id === gameState.currentLevel);
-    
-    // Animate only when the level ID genuinely changes
-    if (previousCurrentLevelId && previousCurrentLevelId !== gameState.currentLevel && currentLevelData) {
-        setIsMoving(true);
-        setTimeout(() => {
-            setCharacterPosition({ x: currentLevelData.x, y: currentLevelData.y });
-            setTimeout(() => {
-                setIsMoving(false);
-            }, 800); // Match this with your CSS transition duration
-        }, 100); 
-    } else if (currentLevelData && (characterPosition.x !== currentLevelData.x || characterPosition.y !== currentLevelData.y)) {
-        // On initial load or state mismatch, snap to the correct position without animation
-        setCharacterPosition({ x: currentLevelData.x, y: currentLevelData.y });
+ // FIXED: Simplified level completion handler
+ const handleLevelComplete = (completedLevelId) => {
+  const wasAlreadyCompleted = gameState.progress.includes(completedLevelId);
+  
+  if (wasAlreadyCompleted) {
+    // If replaying, just return to the current level (no change needed)
+    return;
+  }
+
+  // For first-time completion, advance to next level
+  const nextLevelId = completedLevelId + 1;
+  const path = levelPaths[completedLevelId];
+
+  if (path && nextLevelId <= levels.length) {
+    setIsFollowingPath(true);
+    setIsMoving(true);
+
+    const smoothPath = pathUtils.createSmoothPath(path, 30);
+    const curvedPath = pathUtils.addCurveToPath(smoothPath, 0.05);
+    setPathTrail(curvedPath);
+
+    animateAlongPath(curvedPath, () => {
+      dispatch(
+        updateState({
+          currentLevel: nextLevelId,
+          progress: [...gameState.progress, completedLevelId],
+        })
+      );
+      setIsFollowingPath(false);
+      setIsMoving(false);
+      setPathTrail([]);
+    });
+  } else {
+    // If no path or it's the last level, just update progress
+    dispatch(
+      updateState({
+        progress: [...gameState.progress, completedLevelId],
+      })
+    );
+  }
+};
+
+  // Function to animate character along a path
+  const animateAlongPath = (path, onComplete) => {
+    if (path.length < 2) {
+      onComplete();
+      return;
     }
-  }, [gameState.currentLevel, previousCurrentLevelId, updatedLevels, characterPosition]);
-  // --- END MODIFIED SECTION ---
 
+    let segment = 0;
+    let t = 0;
+    const speed = 0.002; // Lower = slower
 
-  // Handle user-initiated clicks on the map
-  const handleLevelClick = (level) => {
-    if (isGameOver) return; // Prevent interaction if game is over
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
 
-    if (level.unlocked && level.id !== gameState.currentLevel) {
+    function animate() {
+      if (segment >= path.length - 1) {
+        setCharacterPosition(path[path.length - 1]);
+        onComplete();
+        return;
+      }
+
+      const start = path[segment];
+      const end = path[segment + 1];
+
+      setCharacterPosition({
+        x: lerp(start.x, end.x, t),
+        y: lerp(start.y, end.y, t),
+      });
+
+      t += speed;
+      if (t >= 1) {
+        t = 0;
+        segment++;
+      }
+      animationRef.current = requestAnimationFrame(animate);
+    }
+
+    animate();
+  };
+
+  // Clean up animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  // Animate character movement when currentLevel changes (for user clicks)
+  useEffect(() => {
+    const currentLevelData = updatedLevels.find(
+      (level) => level.id === gameState.currentLevel
+    );
+
+    if (
+      previousCurrentLevelId &&
+      previousCurrentLevelId !== gameState.currentLevel &&
+      currentLevelData &&
+      !isFollowingPath // Don't interfere with path following
+    ) {
       setIsMoving(true);
       setTimeout(() => {
-        dispatch(updateState({ currentLevel: level.id }));
-        setCharacterPosition({ x: level.x, y: level.y });
+        setCharacterPosition(getWizardPosition(currentLevelData));
         setTimeout(() => {
+          setIsMoving(false);
+        }, 800);
+      }, 100);
+    } else if (
+      currentLevelData &&
+      (characterPosition.x !== currentLevelData.x ||
+        characterPosition.y !== currentLevelData.y) &&
+      !isFollowingPath
+    ) {
+      setCharacterPosition(getWizardPosition(currentLevelData));
+    }
+  }, [
+    gameState.currentLevel,
+    previousCurrentLevelId,
+    updatedLevels,
+    characterPosition,
+    isFollowingPath,
+  ]);
+
+  // FIXED: Simplified level click handler with proper access control
+  const handleLevelClick = (level) => {
+    // Prevent any action during game over or path following
+    if (isGameOver || isFollowingPath) return;
+    
+    // FIXED: Only allow clicks on unlocked levels
+    if (!level.unlocked) {
+      console.log(`Level ${level.id} is locked!`);
+      return;
+    }
+
+    // If clicking a different level, move to it
+    if (level.id !== gameState.currentLevel) {
+      setIsMoving(true);
+      const pathKey = `${gameState.currentLevel}-${level.id}`;
+      const path = levelPaths[pathKey];
+      
+      if (path && path.length > 1) {
+        // Animate along the custom path
+        animateAlongPath(path, () => {
+          dispatch(updateState({ currentLevel: level.id }));
+          setCharacterPosition({ x: level.x, y: level.y });
+          setTimeout(() => {
             setIsMoving(false);
             navigate(`/level/${level.id}`);
-        }, 800);
-      }, 200);
-    } else if (level.unlocked && level.id === gameState.currentLevel) {
-        navigate(`/level/${level.id}`);
+          }, 800);
+        });
+      } else {
+        // Fallback: straight line movement
+        setTimeout(() => {
+          dispatch(updateState({ currentLevel: level.id }));
+          setCharacterPosition({ x: level.x, y: level.y });
+          setTimeout(() => {
+            setIsMoving(false);
+            navigate(`/level/${level.id}`);
+          }, 800);
+        }, 200);
+      }
+    } else {
+      // If clicking current level, directly navigate to it
+      navigate(`/level/${level.id}`);
     }
   };
 
-  // Aesthetic and Simple Dashed Path
-  const renderConnectedPath = () => {
-    const pathSegments = [];
-    for (let i = 0; i < updatedLevels.length - 1; i++) {
-      const current = updatedLevels[i];
-      const next = updatedLevels[i + 1];
-      
-      const deltaX = next.x - current.x;
-      const deltaY = next.y - current.y;
-      const curve1X = current.x + deltaX * 0.4 + (i % 2 === 0 ? 4 : -4);
-      const curve1Y = current.y + deltaY * 0.3;
-      const curve2X = current.x + deltaX * 0.6 + (i % 2 === 0 ? -4 : 4);
-      const curve2Y = current.y + deltaY * 0.7;
-      
-      const pathIsUnlocked = next.unlocked;
-      const pathIsCompleted = current.completed && pathIsUnlocked;
+  // Function to expose level completion handler
+  const completeLevelAndMoveNext = (levelId) => {
+    handleLevelComplete(levelId);
+  };
 
-      pathSegments.push(
-        <div
-          key={`path-${i}`}
-          className="absolute pointer-events-none"
-          style={{ left: '0%', top: '0%', width: '100%', height: '100%', zIndex: 1 }}
-        >
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <filter id="subtlePathGlow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-                  <feMerge>
-                      <feMergeNode in="coloredBlur"/>
-                      <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-              </filter>
-            </defs>
-            <path
-              d={`M ${current.x} ${current.y} C ${curve1X} ${curve1Y}, ${curve2X} ${curve2Y}, ${next.x} ${next.y}`}
-              stroke={pathIsCompleted ? "#34d399" : "#a5b4fc"}
-              strokeWidth="1.5"
-              strokeDasharray="2 4"
-              strokeLinecap="round"
-              fill="none"
-              filter="url(#subtlePathGlow)"
-              style={{
-                opacity: pathIsUnlocked ? 0.75 : 0.2,
-                transition: 'stroke 0.5s ease, opacity 0.5s ease'
-              }}
-            />
-          </svg>
-        </div>
-      );
+  // Make the function available globally
+  useEffect(() => {
+    window.completeLevelAndMoveNext = completeLevelAndMoveNext;
+    return () => {
+      delete window.completeLevelAndMoveNext;
+    };
+  }, []);
+
+  // Get responsive element sizes based on map scale
+  const getResponsiveSizes = () => {
+    if (mapScale <= 0.65) {
+      return {
+        levelSize: "w-8 h-8",
+        levelGlow: "w-12 h-12",
+        characterSize: "w-10 h-10",
+        characterGlow: "w-14 h-14",
+        textSize: "text-xs",
+        badgeText: "text-xs",
+        crownOffset: "-top-4",
+        badgeOffset: "-bottom-4",
+        tooltipOffset: "mt-4",
+        tooltipWidth: "max-w-48",
+      };
+    } else if (mapScale <= 0.75) {
+      return {
+        levelSize: "w-10 h-10",
+        levelGlow: "w-14 h-14",
+        characterSize: "w-12 h-12",
+        characterGlow: "w-16 h-16",
+        textSize: "text-sm",
+        badgeText: "text-xs",
+        crownOffset: "-top-5",
+        badgeOffset: "-bottom-5",
+        tooltipOffset: "mt-5",
+        tooltipWidth: "max-w-56",
+      };
+    } else if (mapScale <= 0.85) {
+      return {
+        levelSize: "w-12 h-12",
+        levelGlow: "w-16 h-16",
+        characterSize: "w-14 h-14",
+        characterGlow: "w-18 h-18",
+        textSize: "text-base",
+        badgeText: "text-sm",
+        crownOffset: "-top-6",
+        badgeOffset: "-bottom-6",
+        tooltipOffset: "mt-6",
+        tooltipWidth: "max-w-64",
+      };
+    } else {
+      return {
+        levelSize: "w-16 h-16",
+        levelGlow: "w-20 h-20",
+        characterSize: "w-16 h-16",
+        characterGlow: "w-20 h-20",
+        textSize: "text-xl",
+        badgeText: "text-sm",
+        crownOffset: "-top-8",
+        badgeOffset: "-bottom-8",
+        tooltipOffset: "mt-8",
+        tooltipWidth: "max-w-72",
+      };
     }
-    return pathSegments;
   };
 
-  // Enhanced Trees with all tree assets
-  const renderAssetTrees = () => {
-    const trees = [];
-    const treePositions = [
-      { x: 10, y: 10, scale: 1.0, rotation: -3, asset: ASSETS.tree }, { x: 90, y: 20, scale: 0.8, rotation: 5, asset: ASSETS.tree },
-      { x: 5, y: 35, scale: 1.2, rotation: -8, asset: ASSETS.tree }, { x: 95, y: 45, scale: 0.9, rotation: 4, asset: ASSETS.tree },
-      { x: 8, y: 65, scale: 1.1, rotation: -2, asset: ASSETS.tree }, { x: 92, y: 75, scale: 0.7, rotation: 7, asset: ASSETS.tree },
-      { x: 12, y: 85, scale: 1.0, rotation: -5, asset: ASSETS.tree }, { x: 88, y: 95, scale: 0.8, rotation: 3, asset: ASSETS.tree },
-    ];
-    treePositions.forEach((pos, i) => {
-      trees.push(
-        <div key={`tree-${i}`} className="absolute pointer-events-none" style={{ left: `${pos.x}%`, top: `${pos.y}%`, transform: `translate(-50%, -50%) scale(${pos.scale * mapScale}) rotate(${pos.rotation}deg)`, zIndex: pos.y > 50 ? 3 : 1, }}>
-          <div className="relative">
-            <img src={pos.asset} alt="Magical Tree" className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 object-contain drop-shadow-2xl opacity-90 filter brightness-90" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-            <div className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 bg-gradient-to-b from-green-900 via-green-800 to-green-700 rounded-t-full opacity-80 hidden" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(34, 197, 94, 0.8), transparent 60%)', filter: 'drop-shadow(0 6px 12px rgba(15, 23, 42, 0.8))', }}>
-              <div className="absolute inset-0 bg-green-600/30 rounded-t-full animate-pulse" />
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-4 h-8 bg-gradient-to-b from-amber-800 to-amber-900 rounded-b" />
-            </div>
-            {[...Array(3)].map((_, j) => ( <div key={j} className="absolute w-1 h-1 bg-emerald-400 rounded-full animate-ping" style={{ left: `${20 + j * 30}%`, top: `${10 + j * 15}%`, animationDelay: `${j * 0.6}s`, animationDuration: '3s' }} /> ))}
-          </div>
-        </div>
-      );
-    });
-    return trees;
-  };
-
-  // Enhanced Bushes using bush assets
-  const renderAssetBushes = () => {
-    const bushes = [];
-    const bushPositions = [ { x: 15, y: 22, scale: 0.8 }, { x: 82, y: 38, scale: 1.0 }, { x: 28, y: 52, scale: 0.9 }, { x: 72, y: 68, scale: 1.1 }, { x: 18, y: 78, scale: 0.7 }, { x: 85, y: 88, scale: 0.9 }, ];
-    bushPositions.forEach((pos, i) => {
-      bushes.push(
-        <div key={`bush-${i}`} className="absolute pointer-events-none" style={{ left: `${pos.x}%`, top: `${pos.y}%`, transform: `translate(-50%, -50%) scale(${pos.scale * mapScale})`, zIndex: 1, }}>
-          <img src={ASSETS.bush} alt="Mystical Bush" className="w-12 h-8 sm:w-16 sm:h-10 object-contain drop-shadow-lg opacity-85 filter brightness-95" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-          <div className="w-12 h-8 sm:w-16 sm:h-10 bg-gradient-to-b from-green-700 to-green-800 rounded-full opacity-70 hidden" />
-        </div>
-      );
-    });
-    return bushes;
-  };
-
-  // Enhanced Birds with better animations
-  const renderAssetBirds = () => {
-    const birds = [];
-    const birdPositions = [ { x: 25, y: 5, direction: 1, speed: 4 }, { x: 75, y: 8, direction: -1, speed: 5 }, { x: 45, y: 3, direction: 1, speed: 3.5 }, { x: 65, y: 12, direction: -1, speed: 4.5 }, ];
-    birdPositions.forEach((pos, i) => {
-      birds.push(
-        <div key={`bird-${i}`} className="absolute pointer-events-none animate-float" style={{ left: `${pos.x}%`, top: `${pos.y}%`, transform: `translateX(-50%) scaleX(${pos.direction}) scale(${mapScale})`, zIndex: 8, animationDelay: `${i * 1.5}s`, animationDuration: `${pos.speed}s` }}>
-          <div className="relative">
-            <img src={ASSETS.bird} alt="Magical Bird" className="w-8 h-6 sm:w-10 sm:h-8 object-contain drop-shadow-lg filter brightness-110" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-            <div className="w-8 h-6 sm:w-10 sm:h-8 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 rounded-full transform rotate-12 hidden">
-              <div className="absolute -left-2 top-1 w-6 h-4 bg-gradient-to-r from-purple-500 to-blue-400 rounded-full animate-wing" />
-              <div className="absolute -right-2 top-1 w-6 h-4 bg-gradient-to-r from-blue-400 to-cyan-300 rounded-full animate-wing" style={{ animationDelay: '0.1s' }} />
-              <div className="absolute -right-4 top-2 w-8 h-1 bg-gradient-to-r from-cyan-300 to-transparent opacity-60" />
-            </div>
-          </div>
-        </div>
-      );
-    });
-    return birds;
-  };
-
-  // Enhanced Level rendering with portal assets
+  // Enhanced Level rendering with responsive scaling
   const renderLevel = (level) => {
     const isCurrentLevel = level.id === gameState.currentLevel;
     const isCompleted = level.completed;
     const isUnlocked = level.unlocked;
-    const getLevelTypeColor = (type) => { switch (type) { case 'basic': return 'from-emerald-500 to-emerald-700'; case 'intermediate': return 'from-sky-500 to-sky-700'; case 'advanced': return 'from-violet-500 to-violet-700'; case 'expert': return 'from-rose-500 to-rose-700'; default: return 'from-slate-500 to-slate-700'; } };
+    const sizes = getResponsiveSizes();
+
     return (
-      <div key={level.id} className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group" style={{ left: `${level.x}%`, top: `${level.y}%`, zIndex: 4, transform: `translate(-50%, -50%) scale(${mapScale})` }} onClick={() => handleLevelClick(level)}>
+      <div
+        key={level.id}
+        className={`absolute transform -translate-x-1/2 -translate-y-1/2 group ${
+          isUnlocked ? 'cursor-pointer' : 'cursor-not-allowed'
+        }`}
+        style={{
+          left: level.left,
+          top: level.top,
+          zIndex: 20,
+          transform: `translate(-50%, -50%) scale(${mapScale})`,
+        }}
+        onClick={() => handleLevelClick(level)}
+      >
         <div className="relative">
-          <div className="relative">
-            <img src={ASSETS.portal} alt={`Level ${level.id} Portal`} className={`w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 object-contain transition-all duration-500 drop-shadow-2xl ${isCompleted ? 'filter hue-rotate-60 brightness-125 saturate-150 animate-pulse' : isCurrentLevel ? 'animate-pulse filter brightness-125 saturate-125' : isUnlocked ? 'filter brightness-100' : 'filter grayscale brightness-60'} ${isUnlocked ? 'group-hover:scale-110 group-hover:brightness-125' : 'cursor-not-allowed'}`} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-            <div className={`w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full border-4 transition-all duration-500 hidden ${isCompleted ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 border-amber-200 shadow-amber-400/80' : isCurrentLevel ? `bg-gradient-to-br ${getLevelTypeColor(level.type)} border-white shadow-2xl animate-pulse` : isUnlocked ? `bg-gradient-to-br ${getLevelTypeColor(level.type)} border-slate-300 shadow-xl` : 'bg-gradient-to-br from-slate-600 to-slate-800 border-slate-500 opacity-50'} shadow-2xl group-hover:scale-110 group-hover:shadow-3xl ${isUnlocked ? 'hover:shadow-2xl' : 'cursor-not-allowed'}`}>
-              {(isCurrentLevel || isCompleted) && ( <> <div className="absolute inset-0 rounded-full border-2 border-white/40 animate-ping" /> <div className="absolute inset-2 rounded-full border-2 border-white/30 animate-ping" style={{ animationDelay: '0.5s' }} /> <div className="absolute inset-4 rounded-full border-2 border-white/20 animate-ping" style={{ animationDelay: '1s' }} /> </> )}
+          {/* Responsive glowing base effect */}
+          <div
+            className={`absolute inset-0 ${
+              sizes.levelGlow
+            } rounded-full transition-all duration-500 ${
+              isCompleted
+                ? "bg-gradient-to-r from-yellow-400/40 via-amber-400/40 to-yellow-400/40 animate-pulse shadow-2xl shadow-yellow-400/60"
+                : isCurrentLevel
+                ? "bg-gradient-to-r from-cyan-400/40 via-blue-400/40 to-purple-400/40 animate-pulse shadow-2xl shadow-cyan-400/60"
+                : isUnlocked
+                ? "bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-cyan-400/30 shadow-lg shadow-blue-400/40"
+                : "bg-gradient-to-r from-gray-600/20 to-gray-800/20 shadow-sm"
+            } transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2`}
+          />
+
+          {/* Responsive level circle */}
+          <div
+            className={`relative ${
+              sizes.levelSize
+            } rounded-full border-3 transition-all duration-500 flex items-center justify-center animate-zoom-pulse ${
+              isCompleted
+                ? "bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 border-yellow-200 shadow-lg"
+                : isCurrentLevel
+                ? "bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 border-white shadow-lg animate-pulse"
+                : isUnlocked
+                ? "bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600 border-blue-200 shadow-md"
+                : "bg-gradient-to-br from-gray-600 to-gray-800 border-gray-500 opacity-60"
+            } ${
+              isUnlocked && !isFollowingPath
+                ? "group-hover:scale-110 group-hover:shadow-2xl"
+                : ""
+            }`}
+          >
+            {/* Animated rings for current/completed levels */}
+            {(isCurrentLevel || isCompleted) && (
+              <>
+                <div className="absolute inset-0 rounded-full border-2 border-white/40 animate-ping" />
+                <div
+                  className="absolute inset-2 rounded-full border-2 border-white/30 animate-ping"
+                  style={{ animationDelay: "0.5s" }}
+                />
+              </>
+            )}
+
+            {/* Responsive level number */}
+            <span
+              className={`pixel-font text-white font-bold ${sizes.textSize} drop-shadow-2xl z-10`}
+            >
+              {level.id}
+            </span>
+          </div>
+
+          {/* Responsive completion crown */}
+          {isCompleted && (
+            <div
+              className={`absolute ${sizes.crownOffset} left-1/2 transform -translate-x-1/2 text-2xl animate-bounce`}
+            >
+              👑
+            </div>
+          )}
+
+          {/* Responsive lock icon for locked levels */}
+          {!isUnlocked && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-2xl opacity-90 bg-black/60 rounded-full p-2 border-2 border-gray-600">
+                🔒
+              </div>
+            </div>
+          )}
+
+          {/* Responsive level type badge */}
+          <div
+            className={`absolute ${sizes.badgeOffset} left-1/2 transform -translate-x-1/2`}
+          >
+            <div
+              className={`px-3 py-1 rounded-full ${
+                sizes.badgeText
+              } font-bold text-white shadow-lg backdrop-blur-sm ${
+                level.type === "basic"
+                  ? "bg-emerald-600/90"
+                  : level.type === "intermediate"
+                  ? "bg-sky-600/90"
+                  : level.type === "advanced"
+                  ? "bg-violet-600/90"
+                  : "bg-rose-600/90"
+              }`}
+            >
+              {level.type.charAt(0).toUpperCase() + level.type.slice(1)}
             </div>
           </div>
-          <div className="absolute inset-0 flex items-center justify-center"> <span className="pixel-font text-white font-bold text-lg sm:text-xl md:text-2xl drop-shadow-2xl z-10 bg-black/60 rounded-full w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-white/30"> {level.id} </span> </div>
-          {isCompleted && ( <div className="absolute -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2 text-2xl sm:text-3xl md:text-4xl animate-bounce"> 👑 </div> )}
-          {!isUnlocked && ( <div className="absolute inset-0 flex items-center justify-center"> <div className="text-3xl sm:text-4xl md:text-5xl opacity-90 bg-black/60 rounded-full p-2 border-2 border-slate-600">🔒</div> </div> )}
-          <div className="absolute -bottom-2 sm:-bottom-3 left-1/2 transform -translate-x-1/2"> <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold text-white shadow-lg ${level.type === 'basic' ? 'bg-emerald-600' : level.type === 'intermediate' ? 'bg-sky-600' : level.type === 'advanced' ? 'bg-violet-600' : 'bg-rose-600'}`}> {level.type.charAt(0).toUpperCase() + level.type.slice(1)} </div> </div>
-          <div className="absolute top-full mt-4 sm:mt-6 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20"> <div className="bg-slate-900/95 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-white text-sm sm:text-base max-w-64 sm:max-w-80 text-center border-2 border-slate-700 shadow-2xl"> <div className="pixel-font font-bold mb-2 sm:mb-3  text-cyan-300 text-lg">Level {level.id}</div> <div className="text-xs sm:text-sm text-slate-300 mb-2 sm:mb-3 leading-tight font-mono bg-slate-800/50 rounded-lg p-2">{level.query}</div> <div className={`text-xs sm:text-sm px-3 py-1.5 rounded-full inline-block font-semibold ${level.type === 'basic' ? 'bg-emerald-600' : level.type === 'intermediate' ? 'bg-sky-600' : level.type === 'advanced' ? 'bg-violet-600' : 'bg-rose-600'}`}> {level.type.charAt(0).toUpperCase() + level.type.slice(1)} Level </div> </div> </div>
+
+          {/* Responsive hover tooltip - only show for unlocked levels */}
+          {isUnlocked && (
+            <div
+              className={`absolute top-full ${sizes.tooltipOffset} left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-30`}
+            >
+              <div
+                className={`bg-slate-900/95 backdrop-blur-sm rounded-2xl px-4 py-3 text-white text-sm ${sizes.tooltipWidth} text-center border-2 border-slate-700 shadow-2xl`}
+              >
+                <div className="pixel-font font-bold mb-2 text-cyan-300">
+                  Level {level.id}
+                </div>
+                <div className="text-xs text-slate-300 mb-2 leading-tight font-mono bg-slate-800/50 rounded-lg p-2">
+                  {level.query}
+                </div>
+                {isCompleted && (
+                  <div className="text-xs text-yellow-300 font-bold">
+                    ✅ Completed
+                  </div>
+                )}
+                {isCurrentLevel && !isCompleted && (
+                  <div className="text-xs text-cyan-300 font-bold">
+                    📍 Current Level
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
-  // Enhanced Character with wizard asset
+  // Enhanced Character with responsive scaling
   const renderCharacter = () => {
+    const sizes = getResponsiveSizes();
+
     return (
-      <div className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-in-out ${isMoving ? 'scale-125' : 'scale-100'}`} style={{ left: `${characterPosition.x}%`, top: `${characterPosition.y}%`, zIndex: 10, transform: `translate(-50%, -50%) scale(${mapScale * (isMoving ? 1.25 : 1)})` }}>
+      <div
+        className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-200 ease-in-out ${
+          isMoving || isFollowingPath ? "scale-125" : "scale-100"
+        }`}
+        style={{
+          left: `${characterPosition.x}%`,
+          top: `${characterPosition.y}%`,
+          zIndex: 25,
+          transform: `translate(-50%, -50%) scale(${
+            mapScale * (isMoving || isFollowingPath ? 1.25 : 1)
+          })`,
+        }}
+      >
         <div className="relative">
-          <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-purple-500/30 via-blue-500/30 to-cyan-500/30 rounded-full animate-pulse transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
-          <div className="relative"> <img src={ASSETS.wizard} alt="Wizard Character" className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-2xl filter brightness-110" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} /> <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-indigo-800 via-purple-700 to-slate-800 rounded-full border-3 sm:border-4 border-cyan-300 shadow-2xl shadow-cyan-500/50 hidden"> <div className="absolute inset-0 flex items-center justify-center text-xl sm:text-3xl"> 🧙‍♂️ </div> </div> </div>
-          {isMoving && ( <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-cyan-400/50 to-purple-400/50 rounded-full animate-ping" /> )}
+          {/* Enhanced character glow - responsive */}
+          <div
+            className={`absolute inset-0 ${
+              sizes.characterGlow
+            } rounded-full animate-pulse transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${
+              isFollowingPath
+                ? "bg-gradient-to-r from-yellow-400/60 via-orange-400/60 to-red-400/60 shadow-2xl shadow-orange-400/80"
+                : "bg-gradient-to-r from-purple-500/40 via-blue-500/40 to-cyan-500/40"
+            }`}
+          />
+
+          {/* Responsive character image */}
+          <div className="relative">
+            <img
+              src={ASSETS.wizard}
+              alt="Wizard Character"
+              className={`${
+                sizes.characterSize
+              } object-contain drop-shadow-2xl filter ${
+                isFollowingPath
+                  ? "brightness-125 saturate-150"
+                  : "brightness-110"
+              }`}
+              onError={(e) => {
+                e.target.style.display = "none";
+                e.target.nextSibling.style.display = "block";
+              }}
+            />
+            <div
+              className={`${sizes.characterSize} bg-gradient-to-br from-indigo-800 via-purple-700 to-slate-800 rounded-full border-3 border-cyan-300 shadow-2xl shadow-cyan-500/50 hidden`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center text-3xl">
+                🧙‍♂️
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced movement effects for path following */}
+          {isFollowingPath && (
+            <>
+              <div
+                className={`absolute inset-0 ${sizes.characterSize} bg-gradient-to-r from-yellow-400/70 to-orange-400/70 rounded-full animate-ping`}
+              />
+              <div className="absolute -top-2 -right-2 text-yellow-400 animate-bounce">
+                ✨
+              </div>
+              <div
+                className="absolute -bottom-2 -left-2 text-orange-400 animate-bounce"
+                style={{ animationDelay: "0.2s" }}
+              >
+                🔥
+              </div>
+              <div
+                className="absolute -top-2 -left-2 text-red-400 animate-bounce"
+                style={{ animationDelay: "0.4s" }}
+              >
+                ⭐
+              </div>
+            </>
+          )}
+
+          {/* Regular movement effect */}
+          {isMoving && !isFollowingPath && (
+            <div
+              className={`absolute inset-0 ${sizes.characterSize} bg-gradient-to-r from-cyan-400/50 to-purple-400/50 rounded-full animate-ping`}
+            />
+          )}
         </div>
       </div>
     );
   };
 
-  const renderCastle = () => {
-    const lastLevel = updatedLevels[updatedLevels.length - 1];
-    const CASTLE_Y_OFFSET = 5;
+  // Render path trail visualization with responsive sizing
+  const renderPathTrail = () => {
+    if (!isFollowingPath || pathTrail.length === 0) return null;
+
+    const dotSize =
+      mapScale <= 0.65
+        ? "w-1 h-1"
+        : mapScale <= 0.85
+        ? "w-1.5 h-1.5"
+        : "w-2 h-2";
+
+    return pathTrail.map((point, index) => (
+      <div
+        key={`trail-${index}`}
+        className={`absolute ${dotSize} bg-gradient-to-r from-yellow-400/60 to-orange-400/40 rounded-full animate-pulse`}
+        style={{
+          left: `${point.x}%`,
+          top: `${point.y}%`,
+          zIndex: 15,
+          animationDelay: `${index * 0.02}s`,
+          transform: `translate(-50%, -50%) scale(${mapScale})`,
+          opacity: Math.max(0.3, 1 - index / pathTrail.length),
+        }}
+      />
+    ));
+  };
+
+  // Responsive floating particles for magical atmosphere
+  const renderMagicalParticles = () => {
+    const particleCount = mapScale <= 0.65 ? 8 : mapScale <= 0.85 ? 10 : 15;
+    const particleSize = mapScale <= 0.75 ? "w-1 h-1" : "w-2 h-2";
+
     return (
-      <div className="absolute pointer-events-none" style={{ left: `${lastLevel.x}%`, top : `${lastLevel.y + CASTLE_Y_OFFSET}%`, transform: `translate(-50%, -50%) scale(${mapScale})`, zIndex: 6 }}>
-        <img src={ASSETS.castle} alt="Final Castle" className="w-32 h-40 sm:w-40 sm:h-48 md:w-48 md:h-56 object-contain drop-shadow-2xl filter brightness-105" onError={(e) => e.target.style.display = 'none'} />
-      </div>
+      <>
+        {[...Array(particleCount)].map((_, i) => (
+          <div
+            key={`particle-${i}`}
+            className={`absolute ${particleSize} bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full animate-float opacity-60`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${4 + Math.random() * 4}s`,
+              zIndex: 15,
+              transform: `scale(${mapScale})`,
+            }}
+          />
+        ))}
+      </>
     );
   };
 
-  // --- MODIFIED SECTION ---
   // Render Game Over screen if all lives are lost
   if (isGameOver) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
-        <div className="bg-gradient-to-r from-red-800/80 via-rose-900/80 to-slate-900/80 backdrop-blur-xl rounded-2xl px-6 sm:px-10 py-8 border-2 border-red-500/50 shadow-2xl shadow-red-500/30 text-center">
-          <div className="text-5xl mb-4 animate-bounce">💔</div>
-          <h1 className="pixel-font text-2xl sm:text-3xl lg:text-4xl font-bold drop-shadow-lg text-red-300">
+        <div className="bg-gradient-to-r from-red-800/80 via-rose-900/80 to-slate-900/80 backdrop-blur-xl rounded-2xl px-6 sm:px-10 py-8 border-2 border-red-500/50 shadow-2xl shadow-red-500/30 text-center max-w-md w-full">
+          <div className="text-4xl sm:text-5xl mb-4 animate-bounce">💔</div>
+          <h1 className="pixel-font text-xl sm:text-2xl lg:text-3xl font-bold drop-shadow-lg text-red-300 mb-3">
             Game Over
           </h1>
-          <p className="text-base sm:text-lg opacity-90 mt-3 mb-6">
+          <p className="text-sm sm:text-base opacity-90 mb-6 leading-relaxed">
             You have lost all your lives. The realm needs a hero to try again!
           </p>
           <button
-              onClick={handleRestart}
-              className="pixel-font text-white font-bold bg-gradient-to-r from-red-600 to-rose-700 px-8 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105 hover:shadow-red-500/50 active:scale-100"
+            onClick={handleRestart}
+            className="pixel-font text-white font-bold bg-gradient-to-r from-red-600 to-rose-700 px-6 sm:px-8 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105 hover:shadow-red-500/50 active:scale-100 w-full sm:w-auto"
           >
-              Restart Game
+            Restart Game
           </button>
         </div>
       </div>
     );
   }
-  // --- END MODIFIED SECTION ---
 
   return (
-    <div className="min-h-screen pb-54 bg-gradient-to-b from-slate-900 via-blue-900 to-black relative overflow-hidden">
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(30,58,138,0.4),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(67,56,202,0.3),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(15,23,42,0.5),transparent_50%)]" />
-        {[...Array(40)].map((_, i) => ( <div key={i} className="absolute w-1 h-1 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full animate-pulse" style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 5}s`, animationDuration: `${4 + Math.random() * 6}s` }} /> ))}
+    <div className="min-h-screen pb-54 relative overflow-hidden">
+      {/* Background Image Container */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden">
+        <img
+          src={isMobile ? ASSETS.bgMapMobile : ASSETS.bgMap}
+          alt="SQL Quest Map Background"
+          className="w-full h-full object-fill object-center bg-drift"
+          style={{
+            imageRendering: "crisp-edges",
+            filter: "brightness(0.85) contrast(1.1) saturate(1.2)",
+          }}
+          onLoad={() => setBgImageLoaded(true)}
+          onError={(e) => {
+            console.warn(
+              "Background image failed to load, falling back to gradient"
+            );
+            e.target.style.display = "none";
+            e.target.nextSibling.style.display = "block";
+          }}
+        />
+        {/* Fallback gradient background */}
+        <div
+          className="w-full h-full bg-gradient-to-b from-slate-900 via-blue-900 to-black hidden"
+          style={{ display: bgImageLoaded ? "none" : "block" }}
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(30,58,138,0.4),transparent_70%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(67,56,202,0.3),transparent_50%)]" />
+        </div>
       </div>
 
+      {/* Overlay for better contrast */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20 pointer-events-none z-10" />
+
+      {/* Header UI */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-900/90 via-blue-900/90 to-slate-900/90 backdrop-blur-xl border-b border-blue-500/30 shadow-xl">
         <div className="container mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between py-2 sm:py-4 gap-2 sm:gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 bg-gradient-to-r from-rose-900/60 to-red-900/60 rounded-full px-3 sm:px-4 py-2 border border-rose-500/40 shadow-lg backdrop-blur-sm">
               <span className="pixel-font text-white font-bold text-xs sm:text-sm lg:text-lg">Lives:</span>
               <div className="flex space-x-1 sm:space-x-2">
-                {[...Array(3)].map((_, i) => ( <div key={i} className={`text-base sm:text-lg lg:text-2xl xl:text-3xl transition-all duration-300 ${ i < gameState.lives ? 'text-rose-400 animate-pulse scale-110 drop-shadow-lg filter brightness-125' : 'text-slate-600 grayscale scale-75 opacity-50' }`}> 💖 </div> ))}
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className={`text-base sm:text-lg lg:text-2xl xl:text-3xl transition-all duration-300 ${
+                    i < gameState.lives ? 'text-rose-400 animate-pulse scale-110 drop-shadow-lg filter brightness-125' : 'text-slate-600 grayscale scale-75 opacity-50'
+                  }`}>
+                    💖
+                  </div>
+                ))}
               </div>
             </div>
             <div className="flex-1 w-full sm:w-auto mx-2 sm:mx-4 lg:mx-8">
@@ -350,36 +779,58 @@ const MapMainView = () => {
                 <div className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 transition-all duration-1000 ease-out relative overflow-hidden" style={{ width: `${(gameState.progress.length / levels.length) * 100}%` }}>
                   <div className="absolute inset-0 bg-white/30 animate-pulse" />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/10" />
                 </div>
               </div>
-              <div className="text-center mt-1 sm:mt-2"> <span className="pixel-font text-blue-300 text-xs sm:text-sm lg:text-base font-bold drop-shadow"> {gameState.progress.length}/{levels.length} Quests Completed </span> </div>
+              <div className="text-center mt-1 sm:mt-2">
+                <span className="pixel-font text-blue-300 text-xs sm:text-sm lg:text-base font-bold drop-shadow">
+                  {gameState.progress.length}/{levels.length} Quests Completed
+                </span>
+              </div>
             </div>
             <div className="text-center sm:text-right bg-gradient-to-r from-blue-900/60 to-purple-900/60 rounded-full px-3 sm:px-4 py-2 border border-blue-500/40 shadow-lg backdrop-blur-sm">
-              <div className="pixel-font text-blue-300 font-bold text-sm sm:text-lg lg:text-xl drop-shadow-lg"> Level {gameState.currentLevel} </div>
-              <div className="text-blue-400 text-xs sm:text-sm font-medium"> SQL Quest </div>
+              <div className="pixel-font text-blue-300 font-bold text-sm sm:text-lg lg:text-xl drop-shadow-lg">
+                Level {gameState.currentLevel}
+              </div>
+              <div className="text-blue-400 text-xs sm:text-sm font-medium">
+                SQL Quest
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+
+      {/* Main Map Content */}
       <div className="pt-20 sm:pt-24 lg:pt-32 pb-4 sm:pb-8">
-        <div className="relative w-full mx-auto container" style={{ height: window.innerWidth < 480 ? '140vh' : window.innerWidth < 768 ? '130vh' : '150vh', maxWidth: '100vw' }}>
-          {renderAssetTrees()}
-          {renderAssetBushes()}
-          {renderAssetBirds()}
-          {renderConnectedPath()}
+        <div
+          className="relative w-full mx-auto container"
+          style={{
+            height:
+              window.innerWidth < 480
+                ? "120vh"
+                : window.innerWidth < 768
+                ? "125vh"
+                : window.innerWidth < 1024
+                ? "135vh"
+                : "150vh",
+            maxWidth: "100vw",
+          }}
+        >
+          {/* Responsive magical particles */}
+          {renderMagicalParticles()}
+
+          {/* Path trail visualization */}
+          {renderPathTrail()}
+
+          {/* Game elements */}
           {updatedLevels.map(renderLevel)}
           {renderCharacter()}
-          {renderCastle()}
         </div>
       </div>
-      
-      {/* --- MODIFIED SECTION --- */}
-      {/* Conditionally render the bottom UI based on game completion */}
+
+      {/* Bottom UI */}
       <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50">
         {isGameWon ? (
-          // Win UI
           <div className="bg-gradient-to-r from-amber-500/80 via-yellow-400/80 to-amber-500/80 backdrop-blur-xl rounded-2xl px-6 sm:px-10 py-4 border-2 border-yellow-300/50 shadow-2xl shadow-yellow-400/30">
             <div className="pixel-font text-white text-center">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold drop-shadow-lg animate-pulse">
@@ -395,7 +846,6 @@ const MapMainView = () => {
             </div>
           </div>
         ) : (
-          // Standard Gameplay UI
           <div className="bg-gradient-to-r from-slate-900/80 via-blue-900/80 to-slate-900/80 backdrop-blur-xl rounded-2xl px-4 sm:px-8 py-3 sm:py-4 border-2 border-blue-500/30 shadow-2xl">
             <div className="pixel-font text-blue-300 text-center">
               <div className="text-sm sm:text-base lg:text-lg font-bold">🗺️ Mystical SQL Realm</div>
@@ -404,19 +854,92 @@ const MapMainView = () => {
           </div>
         )}
       </div>
-      {/* --- END MODIFIED SECTION --- */}
 
       <style jsx>{`
-        @keyframes float { 0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); } 25% { transform: translateY(-6px) translateX(2px) rotate(1deg); } 50% { transform: translateY(-12px) translateX(4px) rotate(0deg); } 75% { transform: translateY(-6px) translateX(2px) rotate(-1deg); } }
-        @keyframes wing { 0%, 100% { transform: rotate(0deg) scaleY(1); } 50% { transform: rotate(-12deg) scaleY(0.8); } }
-        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-        @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .animate-float { animation: float 4s ease-in-out infinite; }
-        .animate-wing { animation: wing 0.3s ease-in-out infinite; }
-        .animate-shimmer { animation: shimmer 2.5s ease-in-out infinite; }
-        .animate-spin-slow { animation: spin-slow 6s linear infinite; }
-        .pixel-font { font-family: 'Courier New', monospace; text-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
-        @media (max-width: 640px) { .pixel-font { text-shadow: 1px 1px 0px rgba(0,0,0,0.8); } }
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px);
+          }
+          25% {
+            transform: translateY(-6px) translateX(2px);
+          }
+          50% {
+            transform: translateY(-12px) translateX(4px);
+          }
+          75% {
+            transform: translateY(-6px) translateX(2px);
+          }
+        }
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+        @keyframes zoom-pulse {
+          0%,
+          100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.13);
+          }
+        }
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        .animate-shimmer {
+          animation: shimmer 2.5s ease-in-out infinite;
+        }
+        .animate-zoom-pulse {
+          animation: zoom-pulse 2.2s ease-in-out infinite;
+        }
+        .pixel-font {
+          font-family: "Courier New", monospace;
+          text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+        }
+        .bg-drift {
+          animation: bg-drift 24s linear infinite alternate;
+        }
+        @keyframes bg-drift {
+          0% {
+            transform: scale(1.03) translate(0px, 0px);
+          }
+          100% {
+            transform: scale(1.08) translate(-18px, -12px);
+          }
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 640px) {
+          .pixel-font {
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+          }
+        }
+
+        /* Touch-friendly sizing for mobile */
+        @media (max-width: 480px) {
+          .group {
+            min-width: 44px;
+            min-height: 44px;
+          }
+        }
+
+        /* Prevent zoom on double tap for iOS */
+        * {
+          touch-action: manipulation;
+        }
+
+        /* Improved tap targets for mobile */
+        @media (hover: none) and (pointer: coarse) {
+          .group {
+            min-width: 48px;
+            min-height: 48px;
+          }
+        }
       `}</style>
     </div>
   );
