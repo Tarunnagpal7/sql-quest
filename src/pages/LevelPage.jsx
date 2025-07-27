@@ -6,7 +6,15 @@ import { levels } from '../assets/data/levels';
 
 // --- Import your level-specific components here ---
 import Level1 from '../components/levels/Level1';
-// import Level2 from '../components/levels/Level2';
+import Level2 from '../components/levels/Level2';
+import Level3 from '../components/levels/Level3';
+import Level4 from '../components/levels/Level4';
+import Level5 from '../components/levels/Level5';
+import Level6 from '../components/levels/Level6';
+import Level7 from '../components/levels/Level7';
+import Level8 from '../components/levels/Level8';
+import Level9 from '../components/levels/Level9';
+import Level10 from '../components/levels/Level10';
 
 // Enhanced Header Component with better styling
 const LevelHeader = ({ levelId, lives, onSkip, onBack }) => {
@@ -74,9 +82,25 @@ function LevelPage() {
         switch (levelData.id) {
             case 1:
                 return <Level1 onComplete={handleCompleteLevel} />;
-            // case 2:
-            //     return <Level2 onComplete={handleCompleteLevel} />;
-            default:
+            case 2:
+                return <Level2 onComplete={handleCompleteLevel} />;
+            case 3: 
+                return <Level3 onComplete={handleCompleteLevel} />;
+            case 4: 
+                return <Level4 onComplete={handleCompleteLevel} />;
+            case 5: 
+                return <Level5 onComplete={handleCompleteLevel} />;
+            case 6: 
+                return <Level6 onComplete={handleCompleteLevel} />;
+            case 7: 
+                return <Level7 onComplete={handleCompleteLevel} />;
+            case 8: 
+                return <Level8 onComplete={handleCompleteLevel} />;
+            case 9: 
+                return <Level9 onComplete={handleCompleteLevel} />;
+            case 10: 
+                return <Level10 onComplete={handleCompleteLevel} />;
+                default:
                 return (
                     <div className="text-center py-12">
                         <div className="relative">
@@ -187,37 +211,58 @@ function LevelPage() {
 
                         
                         {/* Enhanced Quest Display */}
-                        <div className="relative group">
-                            {/* Glow Effect */}
-                            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/50 via-blue-500/50 to-purple-500/50 rounded-3xl blur-lg opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
-                            
-                            <div className="relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border-2 border-cyan-400/40 rounded-3xl p-4 sm:p-6 text-center shadow-2xl">
-                                {/* Quest Header */}
-                                <div className="flex items-center justify-center gap-2 mb-4">
-                                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                                    <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text font-bold">
-                                        ⚡ Your Quest ⚡
-                                    </h2>
-                                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-                                </div>
+<div className="relative group">
+    {/* Glow Effect */}
+    <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/50 via-blue-500/50 to-purple-500/50 rounded-3xl blur-lg opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+    
+    <div className="relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border-2 border-cyan-400/40 rounded-3xl p-4 sm:p-6 text-center shadow-2xl">
+        {/* Quest Header */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+            <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text font-bold">
+                ⚡ Your Quest ⚡
+            </h2>
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+        </div>
 
-                                {/* Quest Description */}
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-slate-700/50 to-slate-800/50 rounded-xl blur-sm" />
-                                    <p className="relative font-mono text-sm sm:text-base xl:text-lg text-cyan-100 bg-slate-800/70 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-cyan-500/30 shadow-inner break-words">
-                                        <span className="text-cyan-300 font-bold block mb-2">🎯 Mission:</span> 
-                                        <span className="text-slate-200">{levelData.title}</span>
-                                    </p>
-                                </div>
+        {/* Mission Title */}
+        <div className="relative mb-4">
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-700/50 to-slate-800/50 rounded-xl blur-sm" />
+            <div className="relative font-mono text-sm sm:text-base xl:text-lg text-cyan-100 bg-slate-800/70 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-cyan-500/30 shadow-inner">
+                <span className="text-cyan-300 font-bold block mb-2">🎯 Mission:</span> 
+                <span className="text-slate-200">{levelData.title}</span>
+            </div>
+        </div>
 
-                                {/* Decorative Elements */}
-                                <div className="flex justify-center gap-2 mt-4">
-                                    <div className="w-8 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent rounded-full opacity-60" />
-                                    <div className="w-6 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent rounded-full opacity-60" />
-                                    <div className="w-8 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full opacity-60" />
-                                </div>
-                            </div>
-                        </div>
+        {/* Riddle Section */}
+        <div className="relative mb-4">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-700/50 to-indigo-800/50 rounded-xl blur-sm" />
+            <div className="relative font-mono text-sm sm:text-base text-purple-100 bg-purple-900/70 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-purple-500/30 shadow-inner">
+                <span className="text-purple-300 font-bold block mb-2">📜 Ancient Riddle:</span> 
+                <span className="text-purple-100 italic leading-relaxed">{levelData.riddle}</span>
+            </div>
+        </div>
+
+        {/* Database Schema */}
+        <div className="relative mb-4">
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-700/50 to-orange-800/50 rounded-xl blur-sm" />
+            <div className="relative font-mono text-xs sm:text-sm text-amber-100 bg-amber-900/70 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-amber-500/30 shadow-inner">
+                <span className="text-amber-300 font-bold block mb-2">📋 Ancient Scrolls (Schema):</span> 
+                <pre className="text-amber-200 bg-black/40 p-2 rounded text-xs overflow-x-auto whitespace-pre-wrap break-words">
+                    {levelData.schema}
+                </pre>
+            </div>
+        </div>
+
+        {/* Decorative Elements */}
+        <div className="flex justify-center gap-2 mt-4">
+            <div className="w-8 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent rounded-full opacity-60" />
+            <div className="w-6 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent rounded-full opacity-60" />
+            <div className="w-8 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full opacity-60" />
+        </div>
+    </div>
+</div>
+
 
                         {/* Additional Level Info Card */}
                         <div className="relative group">
@@ -276,24 +321,6 @@ function LevelPage() {
                                         </p>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Motivational Message */}
-                        <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/40 to-teal-500/40 rounded-2xl blur-md opacity-50 group-hover:opacity-70 transition-opacity duration-500" />
-                            
-                            <div className="relative bg-gradient-to-br from-slate-800/85 to-slate-900/85 backdrop-blur-lg border-2 border-emerald-400/30 rounded-2xl p-4 text-center shadow-xl">
-                                <div className="flex items-center justify-center gap-2 mb-2">
-                                    <span className="text-2xl">🌟</span>
-                                    <h4 className="pixel-font text-emerald-300 font-bold text-sm">
-                                        Pro Tip
-                                    </h4>
-                                    <span className="text-2xl">🌟</span>
-                                </div>
-                                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                                    Complete quests to unlock new SQL realms and become a true data wizard!
-                                </p>
                             </div>
                         </div>
                     </div>
