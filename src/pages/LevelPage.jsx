@@ -7,6 +7,7 @@ import { levels } from '../assets/data/levels';
 // --- Import your level-specific components here ---
 import Level1 from '../components/levels/Level1';
 // import Level2 from '../components/levels/Level2';
+import Level2 from '../components/levels/Level2';
 
 // Enhanced Header Component with better styling
 const LevelHeader = ({ levelId, lives, onSkip, onBack }) => {
@@ -74,8 +75,8 @@ function LevelPage() {
         switch (levelData.id) {
             case 1:
                 return <Level1 onComplete={handleCompleteLevel} />;
-            // case 2:
-            //     return <Level2 onComplete={handleCompleteLevel} />;
+            case 2:
+                return <Level2 onComplete={handleCompleteLevel} />;
             default:
                 return (
                     <div className="text-center py-12">

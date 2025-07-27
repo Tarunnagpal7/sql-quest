@@ -1,6 +1,6 @@
 export const levels = [
   { id: 1, x: 50, y: 15, title : "Find the correct keyword to find map ",query: "SELECT * FROM map ", unlocked: true, completed: false, type: 'basic' },
-  { id: 2, x: 25, y: 25, query: "SELECT name FROM products WHERE price > 100", unlocked: false, completed: false, type: 'basic' },
+  { id: 2, x: 25, y: 25, title:"Shoot The Correct Fish", query: "SELECT name FROM products WHERE price > 100", unlocked: false, completed: false, type: 'basic' },
   { id: 3, x: 70, y: 30, query: "JOIN users ON orders.user_id = users.id", unlocked: false, completed: false, type: 'intermediate' },
   { id: 4, x: 40, y: 40, query: "GROUP BY category HAVING COUNT(*) > 5", unlocked: false, completed: false, type: 'intermediate' },
   { id: 5, x: 80, y: 45, query: "CREATE INDEX ON products(name)", unlocked: false, completed: false, type: 'advanced' },
