@@ -7,7 +7,7 @@ import { AiFillBug } from "react-icons/ai";
 const Level1 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
-  
+
   const [uiState, setUiState] = useState({
     health: 100,
     isQueryComplete: false,
@@ -34,13 +34,13 @@ const Level1 = ({ onComplete }) => {
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
     tempDiv.innerHTML = `<div style="color: ${color}; font-size: ${size}px; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;"></div>`;
-    
+
     // Render icon as SVG and convert to canvas
-    const iconElement = React.createElement(IconComponent, { 
-      size: size, 
-      color: color 
+    const iconElement = React.createElement(IconComponent, {
+      size: size,
+      color: color
     });
-    
+
     // For simplicity, we'll create the textures programmatically
     // This is a workaround since direct React icon rendering in Phaser is complex
     return canvas;
@@ -51,7 +51,7 @@ const Level1 = ({ onComplete }) => {
 
     let player, enemies, correctCollectible, wrongCollectibles, walls;
     let cursors, spaceKey;
-    
+
     const gameState = {
       health: 100,
       maxHealth: 100,
@@ -60,50 +60,121 @@ const Level1 = ({ onComplete }) => {
       canAttack: true,
       attackCooldown: 300,
     };
-    
-    const query = { 
-      text: "SELECT * <missing>FROM</missing> levels", 
-      word: "FROM" 
+
+    const query = {
+      text: "SELECT * <missing>FROM</missing> levels",
+      word: "FROM"
     };
 
     const allKeywords = ["SELECT", "WHERE", "UPDATE", "DELETE", "ORDER BY", "GROUP BY"];
-    
+
     let sceneRef;
     let keywordPositions = [];
 
     function preload() {
       sceneRef = this;
-      
-      // --- MODIFIED: Create Ghost Character for Player ---
+
+      // --- UPDATED: Create Wizard Character for Player ---
       const playerGraphics = this.add.graphics();
-      // Ghost body (main circle)
-      playerGraphics.fillStyle(0x87ceeb, 1); // Sky blue color
-      playerGraphics.fillCircle(16, 20, 12);
-      // Ghost bottom wavy part
+
+      // Wizard robe (main body)
+      playerGraphics.fillStyle(0x1e3a8a, 1); // Dark blue robe
+      playerGraphics.fillCircle(16, 25, 14); // Body
+      playerGraphics.fillRect(2, 15, 28, 20); // Robe body
+
+      // Wizard hood
+      playerGraphics.fillStyle(0x1e40af, 1); // Slightly lighter blue for hood
+      playerGraphics.fillCircle(16, 12, 10); // Hood
+
+      // Hood shadow/depth
+      playerGraphics.fillStyle(0x0f172a, 1); // Very dark blue for shadow
+      playerGraphics.fillEllipse(16, 14, 18, 8); // Hood opening
+
+      // Face (visible under hood)
+      playerGraphics.fillStyle(0xfbbf24, 1); // Golden/tan skin tone
+      playerGraphics.fillCircle(16, 16, 6); // Face
+
+      // Eyes
+      playerGraphics.fillStyle(0x000000, 1);
+      playerGraphics.fillCircle(13, 15, 1.5); // Left eye
+      playerGraphics.fillCircle(19, 15, 1.5); // Right eye
+
+      // Eye glow (magical effect)
+      playerGraphics.fillStyle(0x60a5fa, 0.7); // Blue glow
+      playerGraphics.fillCircle(13, 15, 2.5);
+      playerGraphics.fillCircle(19, 15, 2.5);
+
+      // Robe trim/details
+      playerGraphics.fillStyle(0xfbbf24, 1); // Gold trim
+      playerGraphics.fillRect(2, 20, 28, 2); // Horizontal trim
+      playerGraphics.fillRect(14, 15, 4, 25); // Vertical center line
+
+      // Magical scroll (held in left hand)
+      playerGraphics.fillStyle(0xf7fafc, 1); // Parchment white
+      playerGraphics.fillRect(8, 22, 6, 8); // Scroll
+      playerGraphics.lineStyle(1, 0x8b5cf6); // Purple text lines
       playerGraphics.beginPath();
-      playerGraphics.moveTo(4, 28);
-      playerGraphics.lineTo(8, 32);
-      playerGraphics.lineTo(12, 28);
-      playerGraphics.lineTo(16, 32);
-      playerGraphics.lineTo(20, 28);
-      playerGraphics.lineTo(24, 32);
-      playerGraphics.lineTo(28, 28);
+      playerGraphics.moveTo(9, 24);
+      playerGraphics.lineTo(13, 24);
+      playerGraphics.moveTo(9, 26);
+      playerGraphics.lineTo(13, 26);
+      playerGraphics.moveTo(9, 28);
+      playerGraphics.lineTo(13, 28);
+      playerGraphics.strokePath();
+
+      // Magic staff (held in right hand)
+      playerGraphics.lineStyle(3, 0x92400e); // Brown staff
+      playerGraphics.beginPath();
+      playerGraphics.moveTo(24, 35);
+      playerGraphics.lineTo(26, 18);
+      playerGraphics.strokePath();
+
+      // Staff crystal/orb at top
+      playerGraphics.fillStyle(0x8b5cf6, 0.8); // Purple crystal
+      playerGraphics.fillCircle(26, 16, 4);
+      playerGraphics.fillStyle(0xfbbf24, 0.6); // Golden glow
+      playerGraphics.fillCircle(26, 16, 6);
+
+      // Staff decorative elements
+      playerGraphics.lineStyle(2, 0xfbbf24); // Gold details
+      playerGraphics.beginPath();
+      playerGraphics.moveTo(24, 20);
       playerGraphics.lineTo(28, 20);
-      playerGraphics.arc(16, 20, 12, 0, Math.PI, true);
+      playerGraphics.moveTo(24, 24);
+      playerGraphics.lineTo(28, 24);
+      playerGraphics.strokePath();
+
+      // Robe bottom (flowing)
+      playerGraphics.fillStyle(0x1e3a8a, 1);
+      playerGraphics.beginPath();
+      playerGraphics.moveTo(5, 35);
+      playerGraphics.lineTo(8, 38);
+      playerGraphics.lineTo(12, 35);
+      playerGraphics.lineTo(16, 38);
+      playerGraphics.lineTo(20, 35);
+      playerGraphics.lineTo(24, 38);
+      playerGraphics.lineTo(27, 35);
+      playerGraphics.lineTo(27, 25);
+      playerGraphics.lineTo(5, 25);
       playerGraphics.closePath();
       playerGraphics.fillPath();
-      // Ghost eyes
-      playerGraphics.fillStyle(0x000000, 1);
-      playerGraphics.fillCircle(12, 18, 2);
-      playerGraphics.fillCircle(20, 18, 2);
-      // Ghost mouth
-      playerGraphics.fillEllipse(16, 24, 4, 2);
+
+      // Magical aura particles around character
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const x = 16 + Math.cos(angle) * 18;
+        const y = 25 + Math.sin(angle) * 15;
+        playerGraphics.fillStyle(0x8b5cf6, 0.4 + Math.random() * 0.3);
+        playerGraphics.fillCircle(x, y, 1 + Math.random() * 2);
+      }
+
       playerGraphics.generateTexture('player', 32, 40);
       playerGraphics.destroy();
-      
+
+      // ... rest of your enemy and other texture creation code remains the same ...
       // --- MODIFIED: Create Bug Enemies with Different Colors ---
       const enemyColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff]; // Red, Green, Blue, Yellow, Magenta
-      
+
       enemyColors.forEach((color, index) => {
         const enemyGraphics = this.add.graphics();
         // Bug body
@@ -136,37 +207,38 @@ const Level1 = ({ onComplete }) => {
         enemyGraphics.fillStyle(0x000000, 1);
         enemyGraphics.fillCircle(13, 12, 1.5);
         enemyGraphics.fillCircle(19, 12, 1.5);
-        
+
         enemyGraphics.generateTexture(`enemy${index}`, 32, 32);
         enemyGraphics.destroy();
       });
-      
+
       this.add.graphics().fillStyle(0x444444).fillRect(0, 0, 40, 40).generateTexture('wall', 40, 40);
       this.add.graphics().fillStyle(0x0a192f).fillRect(0, 0, 800, 500).generateTexture('background', 800, 500);
     }
 
+
     function create() {
       this.add.image(400, 250, 'background');
-      
+
       walls = this.physics.add.staticGroup();
       enemies = this.physics.add.group();
       correctCollectible = this.physics.add.group();
       wrongCollectibles = this.physics.add.group();
-      
+
       player = this.physics.add.sprite(400, 250, 'player');
       player.setCollideWorldBounds(true).body.setSize(20, 25).setOffset(6, 10);
-      
+
       cursors = this.input.keyboard.createCursorKeys();
       spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-      
+
       this.physics.add.collider(player, walls);
       this.physics.add.collider(enemies, walls);
       this.physics.add.collider(enemies, enemies);
-      
+
       this.physics.add.overlap(player, correctCollectible, collectCorrectItem, null, this);
       this.physics.add.overlap(player, wrongCollectibles, collectWrongItem, null, this);
       this.physics.add.overlap(player, enemies, hitByEnemy, null, this);
-      
+
       createLevel.call(this);
       updateReactUI();
     }
@@ -178,9 +250,9 @@ const Level1 = ({ onComplete }) => {
       walls.clear(true, true);
       gameState.mistakes = 0;
       keywordPositions = [];
-      
+
       sceneRef.children.list.forEach(child => {
-          if (child.isKeyword) child.destroy();
+        if (child.isKeyword) child.destroy();
       });
 
       // Symmetric wall layout
@@ -190,7 +262,7 @@ const Level1 = ({ onComplete }) => {
         [80, 420], [160, 420], [240, 420], [320, 420], [480, 420], [560, 420], [640, 420], [720, 420],
         [80, 160], [80, 240], [80, 260], [80, 340],
         [720, 160], [720, 240], [720, 260], [720, 340],
-        
+
         // Symmetric inner walls
         [200, 160], [600, 160], // Top inner walls
         [200, 340], [600, 340], // Bottom inner walls
@@ -200,355 +272,405 @@ const Level1 = ({ onComplete }) => {
         [400, 160], [400, 340]  // Center pillars
       ];
       wallPositions.forEach(pos => walls.create(pos[0], pos[1], 'wall'));
-      
+
       // --- MODIFIED: Create multiple enemies with different colors ---
       for (let i = 0; i < 3; i++) createEnemy.call(this, i);
-      
+
       createCorrectKeyword.call(this);
       createWrongKeyword.call(this);
-      
+
       player.setPosition(400, 250).setVelocity(0, 0);
     }
-    
+
     function createEnemy(enemyIndex = 0) {
-        let x, y;
-        let attempts = 0;
-        do {
-            x = Phaser.Math.Between(150, 650);
-            y = Phaser.Math.Between(150, 350);
-            attempts++;
-        } while (attempts < 50 && (
-            Phaser.Math.Distance.Between(x, y, player.x, player.y) < 120 ||
-            checkWallCollision(x, y) ||
-            checkEnemyCollision(x, y)
-        ));
-        
-        // Use different enemy textures with different colors
-        const enemyTextureIndex = enemyIndex % 5; // Cycle through 5 different colored bugs
-        const enemy = enemies.create(x, y, `enemy${enemyTextureIndex}`);
-        enemy.setCollideWorldBounds(true).body.setSize(24, 20).setOffset(4, 8);
-        enemy.health = 75;
-        enemy.speed = 50 + (enemyIndex * 10); // Different speeds for variety
-        enemy.enemyType = enemyTextureIndex; // Store enemy type for visual effects
-        
-        // Add floating animation
-        sceneRef.tweens.add({
-            targets: enemy,
-            y: enemy.y - 5,
-            duration: 1000 + (enemyIndex * 200),
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+      let x, y;
+      let attempts = 0;
+      do {
+        x = Phaser.Math.Between(150, 650);
+        y = Phaser.Math.Between(150, 350);
+        attempts++;
+      } while (attempts < 50 && (
+        Phaser.Math.Distance.Between(x, y, player.x, player.y) < 120 ||
+        checkWallCollision(x, y) ||
+        checkEnemyCollision(x, y)
+      ));
+
+      // Use different enemy textures with different colors
+      const enemyTextureIndex = enemyIndex % 5; // Cycle through 5 different colored bugs
+      const enemy = enemies.create(x, y, `enemy${enemyTextureIndex}`);
+      enemy.setCollideWorldBounds(true).body.setSize(24, 20).setOffset(4, 8);
+      enemy.health = 75;
+      enemy.speed = 50 + (enemyIndex * 10); // Different speeds for variety
+      enemy.enemyType = enemyTextureIndex; // Store enemy type for visual effects
+
+      // Add floating animation
+      sceneRef.tweens.add({
+        targets: enemy,
+        y: enemy.y - 5,
+        duration: 1000 + (enemyIndex * 200),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
     }
 
     function createKeyword(isCorrect) {
-        let x, y;
-        
-        const predefinedPositions = [
-            [250, 180], [550, 180], [180, 320], [620, 320], [150, 250], [650, 250]
-        ];
-        
-        const availablePositions = predefinedPositions.filter(pos => {
-            const [posX, posY] = pos;
-            
-            if (Phaser.Math.Distance.Between(posX, posY, player.x, player.y) < 180) {
-                return false;
-            }
-            
-            if (checkWallCollision(posX, posY)) {
-                return false;
-            }
-            
-            for (let keywordPos of keywordPositions) {
-                if (Phaser.Math.Distance.Between(posX, posY, keywordPos.x, keywordPos.y) < 200) {
-                    return false;
-                }
-            }
-            
-            for (let enemy of enemies.children.entries) {
-                if (Phaser.Math.Distance.Between(posX, posY, enemy.x, enemy.y) < 120) {
-                    return false;
-                }
-            }
-            
-            return true;
-        });
-        
-        if (availablePositions.length === 0) {
-            let attempts = 0;
-            do {
-                x = Phaser.Math.Between(180, 620);
-                y = Phaser.Math.Between(150, 350);
-                attempts++;
-            } while (attempts < 300 && (
-                Phaser.Math.Distance.Between(x, y, player.x, player.y) < 180 ||
-                checkWallCollision(x, y) ||
-                checkKeywordCollision(x, y) ||
-                checkEnemyCollision(x, y)
-            ));
-        } else {
-            const selectedPosition = availablePositions[0];
-            x = selectedPosition[0];
-            y = selectedPosition[1];
+      let x, y;
+
+      const predefinedPositions = [
+        [250, 180], [550, 180], [180, 320], [620, 320], [150, 250], [650, 250]
+      ];
+
+      const availablePositions = predefinedPositions.filter(pos => {
+        const [posX, posY] = pos;
+
+        if (Phaser.Math.Distance.Between(posX, posY, player.x, player.y) < 180) {
+          return false;
         }
 
-        const keywordText = isCorrect ? query.word : allKeywords[Phaser.Math.Between(0, allKeywords.length - 1)];
-        
-        const graphics = sceneRef.add.graphics();
-        graphics.fillStyle(0x8a2be2, 0.8);
-        graphics.lineStyle(2, 0x9932cc);
-        graphics.fillCircle(0, 0, 35);
-        graphics.strokeCircle(0, 0, 35);
-        graphics.x = x;
-        graphics.y = y;
-        graphics.isKeyword = true;
+        if (checkWallCollision(posX, posY)) {
+          return false;
+        }
 
-        const text = sceneRef.add.text(x, y, keywordText, { 
-            fontSize: '12px', 
-            fontFamily: 'Courier New', 
-            color: '#ffffff', 
-            fontStyle: 'bold' 
-        }).setOrigin(0.5);
-        text.isKeyword = true;
+        for (let keywordPos of keywordPositions) {
+          if (Phaser.Math.Distance.Between(posX, posY, keywordPos.x, keywordPos.y) < 200) {
+            return false;
+          }
+        }
 
-        const collectible = sceneRef.physics.add.sprite(x, y, null).setVisible(false);
-        collectible.body.setCircle(35);
-        collectible.graphics = graphics;
-        collectible.keywordText = text;
+        for (let enemy of enemies.children.entries) {
+          if (Phaser.Math.Distance.Between(posX, posY, enemy.x, enemy.y) < 120) {
+            return false;
+          }
+        }
 
-        (isCorrect ? correctCollectible : wrongCollectibles).add(collectible);
+        return true;
+      });
 
-        keywordPositions.push({ x, y });
+      if (availablePositions.length === 0) {
+        let attempts = 0;
+        do {
+          x = Phaser.Math.Between(180, 620);
+          y = Phaser.Math.Between(150, 350);
+          attempts++;
+        } while (attempts < 300 && (
+          Phaser.Math.Distance.Between(x, y, player.x, player.y) < 180 ||
+          checkWallCollision(x, y) ||
+          checkKeywordCollision(x, y) ||
+          checkEnemyCollision(x, y)
+        ));
+      } else {
+        const selectedPosition = availablePositions[0];
+        x = selectedPosition[0];
+        y = selectedPosition[1];
+      }
 
-        sceneRef.tweens.add({ 
-            targets: [graphics, text], 
-            y: y - 8, 
-            duration: 1500, 
-            yoyo: true, 
-            repeat: -1 
-        });
+      const keywordText = isCorrect ? query.word : allKeywords[Phaser.Math.Between(0, allKeywords.length - 1)];
+
+      const graphics = sceneRef.add.graphics();
+      graphics.fillStyle(0x8a2be2, 0.8);
+      graphics.lineStyle(2, 0x9932cc);
+      graphics.fillCircle(0, 0, 35);
+      graphics.strokeCircle(0, 0, 35);
+      graphics.x = x;
+      graphics.y = y;
+      graphics.isKeyword = true;
+
+      const text = sceneRef.add.text(x, y, keywordText, {
+        fontSize: '12px',
+        fontFamily: 'Courier New',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      text.isKeyword = true;
+
+      const collectible = sceneRef.physics.add.sprite(x, y, null).setVisible(false);
+      collectible.body.setCircle(35);
+      collectible.graphics = graphics;
+      collectible.keywordText = text;
+
+      (isCorrect ? correctCollectible : wrongCollectibles).add(collectible);
+
+      keywordPositions.push({ x, y });
+
+      sceneRef.tweens.add({
+        targets: [graphics, text],
+        y: y - 8,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1
+      });
     }
 
     function checkKeywordCollision(x, y) {
-        const minDistance = 200;
-        
-        for (let pos of keywordPositions) {
-            if (Phaser.Math.Distance.Between(x, y, pos.x, pos.y) < minDistance) {
-                return true;
-            }
+      const minDistance = 200;
+
+      for (let pos of keywordPositions) {
+        if (Phaser.Math.Distance.Between(x, y, pos.x, pos.y) < minDistance) {
+          return true;
         }
-        
-        if (correctCollectible.children.entries.length > 0) {
-            const correct = correctCollectible.children.entries[0];
-            if (Phaser.Math.Distance.Between(x, y, correct.x, correct.y) < minDistance) {
-                return true;
-            }
+      }
+
+      if (correctCollectible.children.entries.length > 0) {
+        const correct = correctCollectible.children.entries[0];
+        if (Phaser.Math.Distance.Between(x, y, correct.x, correct.y) < minDistance) {
+          return true;
         }
-        
-        for (let wrong of wrongCollectibles.children.entries) {
-            if (Phaser.Math.Distance.Between(x, y, wrong.x, wrong.y) < minDistance) {
-                return true;
-            }
+      }
+
+      for (let wrong of wrongCollectibles.children.entries) {
+        if (Phaser.Math.Distance.Between(x, y, wrong.x, wrong.y) < minDistance) {
+          return true;
         }
-        
-        return false;
+      }
+
+      return false;
     }
 
     function checkEnemyCollision(x, y) {
-        for (let enemy of enemies.children.entries) {
-            if (Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y) < 120) {
-                return true;
-            }
+      for (let enemy of enemies.children.entries) {
+        if (Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y) < 120) {
+          return true;
         }
-        return false;
+      }
+      return false;
     }
 
     const createCorrectKeyword = () => createKeyword(true);
     const createWrongKeyword = () => createKeyword(false);
 
     function checkWallCollision(x, y) {
-        return walls.children.entries.some(wall => 
-            Phaser.Math.Distance.Between(x, y, wall.x, wall.y) < 80
-        );
+      return walls.children.entries.some(wall =>
+        Phaser.Math.Distance.Between(x, y, wall.x, wall.y) < 80
+      );
     }
 
     function update() {
-        if (gameState.isLevelComplete) return;
-        
-        player.setVelocity(0);
-        const speed = 200;
-        
-        if (cursors.left.isDown || mobileControls.left) {
-            player.setVelocityX(-speed);
-        } else if (cursors.right.isDown || mobileControls.right) {
-            player.setVelocityX(speed);
-        }
-        
-        if (cursors.up.isDown || mobileControls.up) {
-            player.setVelocityY(-speed);
-        } else if (cursors.down.isDown || mobileControls.down) {
-            player.setVelocityY(speed);
-        }
+      if (gameState.isLevelComplete) return;
 
-        if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
-            attack.call(this);
-        }
+      player.setVelocity(0);
+      const speed = 200;
 
-        enemies.children.entries.forEach(enemy => {
-            if (!enemy.active) return;
-            this.physics.moveTo(enemy, player.x, player.y, enemy.speed);
-        });
+      if (cursors.left.isDown || mobileControls.left) {
+        player.setVelocityX(-speed);
+      } else if (cursors.right.isDown || mobileControls.right) {
+        player.setVelocityX(speed);
+      }
+
+      if (cursors.up.isDown || mobileControls.up) {
+        player.setVelocityY(-speed);
+      } else if (cursors.down.isDown || mobileControls.down) {
+        player.setVelocityY(speed);
+      }
+
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+        attack.call(this);
+      }
+
+      enemies.children.entries.forEach(enemy => {
+        if (!enemy.active) return;
+        this.physics.moveTo(enemy, player.x, player.y, enemy.speed);
+      });
     }
+
 
     function attack() {
-        gameState.canAttack = false;
-        
-        const attackRange = 80;
-        const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x87ceeb, 0.4); // Match ghost color
-        
+      gameState.canAttack = false;
+
+      const attackRange = 90; // Slightly larger range for magical attack
+
+      // Magical attack effect with wizard theme
+      const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x8b5cf6, 0.3); // Purple magic
+      const innerEffect = sceneRef.add.circle(player.x, player.y, attackRange * 0.6, 0xfbbf24, 0.4); // Golden core
+
+      // Add magical sparkles
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const distance = attackRange * 0.8;
+        const sparkleX = player.x + Math.cos(angle) * distance;
+        const sparkleY = player.y + Math.sin(angle) * distance;
+
+        const sparkle = sceneRef.add.circle(sparkleX, sparkleY, 3, 0xfbbf24, 0.8);
         sceneRef.tweens.add({
-            targets: attackEffect,
-            scaleX: 1.5,
-            scaleY: 1.5,
-            alpha: 0,
-            duration: 200,
-            onComplete: () => attackEffect.destroy()
+          targets: sparkle,
+          scaleX: 0,
+          scaleY: 0,
+          duration: 300,
+          onComplete: () => sparkle.destroy()
         });
-        
-        enemies.children.entries.forEach(enemy => {
-            if (!enemy.active) return;
-            
-            const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
-            if (distance <= attackRange) {
-                enemy.health -= 50;
-                
-                const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
-                enemy.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                
-                enemy.setTint(0xffffff);
-                sceneRef.time.delayedCall(100, () => {
-                    if (enemy.active) enemy.clearTint();
-                });
-                
-                if (enemy.health <= 0) {
-                    // Different explosion colors based on enemy type
-                    const explosionColors = [0xff6b6b, 0x6bff6b, 0x6b6bff, 0xffff6b, 0xff6bff];
-                    const explosionColor = explosionColors[enemy.enemyType] || 0xffff00;
-                    
-                    const explosion = sceneRef.add.circle(enemy.x, enemy.y, 20, explosionColor);
-                    sceneRef.tweens.add({
-                        targets: explosion,
-                        scaleX: 3,
-                        scaleY: 3,
-                        alpha: 0,
-                        duration: 300,
-                        onComplete: () => explosion.destroy()
-                    });
-                    
-                    enemy.destroy();
-                }
-            }
-        });
-        
-        sceneRef.time.delayedCall(gameState.attackCooldown, () => {
-            gameState.canAttack = true;
-        });
+      }
+
+      sceneRef.tweens.add({
+        targets: attackEffect,
+        scaleX: 1.8,
+        scaleY: 1.8,
+        alpha: 0,
+        duration: 250,
+        onComplete: () => attackEffect.destroy()
+      });
+
+      sceneRef.tweens.add({
+        targets: innerEffect,
+        scaleX: 2,
+        scaleY: 2,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => innerEffect.destroy()
+      });
+
+      // Add screen flash for magical effect
+      sceneRef.cameras.main.flash(100, 139, 92, 246, false, (camera, progress) => {
+        if (progress === 1) {
+          // Flash complete
+        }
+      });
+
+      enemies.children.entries.forEach(enemy => {
+        if (!enemy.active) return;
+
+        const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
+        if (distance <= attackRange) {
+          enemy.health -= 60; // Slightly more damage for magical attack
+
+          const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
+          enemy.setVelocity(Math.cos(angle) * 350, Math.sin(angle) * 350); // Stronger knockback
+
+          // Magical damage effect
+          enemy.setTint(0x8b5cf6); // Purple tint for magic damage
+          sceneRef.time.delayedCall(150, () => {
+            if (enemy.active) enemy.clearTint();
+          });
+
+          if (enemy.health <= 0) {
+            // Enhanced explosion with magical effects
+            const explosionColors = [0xff6b6b, 0x6bff6b, 0x6b6bff, 0xffff6b, 0xff6bff];
+            const explosionColor = explosionColors[enemy.enemyType] || 0xffff00;
+
+            const explosion = sceneRef.add.circle(enemy.x, enemy.y, 25, explosionColor);
+            const magicExplosion = sceneRef.add.circle(enemy.x, enemy.y, 15, 0x8b5cf6, 0.7);
+
+            sceneRef.tweens.add({
+              targets: explosion,
+              scaleX: 4,
+              scaleY: 4,
+              alpha: 0,
+              duration: 400,
+              onComplete: () => explosion.destroy()
+            });
+
+            sceneRef.tweens.add({
+              targets: magicExplosion,
+              scaleX: 3,
+              scaleY: 3,
+              alpha: 0,
+              duration: 300,
+              onComplete: () => magicExplosion.destroy()
+            });
+
+            enemy.destroy();
+          }
+        }
+      });
+
+      sceneRef.time.delayedCall(gameState.attackCooldown, () => {
+        gameState.canAttack = true;
+      });
     }
 
+
     function collectCorrectItem(player, collectible) {
-        collectible.graphics.destroy();
-        collectible.keywordText.destroy();
-        collectible.destroy();
-        
-        gameState.isLevelComplete = true;
-        updateReactUI();
-        
-        showLevelComplete();
+      collectible.graphics.destroy();
+      collectible.keywordText.destroy();
+      collectible.destroy();
+
+      gameState.isLevelComplete = true;
+      updateReactUI();
+
+      showLevelComplete();
     }
 
     function showLevelComplete() {
-        const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
-        overlay.setDepth(1000);
-        
-        const completionText = sceneRef.add.text(400, 200, '🎉 Level Complete! 🎉', {
-            fontSize: '32px',
-            fontFamily: 'Courier New',
-            color: '#00ff00',
-            fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(1001);
-        
-        const instructionText = sceneRef.add.text(400, 320, 'Click to return to map', {
-            fontSize: '16px',
-            fontFamily: 'Courier New',
-            color: '#00ff00'
-        }).setOrigin(0.5).setDepth(1001);
-        
-        overlay.setInteractive();
-        overlay.on('pointerdown', () => {
-            onComplete();
-        });
-        
-        sceneRef.tweens.add({
-            targets: instructionText,
-            alpha: 0.5,
-            duration: 800,
-            yoyo: true,
-            repeat: -1
-        });
+      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
+      overlay.setDepth(1000);
+
+      const completionText = sceneRef.add.text(400, 200, '🎉 Level Complete! 🎉', {
+        fontSize: '32px',
+        fontFamily: 'Courier New',
+        color: '#00ff00',
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(1001);
+
+      const instructionText = sceneRef.add.text(400, 320, 'Click to return to map', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#00ff00'
+      }).setOrigin(0.5).setDepth(1001);
+
+      overlay.setInteractive();
+      overlay.on('pointerdown', () => {
+        onComplete();
+      });
+
+      sceneRef.tweens.add({
+        targets: instructionText,
+        alpha: 0.5,
+        duration: 800,
+        yoyo: true,
+        repeat: -1
+      });
     }
 
     function collectWrongItem(player, collectible) {
-        collectible.graphics.destroy();
-        collectible.keywordText.destroy();
-        collectible.destroy();
-        
-        gameState.mistakes++;
-        gameState.health -= 25;
-        
-        player.setTint(0xff0000);
-        sceneRef.time.delayedCall(200, () => player.clearTint());
+      collectible.graphics.destroy();
+      collectible.keywordText.destroy();
+      collectible.destroy();
 
-        if (gameState.mistakes > 1 || gameState.health <= 0) {
-            restartLevel();
-        }
-        updateReactUI();
+      gameState.mistakes++;
+      gameState.health -= 25;
+
+      player.setTint(0xff0000);
+      sceneRef.time.delayedCall(200, () => player.clearTint());
+
+      if (gameState.mistakes > 1 || gameState.health <= 0) {
+        restartLevel();
+      }
+      updateReactUI();
     }
-    
+
     function restartLevel() {
-        const restartText = sceneRef.add.text(400, 250, 'Too many mistakes... Try Again!', {
-            fontSize: '24px',
-            fontFamily: 'Courier New',
-            color: '#ff4444',
-            backgroundColor: '#000000'
-        }).setOrigin(0.5);
-        
-        sceneRef.cameras.main.flash(500, 255, 0, 0);
-        gameState.health = 100;
-        
-        sceneRef.time.delayedCall(1500, () => {
-            restartText.destroy();
-            createLevel.call(sceneRef);
-            updateReactUI();
-        });
+      const restartText = sceneRef.add.text(400, 250, 'Too many mistakes... Try Again!', {
+        fontSize: '24px',
+        fontFamily: 'Courier New',
+        color: '#ff4444',
+        backgroundColor: '#000000'
+      }).setOrigin(0.5);
+
+      sceneRef.cameras.main.flash(500, 255, 0, 0);
+      gameState.health = 100;
+
+      sceneRef.time.delayedCall(1500, () => {
+        restartText.destroy();
+        createLevel.call(sceneRef);
+        updateReactUI();
+      });
     }
 
     function hitByEnemy(player, enemy) {
-        if (enemy.lastAttack && sceneRef.time.now - enemy.lastAttack < 1000) return;
-        
-        enemy.lastAttack = sceneRef.time.now;
-        gameState.health -= 15;
-        
-        player.setTint(0xff0000);
-        sceneRef.time.delayedCall(200, () => player.clearTint());
-        
-        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-        player.setVelocity(Math.cos(angle) * 200, Math.sin(angle) * 200);
-        
-        if (gameState.health <= 0) {
-            restartLevel();
-        }
-        updateReactUI();
+      if (enemy.lastAttack && sceneRef.time.now - enemy.lastAttack < 1000) return;
+
+      enemy.lastAttack = sceneRef.time.now;
+      gameState.health -= 15;
+
+      player.setTint(0xff0000);
+      sceneRef.time.delayedCall(200, () => player.clearTint());
+
+      const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+      player.setVelocity(Math.cos(angle) * 200, Math.sin(angle) * 200);
+
+      if (gameState.health <= 0) {
+        restartLevel();
+      }
+      updateReactUI();
     }
 
     function updateReactUI() {
@@ -563,7 +685,7 @@ const Level1 = ({ onComplete }) => {
       width: 800,
       height: 500,
       parent: gameContainerRef.current,
-      physics: { default: 'arcade', arcade: { gravity: { y: 0 }}},
+      physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
       scene: { preload, create, update },
       scale: {
         mode: Phaser.Scale.FIT,
@@ -603,8 +725,10 @@ const Level1 = ({ onComplete }) => {
       {/* Display the icons as reference in the UI */}
       <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
-          <CgGhostCharacter size={20} color="#87ceeb" />
-          <span>Your Character</span>
+          <div className="w-5 h-5 flex items-center justify-center">
+            <span className="text-xs text-yellow-300">🧙</span>
+          </div>
+          <span>Your Wizard</span>
         </div>
         <div className="flex items-center gap-2">
           <AiFillBug size={20} color="#ff4444" />
@@ -612,180 +736,181 @@ const Level1 = ({ onComplete }) => {
         </div>
       </div>
 
+
       {/* Responsive game container */}
       <div className="w-full max-w-4xl">
-        <div 
-          ref={gameContainerRef} 
+        <div
+          ref={gameContainerRef}
           className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
           style={{ maxWidth: '800px' }}
         />
       </div>
-      
+
       <div className="w-full max-w-3xl flex justify-between items-center pixel-font text-lg">
-          <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
+        <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
       </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-          <div className="pixel-font text-slate-300 mb-2">Complete the SQL Query:</div>
-          <div className="font-mono text-xl">
-              <span>SELECT * </span>
-              {uiState.isQueryComplete ? (
-                  <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-                      FROM
-                  </span>
-              ) : (
-                  <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-                      __?__
-                  </span>
-              )}
-              <span> map </span>
-          </div>
+        <div className="pixel-font text-slate-300 mb-2">Complete the SQL Query:</div>
+        <div className="font-mono text-xl">
+          <span>SELECT * </span>
+          {uiState.isQueryComplete ? (
+            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
+              FROM
+            </span>
+          ) : (
+            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
+              __?__
+            </span>
+          )}
+          <span> map </span>
+        </div>
       </div>
 
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-          <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-          
-          {/* Desktop Controls */}
-          <div className="hidden md:block">
-            <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
-                <div>↑↓←→ Move</div>
-                <div>SPACE Attack</div>
-            </div>
-          </div>
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
 
-          {/* Mobile/Tablet Controls */}
-          <div className="block md:hidden">
-            <div className="flex flex-col items-center gap-4">
-              {/* D-Pad */}
-              <div className="relative">
-                <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                  <div></div>
-                  <button
-                    className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                    onTouchStart={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlStart('up'); 
-                    }}
-                    onTouchEnd={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlEnd('up'); 
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleMobileControlStart('up');
-                    }}
-                    onMouseUp={(e) => {
-                      e.preventDefault();
-                      handleMobileControlEnd('up');
-                    }}
-                    onMouseLeave={() => handleMobileControlEnd('up')}
-                    style={{ touchAction: 'none' }}
-                  >
-                    ↑
-                  </button>
-                  <div></div>
-                  
-                  <button
-                    className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                    onTouchStart={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlStart('left'); 
-                    }}
-                    onTouchEnd={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlEnd('left'); 
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleMobileControlStart('left');
-                    }}
-                    onMouseUp={(e) => {
-                      e.preventDefault();
-                      handleMobileControlEnd('left');
-                    }}
-                    onMouseLeave={() => handleMobileControlEnd('left')}
-                    style={{ touchAction: 'none' }}
-                  >
-                    ←
-                  </button>
-                  <div className="bg-slate-700 rounded"></div>
-                  <button
-                    className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                    onTouchStart={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlStart('right'); 
-                    }}
-                    onTouchEnd={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlEnd('right'); 
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleMobileControlStart('right');
-                    }}
-                    onMouseUp={(e) => {
-                      e.preventDefault();
-                      handleMobileControlEnd('right');
-                    }}
-                    onMouseLeave={() => handleMobileControlEnd('right')}
-                    style={{ touchAction: 'none' }}
-                  >
-                    →
-                  </button>
-                  
-                  <div></div>
-                  <button
-                    className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                    onTouchStart={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlStart('down'); 
-                    }}
-                    onTouchEnd={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      handleMobileControlEnd('down'); 
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleMobileControlStart('down');
-                    }}
-                    onMouseUp={(e) => {
-                      e.preventDefault();
-                      handleMobileControlEnd('down');
-                    }}
-                    onMouseLeave={() => handleMobileControlEnd('down')}
-                    style={{ touchAction: 'none' }}
-                  >
-                    ↓
-                  </button>
-                  <div></div>
-                </div>
+        {/* Desktop Controls */}
+        <div className="hidden md:block">
+          <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
+            <div>↑↓←→ Move</div>
+            <div>SPACE Attack</div>
+          </div>
+        </div>
+
+        {/* Mobile/Tablet Controls */}
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            {/* D-Pad */}
+            <div className="relative">
+              <div className="grid grid-cols-3 gap-1 w-36 h-36">
+                <div></div>
+                <button
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart('up');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd('up');
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart('up');
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd('up');
+                  }}
+                  onMouseLeave={() => handleMobileControlEnd('up')}
+                  style={{ touchAction: 'none' }}
+                >
+                  ↑
+                </button>
+                <div></div>
+
+                <button
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart('left');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd('left');
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart('left');
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd('left');
+                  }}
+                  onMouseLeave={() => handleMobileControlEnd('left')}
+                  style={{ touchAction: 'none' }}
+                >
+                  ←
+                </button>
+                <div className="bg-slate-700 rounded"></div>
+                <button
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart('right');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd('right');
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart('right');
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd('right');
+                  }}
+                  onMouseLeave={() => handleMobileControlEnd('right')}
+                  style={{ touchAction: 'none' }}
+                >
+                  →
+                </button>
+
+                <div></div>
+                <button
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart('down');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd('down');
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart('down');
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd('down');
+                  }}
+                  onMouseLeave={() => handleMobileControlEnd('down')}
+                  style={{ touchAction: 'none' }}
+                >
+                  ↓
+                </button>
+                <div></div>
               </div>
-
-              <button
-                className="bg-red-600 hover:bg-red-500 active:bg-red-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleAttack(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                ATTACK
-              </button>
             </div>
+
+            <button
+              className="bg-red-600 hover:bg-red-500 active:bg-red-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAttack();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleAttack();
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              ATTACK
+            </button>
           </div>
+        </div>
       </div>
 
       <style jsx>{`
