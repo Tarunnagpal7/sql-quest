@@ -109,7 +109,7 @@ function LevelPage() {
         return <Level10 onComplete={handleCompleteLevel} />;
       default:
         return (
-          <div className="text-center py-12">
+          <div className="text-center py-12 ">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 blur-2xl rounded-full" />
               <p className="pixel-font text-slate-300 text-lg sm:text-2xl relative z-10 mb-4">
@@ -165,6 +165,11 @@ function LevelPage() {
     <div className="min-h-screen  bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 text-white pt-20 sm:pt-24 p-4 relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
+        <img
+          src="/jungle_map_bg.png"
+          alt="Background"
+          className="w-full h-full object-cover opacity-80"
+        />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.1),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_50%)]" />
         {[...Array(30)].map((_, i) => (

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import Phaser from 'phaser';
-import { levels } from '../../assets/data/levels';
+import React, { useEffect, useRef, useState } from "react";
+import Phaser from "phaser";
+import { levels } from "../../assets/data/levels";
 import { CgGhostCharacter } from "react-icons/cg";
 import { AiFillBug } from "react-icons/ai";
 
@@ -19,26 +19,26 @@ const Level1 = ({ onComplete }) => {
     down: false,
     left: false,
     right: false,
-    attack: false
+    attack: false,
   });
 
   // Function to convert React icon to image data
-  const iconToImageData = (IconComponent, color = '#ffffff', size = 32) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+  const iconToImageData = (IconComponent, color = "#ffffff", size = 32) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
     canvas.width = size;
     canvas.height = size;
 
     // Create a temporary div to render the icon
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
+    const tempDiv = document.createElement("div");
+    tempDiv.style.position = "absolute";
+    tempDiv.style.left = "-9999px";
     tempDiv.innerHTML = `<div style="color: ${color}; font-size: ${size}px; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;"></div>`;
 
     // Render icon as SVG and convert to canvas
     const iconElement = React.createElement(IconComponent, {
       size: size,
-      color: color
+      color: color,
     });
 
     // For simplicity, we'll create the textures programmatically
@@ -63,10 +63,17 @@ const Level1 = ({ onComplete }) => {
 
     const query = {
       text: "SELECT * <missing>FROM</missing> levels",
-      word: "FROM"
+      word: "FROM",
     };
 
-    const allKeywords = ["SELECT", "WHERE", "UPDATE", "DELETE", "ORDER BY", "GROUP BY"];
+    const allKeywords = [
+      "SELECT",
+      "WHERE",
+      "UPDATE",
+      "DELETE",
+      "ORDER BY",
+      "GROUP BY",
+    ];
 
     let sceneRef;
     let keywordPositions = [];
@@ -168,7 +175,7 @@ const Level1 = ({ onComplete }) => {
         playerGraphics.fillCircle(x, y, 1 + Math.random() * 2);
       }
 
-      playerGraphics.generateTexture('player', 32, 40);
+      playerGraphics.generateTexture("player", 32, 40);
       playerGraphics.destroy();
 
       // ... rest of your enemy and other texture creation code remains the same ...
@@ -212,31 +219,52 @@ const Level1 = ({ onComplete }) => {
         enemyGraphics.destroy();
       });
 
-      this.add.graphics().fillStyle(0x444444).fillRect(0, 0, 40, 40).generateTexture('wall', 40, 40);
-      this.add.graphics().fillStyle(0x0a192f).fillRect(0, 0, 800, 500).generateTexture('background', 800, 500);
+      this.add
+        .graphics()
+        .fillStyle(0x444444)
+        .fillRect(0, 0, 40, 40)
+        .generateTexture("wall", 40, 40);
+      this.add
+        .graphics()
+        .fillStyle(0x0a192f)
+        .fillRect(0, 0, 800, 500)
+        .generateTexture("background", 800, 500);
     }
 
-
     function create() {
-      this.add.image(400, 250, 'background');
+      this.add.image(400, 250, "background");
 
       walls = this.physics.add.staticGroup();
       enemies = this.physics.add.group();
       correctCollectible = this.physics.add.group();
       wrongCollectibles = this.physics.add.group();
 
-      player = this.physics.add.sprite(400, 250, 'player');
+      player = this.physics.add.sprite(400, 250, "player");
       player.setCollideWorldBounds(true).body.setSize(20, 25).setOffset(6, 10);
 
       cursors = this.input.keyboard.createCursorKeys();
-      spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+      spaceKey = this.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.SPACE
+      );
 
       this.physics.add.collider(player, walls);
       this.physics.add.collider(enemies, walls);
       this.physics.add.collider(enemies, enemies);
 
-      this.physics.add.overlap(player, correctCollectible, collectCorrectItem, null, this);
-      this.physics.add.overlap(player, wrongCollectibles, collectWrongItem, null, this);
+      this.physics.add.overlap(
+        player,
+        correctCollectible,
+        collectCorrectItem,
+        null,
+        this
+      );
+      this.physics.add.overlap(
+        player,
+        wrongCollectibles,
+        collectWrongItem,
+        null,
+        this
+      );
       this.physics.add.overlap(player, enemies, hitByEnemy, null, this);
 
       createLevel.call(this);
@@ -251,27 +279,53 @@ const Level1 = ({ onComplete }) => {
       gameState.mistakes = 0;
       keywordPositions = [];
 
-      sceneRef.children.list.forEach(child => {
+      sceneRef.children.list.forEach((child) => {
         if (child.isKeyword) child.destroy();
       });
 
       // Symmetric wall layout
       const wallPositions = [
         // Outer border walls
-        [80, 80], [160, 80], [240, 80], [320, 80], [480, 80], [560, 80], [640, 80], [720, 80],
-        [80, 420], [160, 420], [240, 420], [320, 420], [480, 420], [560, 420], [640, 420], [720, 420],
-        [80, 160], [80, 240], [80, 260], [80, 340],
-        [720, 160], [720, 240], [720, 260], [720, 340],
+        [80, 80],
+        [160, 80],
+        [240, 80],
+        [320, 80],
+        [480, 80],
+        [560, 80],
+        [640, 80],
+        [720, 80],
+        [80, 420],
+        [160, 420],
+        [240, 420],
+        [320, 420],
+        [480, 420],
+        [560, 420],
+        [640, 420],
+        [720, 420],
+        [80, 160],
+        [80, 240],
+        [80, 260],
+        [80, 340],
+        [720, 160],
+        [720, 240],
+        [720, 260],
+        [720, 340],
 
         // Symmetric inner walls
-        [200, 160], [600, 160], // Top inner walls
-        [200, 340], [600, 340], // Bottom inner walls
-        [320, 200], [480, 200], // Middle upper
-        [320, 300], [480, 300], // Middle lower
-        [160, 250], [640, 250], // Side walls
-        [400, 160], [400, 340]  // Center pillars
+        [200, 160],
+        [600, 160], // Top inner walls
+        [200, 340],
+        [600, 340], // Bottom inner walls
+        [320, 200],
+        [480, 200], // Middle upper
+        [320, 300],
+        [480, 300], // Middle lower
+        [160, 250],
+        [640, 250], // Side walls
+        [400, 160],
+        [400, 340], // Center pillars
       ];
-      wallPositions.forEach(pos => walls.create(pos[0], pos[1], 'wall'));
+      wallPositions.forEach((pos) => walls.create(pos[0], pos[1], "wall"));
 
       // --- MODIFIED: Create multiple enemies with different colors ---
       for (let i = 0; i < 3; i++) createEnemy.call(this, i);
@@ -289,28 +343,29 @@ const Level1 = ({ onComplete }) => {
         x = Phaser.Math.Between(150, 650);
         y = Phaser.Math.Between(150, 350);
         attempts++;
-      } while (attempts < 50 && (
-        Phaser.Math.Distance.Between(x, y, player.x, player.y) < 120 ||
-        checkWallCollision(x, y) ||
-        checkEnemyCollision(x, y)
-      ));
+      } while (
+        attempts < 50 &&
+        (Phaser.Math.Distance.Between(x, y, player.x, player.y) < 120 ||
+          checkWallCollision(x, y) ||
+          checkEnemyCollision(x, y))
+      );
 
       // Use different enemy textures with different colors
       const enemyTextureIndex = enemyIndex % 5; // Cycle through 5 different colored bugs
       const enemy = enemies.create(x, y, `enemy${enemyTextureIndex}`);
       enemy.setCollideWorldBounds(true).body.setSize(24, 20).setOffset(4, 8);
       enemy.health = 75;
-      enemy.speed = 50 + (enemyIndex * 10); // Different speeds for variety
+      enemy.speed = 50 + enemyIndex * 10; // Different speeds for variety
       enemy.enemyType = enemyTextureIndex; // Store enemy type for visual effects
 
       // Add floating animation
       sceneRef.tweens.add({
         targets: enemy,
         y: enemy.y - 5,
-        duration: 1000 + (enemyIndex * 200),
+        duration: 1000 + enemyIndex * 200,
         yoyo: true,
         repeat: -1,
-        ease: 'Sine.easeInOut'
+        ease: "Sine.easeInOut",
       });
     }
 
@@ -318,13 +373,20 @@ const Level1 = ({ onComplete }) => {
       let x, y;
 
       const predefinedPositions = [
-        [250, 180], [550, 180], [180, 320], [620, 320], [150, 250], [650, 250]
+        [250, 180],
+        [550, 180],
+        [180, 320],
+        [620, 320],
+        [150, 250],
+        [650, 250],
       ];
 
-      const availablePositions = predefinedPositions.filter(pos => {
+      const availablePositions = predefinedPositions.filter((pos) => {
         const [posX, posY] = pos;
 
-        if (Phaser.Math.Distance.Between(posX, posY, player.x, player.y) < 180) {
+        if (
+          Phaser.Math.Distance.Between(posX, posY, player.x, player.y) < 180
+        ) {
           return false;
         }
 
@@ -333,13 +395,22 @@ const Level1 = ({ onComplete }) => {
         }
 
         for (let keywordPos of keywordPositions) {
-          if (Phaser.Math.Distance.Between(posX, posY, keywordPos.x, keywordPos.y) < 200) {
+          if (
+            Phaser.Math.Distance.Between(
+              posX,
+              posY,
+              keywordPos.x,
+              keywordPos.y
+            ) < 200
+          ) {
             return false;
           }
         }
 
         for (let enemy of enemies.children.entries) {
-          if (Phaser.Math.Distance.Between(posX, posY, enemy.x, enemy.y) < 120) {
+          if (
+            Phaser.Math.Distance.Between(posX, posY, enemy.x, enemy.y) < 120
+          ) {
             return false;
           }
         }
@@ -353,19 +424,22 @@ const Level1 = ({ onComplete }) => {
           x = Phaser.Math.Between(180, 620);
           y = Phaser.Math.Between(150, 350);
           attempts++;
-        } while (attempts < 300 && (
-          Phaser.Math.Distance.Between(x, y, player.x, player.y) < 180 ||
-          checkWallCollision(x, y) ||
-          checkKeywordCollision(x, y) ||
-          checkEnemyCollision(x, y)
-        ));
+        } while (
+          attempts < 300 &&
+          (Phaser.Math.Distance.Between(x, y, player.x, player.y) < 180 ||
+            checkWallCollision(x, y) ||
+            checkKeywordCollision(x, y) ||
+            checkEnemyCollision(x, y))
+        );
       } else {
         const selectedPosition = availablePositions[0];
         x = selectedPosition[0];
         y = selectedPosition[1];
       }
 
-      const keywordText = isCorrect ? query.word : allKeywords[Phaser.Math.Between(0, allKeywords.length - 1)];
+      const keywordText = isCorrect
+        ? query.word
+        : allKeywords[Phaser.Math.Between(0, allKeywords.length - 1)];
 
       const graphics = sceneRef.add.graphics();
       graphics.fillStyle(0x8a2be2, 0.8);
@@ -376,15 +450,19 @@ const Level1 = ({ onComplete }) => {
       graphics.y = y;
       graphics.isKeyword = true;
 
-      const text = sceneRef.add.text(x, y, keywordText, {
-        fontSize: '12px',
-        fontFamily: 'Courier New',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
+      const text = sceneRef.add
+        .text(x, y, keywordText, {
+          fontSize: "12px",
+          fontFamily: "Courier New",
+          color: "#ffffff",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5);
       text.isKeyword = true;
 
-      const collectible = sceneRef.physics.add.sprite(x, y, null).setVisible(false);
+      const collectible = sceneRef.physics.add
+        .sprite(x, y, null)
+        .setVisible(false);
       collectible.body.setCircle(35);
       collectible.graphics = graphics;
       collectible.keywordText = text;
@@ -398,7 +476,7 @@ const Level1 = ({ onComplete }) => {
         y: y - 8,
         duration: 1500,
         yoyo: true,
-        repeat: -1
+        repeat: -1,
       });
     }
 
@@ -413,13 +491,17 @@ const Level1 = ({ onComplete }) => {
 
       if (correctCollectible.children.entries.length > 0) {
         const correct = correctCollectible.children.entries[0];
-        if (Phaser.Math.Distance.Between(x, y, correct.x, correct.y) < minDistance) {
+        if (
+          Phaser.Math.Distance.Between(x, y, correct.x, correct.y) < minDistance
+        ) {
           return true;
         }
       }
 
       for (let wrong of wrongCollectibles.children.entries) {
-        if (Phaser.Math.Distance.Between(x, y, wrong.x, wrong.y) < minDistance) {
+        if (
+          Phaser.Math.Distance.Between(x, y, wrong.x, wrong.y) < minDistance
+        ) {
           return true;
         }
       }
@@ -440,8 +522,8 @@ const Level1 = ({ onComplete }) => {
     const createWrongKeyword = () => createKeyword(false);
 
     function checkWallCollision(x, y) {
-      return walls.children.entries.some(wall =>
-        Phaser.Math.Distance.Between(x, y, wall.x, wall.y) < 80
+      return walls.children.entries.some(
+        (wall) => Phaser.Math.Distance.Between(x, y, wall.x, wall.y) < 80
       );
     }
 
@@ -463,16 +545,18 @@ const Level1 = ({ onComplete }) => {
         player.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if (
+        (Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) &&
+        gameState.canAttack
+      ) {
         attack.call(this);
       }
 
-      enemies.children.entries.forEach(enemy => {
+      enemies.children.entries.forEach((enemy) => {
         if (!enemy.active) return;
         this.physics.moveTo(enemy, player.x, player.y, enemy.speed);
       });
     }
-
 
     function attack() {
       gameState.canAttack = false;
@@ -480,8 +564,20 @@ const Level1 = ({ onComplete }) => {
       const attackRange = 90; // Slightly larger range for magical attack
 
       // Magical attack effect with wizard theme
-      const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x8b5cf6, 0.3); // Purple magic
-      const innerEffect = sceneRef.add.circle(player.x, player.y, attackRange * 0.6, 0xfbbf24, 0.4); // Golden core
+      const attackEffect = sceneRef.add.circle(
+        player.x,
+        player.y,
+        attackRange,
+        0x8b5cf6,
+        0.3
+      ); // Purple magic
+      const innerEffect = sceneRef.add.circle(
+        player.x,
+        player.y,
+        attackRange * 0.6,
+        0xfbbf24,
+        0.4
+      ); // Golden core
 
       // Add magical sparkles
       for (let i = 0; i < 12; i++) {
@@ -490,13 +586,19 @@ const Level1 = ({ onComplete }) => {
         const sparkleX = player.x + Math.cos(angle) * distance;
         const sparkleY = player.y + Math.sin(angle) * distance;
 
-        const sparkle = sceneRef.add.circle(sparkleX, sparkleY, 3, 0xfbbf24, 0.8);
+        const sparkle = sceneRef.add.circle(
+          sparkleX,
+          sparkleY,
+          3,
+          0xfbbf24,
+          0.8
+        );
         sceneRef.tweens.add({
           targets: sparkle,
           scaleX: 0,
           scaleY: 0,
           duration: 300,
-          onComplete: () => sparkle.destroy()
+          onComplete: () => sparkle.destroy(),
         });
       }
 
@@ -506,7 +608,7 @@ const Level1 = ({ onComplete }) => {
         scaleY: 1.8,
         alpha: 0,
         duration: 250,
-        onComplete: () => attackEffect.destroy()
+        onComplete: () => attackEffect.destroy(),
       });
 
       sceneRef.tweens.add({
@@ -515,24 +617,41 @@ const Level1 = ({ onComplete }) => {
         scaleY: 2,
         alpha: 0,
         duration: 200,
-        onComplete: () => innerEffect.destroy()
+        onComplete: () => innerEffect.destroy(),
       });
 
       // Add screen flash for magical effect
-      sceneRef.cameras.main.flash(100, 139, 92, 246, false, (camera, progress) => {
-        if (progress === 1) {
-          // Flash complete
+      sceneRef.cameras.main.flash(
+        100,
+        139,
+        92,
+        246,
+        false,
+        (camera, progress) => {
+          if (progress === 1) {
+            // Flash complete
+          }
         }
-      });
+      );
 
-      enemies.children.entries.forEach(enemy => {
+      enemies.children.entries.forEach((enemy) => {
         if (!enemy.active) return;
 
-        const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
+        const distance = Phaser.Math.Distance.Between(
+          player.x,
+          player.y,
+          enemy.x,
+          enemy.y
+        );
         if (distance <= attackRange) {
           enemy.health -= 60; // Slightly more damage for magical attack
 
-          const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
+          const angle = Phaser.Math.Angle.Between(
+            player.x,
+            player.y,
+            enemy.x,
+            enemy.y
+          );
           enemy.setVelocity(Math.cos(angle) * 350, Math.sin(angle) * 350); // Stronger knockback
 
           // Magical damage effect
@@ -543,11 +662,24 @@ const Level1 = ({ onComplete }) => {
 
           if (enemy.health <= 0) {
             // Enhanced explosion with magical effects
-            const explosionColors = [0xff6b6b, 0x6bff6b, 0x6b6bff, 0xffff6b, 0xff6bff];
+            const explosionColors = [
+              0xff6b6b, 0x6bff6b, 0x6b6bff, 0xffff6b, 0xff6bff,
+            ];
             const explosionColor = explosionColors[enemy.enemyType] || 0xffff00;
 
-            const explosion = sceneRef.add.circle(enemy.x, enemy.y, 25, explosionColor);
-            const magicExplosion = sceneRef.add.circle(enemy.x, enemy.y, 15, 0x8b5cf6, 0.7);
+            const explosion = sceneRef.add.circle(
+              enemy.x,
+              enemy.y,
+              25,
+              explosionColor
+            );
+            const magicExplosion = sceneRef.add.circle(
+              enemy.x,
+              enemy.y,
+              15,
+              0x8b5cf6,
+              0.7
+            );
 
             sceneRef.tweens.add({
               targets: explosion,
@@ -555,7 +687,7 @@ const Level1 = ({ onComplete }) => {
               scaleY: 4,
               alpha: 0,
               duration: 400,
-              onComplete: () => explosion.destroy()
+              onComplete: () => explosion.destroy(),
             });
 
             sceneRef.tweens.add({
@@ -564,7 +696,7 @@ const Level1 = ({ onComplete }) => {
               scaleY: 3,
               alpha: 0,
               duration: 300,
-              onComplete: () => magicExplosion.destroy()
+              onComplete: () => magicExplosion.destroy(),
             });
 
             enemy.destroy();
@@ -576,7 +708,6 @@ const Level1 = ({ onComplete }) => {
         gameState.canAttack = true;
       });
     }
-
 
     function collectCorrectItem(player, collectible) {
       collectible.graphics.destroy();
@@ -593,21 +724,27 @@ const Level1 = ({ onComplete }) => {
       const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
       overlay.setDepth(1000);
 
-      const completionText = sceneRef.add.text(400, 200, '🎉 Level Complete! 🎉', {
-        fontSize: '32px',
-        fontFamily: 'Courier New',
-        color: '#00ff00',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(1001);
+      const completionText = sceneRef.add
+        .text(400, 200, "🎉 Level Complete! 🎉", {
+          fontSize: "32px",
+          fontFamily: "Courier New",
+          color: "#00ff00",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(1001);
 
-      const instructionText = sceneRef.add.text(400, 320, 'Click to return to map', {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#00ff00'
-      }).setOrigin(0.5).setDepth(1001);
+      const instructionText = sceneRef.add
+        .text(400, 320, "Click to return to map", {
+          fontSize: "16px",
+          fontFamily: "Courier New",
+          color: "#00ff00",
+        })
+        .setOrigin(0.5)
+        .setDepth(1001);
 
       overlay.setInteractive();
-      overlay.on('pointerdown', () => {
+      overlay.on("pointerdown", () => {
         onComplete();
       });
 
@@ -616,7 +753,7 @@ const Level1 = ({ onComplete }) => {
         alpha: 0.5,
         duration: 800,
         yoyo: true,
-        repeat: -1
+        repeat: -1,
       });
     }
 
@@ -638,12 +775,14 @@ const Level1 = ({ onComplete }) => {
     }
 
     function restartLevel() {
-      const restartText = sceneRef.add.text(400, 250, 'Too many mistakes... Try Again!', {
-        fontSize: '24px',
-        fontFamily: 'Courier New',
-        color: '#ff4444',
-        backgroundColor: '#000000'
-      }).setOrigin(0.5);
+      const restartText = sceneRef.add
+        .text(400, 250, "Too many mistakes... Try Again!", {
+          fontSize: "24px",
+          fontFamily: "Courier New",
+          color: "#ff4444",
+          backgroundColor: "#000000",
+        })
+        .setOrigin(0.5);
 
       sceneRef.cameras.main.flash(500, 255, 0, 0);
       gameState.health = 100;
@@ -656,7 +795,8 @@ const Level1 = ({ onComplete }) => {
     }
 
     function hitByEnemy(player, enemy) {
-      if (enemy.lastAttack && sceneRef.time.now - enemy.lastAttack < 1000) return;
+      if (enemy.lastAttack && sceneRef.time.now - enemy.lastAttack < 1000)
+        return;
 
       enemy.lastAttack = sceneRef.time.now;
       gameState.health -= 15;
@@ -664,7 +804,12 @@ const Level1 = ({ onComplete }) => {
       player.setTint(0xff0000);
       sceneRef.time.delayedCall(200, () => player.clearTint());
 
-      const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+      const angle = Phaser.Math.Angle.Between(
+        enemy.x,
+        enemy.y,
+        player.x,
+        player.y
+      );
       player.setVelocity(Math.cos(angle) * 200, Math.sin(angle) * 200);
 
       if (gameState.health <= 0) {
@@ -685,38 +830,40 @@ const Level1 = ({ onComplete }) => {
       width: 800,
       height: 500,
       parent: gameContainerRef.current,
-      physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+      physics: { default: "arcade", arcade: { gravity: { y: 0 } } },
       scene: { preload, create, update },
       scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-      }
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
     };
 
     gameInstance.current = new Phaser.Game(config);
 
-    return () => { gameInstance.current?.destroy(true); };
+    return () => {
+      gameInstance.current?.destroy(true);
+    };
   }, [onComplete]);
 
   // Mobile control handlers (unchanged)
   const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
+    setMobileControls((prev) => {
       if (prev[direction]) return prev;
       return { ...prev, [direction]: true };
     });
   };
 
   const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
+    setMobileControls((prev) => {
       if (!prev[direction]) return prev;
       return { ...prev, [direction]: false };
     });
   };
 
   const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
+    setMobileControls((prev) => ({ ...prev, attack: true }));
     setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
+      setMobileControls((prev) => ({ ...prev, attack: false }));
     }, 50);
   };
 
@@ -736,22 +883,25 @@ const Level1 = ({ onComplete }) => {
         </div>
       </div>
 
-
       {/* Responsive game container */}
       <div className="w-full max-w-4xl">
         <div
           ref={gameContainerRef}
           className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
-          style={{ maxWidth: '800px' }}
+          style={{ maxWidth: "800px" }}
         />
       </div>
 
       <div className="w-full max-w-3xl flex justify-between items-center pixel-font text-lg">
-        <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
+        <div>
+          Health: <span className="text-rose-400">{uiState.health}/100</span>
+        </div>
       </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">Complete the SQL Query:</div>
+        <div className="pixel-font text-slate-300 mb-2">
+          Complete the SQL Query:
+        </div>
         <div className="font-mono text-xl">
           <span>SELECT * </span>
           {uiState.isQueryComplete ? (
@@ -768,7 +918,9 @@ const Level1 = ({ onComplete }) => {
       </div>
 
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
+          <strong>CONTROLS:</strong>
+        </div>
 
         {/* Desktop Controls */}
         <div className="hidden md:block">
@@ -790,23 +942,23 @@ const Level1 = ({ onComplete }) => {
                   onTouchStart={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlStart('up');
+                    handleMobileControlStart("up");
                   }}
                   onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlEnd('up');
+                    handleMobileControlEnd("up");
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleMobileControlStart('up');
+                    handleMobileControlStart("up");
                   }}
                   onMouseUp={(e) => {
                     e.preventDefault();
-                    handleMobileControlEnd('up');
+                    handleMobileControlEnd("up");
                   }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
+                  onMouseLeave={() => handleMobileControlEnd("up")}
+                  style={{ touchAction: "none" }}
                 >
                   ↑
                 </button>
@@ -817,23 +969,23 @@ const Level1 = ({ onComplete }) => {
                   onTouchStart={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlStart('left');
+                    handleMobileControlStart("left");
                   }}
                   onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlEnd('left');
+                    handleMobileControlEnd("left");
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleMobileControlStart('left');
+                    handleMobileControlStart("left");
                   }}
                   onMouseUp={(e) => {
                     e.preventDefault();
-                    handleMobileControlEnd('left');
+                    handleMobileControlEnd("left");
                   }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
+                  onMouseLeave={() => handleMobileControlEnd("left")}
+                  style={{ touchAction: "none" }}
                 >
                   ←
                 </button>
@@ -843,23 +995,23 @@ const Level1 = ({ onComplete }) => {
                   onTouchStart={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlStart('right');
+                    handleMobileControlStart("right");
                   }}
                   onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlEnd('right');
+                    handleMobileControlEnd("right");
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleMobileControlStart('right');
+                    handleMobileControlStart("right");
                   }}
                   onMouseUp={(e) => {
                     e.preventDefault();
-                    handleMobileControlEnd('right');
+                    handleMobileControlEnd("right");
                   }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
+                  onMouseLeave={() => handleMobileControlEnd("right")}
+                  style={{ touchAction: "none" }}
                 >
                   →
                 </button>
@@ -870,23 +1022,23 @@ const Level1 = ({ onComplete }) => {
                   onTouchStart={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlStart('down');
+                    handleMobileControlStart("down");
                   }}
                   onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleMobileControlEnd('down');
+                    handleMobileControlEnd("down");
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleMobileControlStart('down');
+                    handleMobileControlStart("down");
                   }}
                   onMouseUp={(e) => {
                     e.preventDefault();
-                    handleMobileControlEnd('down');
+                    handleMobileControlEnd("down");
                   }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
+                  onMouseLeave={() => handleMobileControlEnd("down")}
+                  style={{ touchAction: "none" }}
                 >
                   ↓
                 </button>
@@ -905,7 +1057,7 @@ const Level1 = ({ onComplete }) => {
                 e.preventDefault();
                 handleAttack();
               }}
-              style={{ touchAction: 'none' }}
+              style={{ touchAction: "none" }}
             >
               ATTACK
             </button>
@@ -915,10 +1067,10 @@ const Level1 = ({ onComplete }) => {
 
       <style jsx>{`
         .pixel-font {
-          font-family: 'Courier New', monospace;
-          text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
+          font-family: "Courier New", monospace;
+          text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
         }
-        
+
         button {
           user-select: none;
           -webkit-user-select: none;
