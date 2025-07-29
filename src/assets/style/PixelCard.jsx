@@ -152,12 +152,10 @@ export default function PixelCard({
 
   const initPixels = () => {
     if (!containerRef.current || !canvasRef.current) return;
-
     const rect = containerRef.current.getBoundingClientRect();
     const width = Math.floor(rect.width);
     const height = Math.floor(rect.height);
     const ctx = canvasRef.current.getContext("2d");
-
     canvasRef.current.width = width;
     canvasRef.current.height = height;
     canvasRef.current.style.width = `${width}px`;
@@ -169,12 +167,10 @@ export default function PixelCard({
       for (let y = 0; y < height; y += parseInt(finalGap, 10)) {
         const color =
           colorsArray[Math.floor(Math.random() * colorsArray.length)];
-
         const dx = x - width / 2;
         const dy = y - height / 2;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const delay = reducedMotion ? 0 : distance;
-
         pxs.push(
           new Pixel(
             canvasRef.current,
@@ -196,13 +192,11 @@ export default function PixelCard({
     const timeNow = performance.now();
     const timePassed = timeNow - timePreviousRef.current;
     const timeInterval = 1000 / 60;
-
     if (timePassed < timeInterval) return;
     timePreviousRef.current = timeNow - (timePassed % timeInterval);
 
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx || !canvasRef.current) return;
-
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
     let allIdle = true;
@@ -253,27 +247,27 @@ export default function PixelCard({
     <div
       ref={containerRef}
       className={`
-    relative overflow-hidden grid place-items-center 
-    w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-4xl
-    h-40 sm:h-48 md:h-56 lg:h-64
-    border border-[#27272a] rounded-[25px] isolate 
-    transition-colors duration-200 ease-[cubic-bezier(0.5,1,0.89,1)] select-none 
-    ${className}
-  `}
+        relative overflow-hidden grid place-items-center 
+        w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-4xl
+        h-[10vh] sm:h-[13vh] md:h-[17vh] lg:h-[20vh] xl:h-[23vh]
+        min-h-[110px] sm:min-h-[130px] md:min-h-[150px] lg:min-h-[170px] xl:min-h-[230px]
+        border border-[#27272a] rounded-[25px] isolate 
+        transition-colors duration-200 ease-[cubic-bezier(0.5,1,0.89,1)] select-none
+        ${className}
+      `}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-
       onFocus={finalNoFocus ? undefined : onFocus}
       onBlur={finalNoFocus ? undefined : onBlur}
       tabIndex={finalNoFocus ? -1 : 0}
     >
       <canvas
-      className="absolute top-0 left-0 w-full h-full block pointer-events-none"
+        className="absolute top-0 left-0 w-full h-full block pointer-events-none"
         ref={canvasRef}
       />
-        <div className="relative z-10 text-white text-3xl font-bold">
-      {children}
-    </div>
+      <div className="relative z-10 text-white text-2xl md:text-3xl lg:text-4xl font-bold">
+        {children}
+      </div>
     </div>
   );
 }

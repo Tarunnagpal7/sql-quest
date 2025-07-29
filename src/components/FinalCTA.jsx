@@ -53,7 +53,7 @@ const FinalCTA = () => {
 
         {/* Stats/Features Mini Cards */}
         <div className="flex flex-wrap justify-center gap-4 mt-12 mb-8">
-          <StatCard icon="📊" label="7 Levels" />
+          <StatCard icon="📊" label="10 Levels" />
           <StatCard icon="🎯" label="SQL Mastery" />
           <StatCard icon="🏆" label="Epic Story" />
         </div>
