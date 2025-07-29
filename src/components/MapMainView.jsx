@@ -48,37 +48,37 @@ const MapMainView = () => {
   const getWizardPosition = (level) => {
     const basePosition = getLevelPosition(level);
     const isMobileView = window.innerWidth < 768;
-    
+
     if (isMobileView) {
       return {
         x: basePosition.x + 0,
-        y: basePosition.y - 2
+        y: basePosition.y - 2,
       };
     }
-    
+
     return { x: basePosition.x, y: basePosition.y };
   };
-  
+
   // ✅ FIXED: Enhanced level position handler
   const getLevelPosition = (level) => {
     const isMobileView = window.innerWidth < 768;
-  
+
     if (level.position) {
       const pos = isMobileView ? level.position.mobile : level.position.desktop;
       return {
         left: `${pos.x}%`,
         top: `${pos.y}%`,
         x: pos.x,
-        y: pos.y
+        y: pos.y,
       };
     }
-  
+
     // Fallback
     return {
       left: `${level.x ?? 0}%`,
       top: `${level.y ?? 0}%`,
       x: level.x ?? 0,
-      y: level.y ?? 0
+      y: level.y ?? 0,
     };
   };
 
@@ -98,24 +98,22 @@ const MapMainView = () => {
       levels.map((level) => {
         const isCompleted = gameState.progress.includes(level.id);
         const isCurrentLevel = level.id === gameState.currentLevel;
-        
+
         // ✅ KEY CHANGE: More restrictive unlocking logic
         // Level is unlocked if:
         // 1. It's level 1 (starting point)
         // 2. It's the current level
         // 3. It's the next level after current (for progression)
-      const isUnlocked = 
-        level.id === 1 || 
-        level.id <= gameState.currentLevel ||
-        gameState.progress.includes(level.id - 1);
+        const isUnlocked =
+          level.id === 1 ||
+          level.id <= gameState.currentLevel ||
+          gameState.progress.includes(level.id - 1);
 
-
-        
         return {
           ...level,
           unlocked: isUnlocked,
           completed: isCompleted,
-          ...getLevelPosition(level)
+          ...getLevelPosition(level),
         };
       }),
     [gameState.currentLevel, gameState.progress, isMobile]
@@ -139,7 +137,8 @@ const MapMainView = () => {
   const [pathTrail, setPathTrail] = useState([]);
   const [mapScale, setMapScale] = useState(1);
   const [bgImageLoaded, setBgImageLoaded] = useState(false);
-  const [showLevelCompleteAnimation, setShowLevelCompleteAnimation] = useState(false);
+  const [showLevelCompleteAnimation, setShowLevelCompleteAnimation] =
+    useState(false);
   const [completingLevel, setCompletingLevel] = useState(null);
 
   const previousCurrentLevelId = usePrevious(gameState.currentLevel);
@@ -182,9 +181,9 @@ const MapMainView = () => {
   // ✅ ENHANCED: Level completion with celebration animation
   const handleLevelComplete = (completedLevelId) => {
     const wasAlreadyCompleted = gameState.progress.includes(completedLevelId);
-    
+
     if (wasAlreadyCompleted) {
-      console.log('Level already completed, no progression needed');
+      console.log("Level already completed, no progression needed");
       return;
     }
 
@@ -320,10 +319,10 @@ const MapMainView = () => {
   const handleLevelClick = (level) => {
     // ✅ ENHANCED: Prevent all interactions during these states
     if (isGameOver || isFollowingPath || showLevelCompleteAnimation) {
-      console.log('Interaction blocked - game state prevents level clicks');
+      console.log("Interaction blocked - game state prevents level clicks");
       return;
     }
-    
+
     // ✅ ENHANCED: Only allow clicks on properly unlocked levels
     if (!level.unlocked) {
       console.log(`Level ${level.id} is locked!`);
@@ -360,9 +359,9 @@ const MapMainView = () => {
     // Create temporary locked feedback
     const element = document.querySelector(`[data-level-id="${levelId}"]`);
     if (element) {
-      element.classList.add('shake-animation');
+      element.classList.add("shake-animation");
       setTimeout(() => {
-        element.classList.remove('shake-animation');
+        element.classList.remove("shake-animation");
       }, 600);
     }
   };
@@ -449,18 +448,19 @@ const MapMainView = () => {
     const sizes = getResponsiveSizes();
 
     // ✅ NEW: Determine if level is actually clickable
-    const isClickable = isUnlocked && 
-                       !showLevelCompleteAnimation && 
-                       !isFollowingPath &&
-                       !isGameOver &&
-                       !(isCompleted && level.id < gameState.currentLevel);
+    const isClickable =
+      isUnlocked &&
+      !showLevelCompleteAnimation &&
+      !isFollowingPath &&
+      !isGameOver &&
+      !(isCompleted && level.id < gameState.currentLevel);
 
     return (
       <div
         key={level.id}
         data-level-id={level.id}
         className={`absolute transform -translate-x-1/2 -translate-y-1/2 group ${
-          isClickable ? 'cursor-pointer' : 'cursor-not-allowed'
+          isClickable ? "cursor-pointer" : "cursor-not-allowed"
         }`}
         style={{
           left: level.left,
@@ -491,7 +491,9 @@ const MapMainView = () => {
             className={`relative ${
               sizes.levelSize
             } rounded-full border-3 transition-all duration-500 flex items-center justify-center ${
-              completingLevel === level.id ? 'animate-celebration' : 'animate-zoom-pulse'
+              completingLevel === level.id
+                ? "animate-celebration"
+                : "animate-zoom-pulse"
             } ${
               isCompleted
                 ? "bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 border-yellow-200 shadow-lg"
@@ -505,7 +507,9 @@ const MapMainView = () => {
             }`}
           >
             {/* Enhanced rings for special states */}
-            {(isCurrentLevel || isCompleted || completingLevel === level.id) && (
+            {(isCurrentLevel ||
+              isCompleted ||
+              completingLevel === level.id) && (
               <>
                 <div className="absolute inset-0 rounded-full border-2 border-white/40 animate-ping" />
                 <div
@@ -532,8 +536,12 @@ const MapMainView = () => {
           {/* ✅ ENHANCED: Completion crown with animation */}
           {isCompleted && (
             <div
-              className={`absolute ${sizes.crownOffset} left-1/2 transform -translate-x-1/2 text-2xl ${
-                completingLevel === level.id ? 'animate-bounce-celebration' : 'animate-bounce'
+              className={`absolute ${
+                sizes.crownOffset
+              } left-1/2 transform -translate-x-1/2 text-2xl ${
+                completingLevel === level.id
+                  ? "animate-bounce-celebration"
+                  : "animate-bounce"
               }`}
             >
               👑
@@ -582,7 +590,7 @@ const MapMainView = () => {
           </div>
 
           {/* ✅ ENHANCED: Tooltip with state information */}
-          {(
+          {
             <div
               className={`absolute top-full ${sizes.tooltipOffset} left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-30`}
             >
@@ -597,12 +605,12 @@ const MapMainView = () => {
                 </div>
                 {isCompleted && level.id < gameState.currentLevel && (
                   <div className="text-xs text-yellow-300 font-bold">
-                    ✅ Completed 
+                    ✅ Completed
                   </div>
                 )}
                 {isCompleted && level.id === gameState.currentLevel && (
                   <div className="text-xs text-green-300 font-bold">
-                    ✅ Completed 
+                    ✅ Completed
                   </div>
                 )}
                 {isCurrentLevel && !isCompleted && (
@@ -612,7 +620,7 @@ const MapMainView = () => {
                 )}
               </div>
             </div>
-          )}
+          }
         </div>
       </div>
     );
@@ -810,13 +818,28 @@ const MapMainView = () => {
           <div className="text-6xl animate-bounce-celebration">🎉</div>
         </div>
         <div className="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
-          <div className="text-4xl animate-float" style={{ animationDelay: "0.2s" }}>⭐</div>
+          <div
+            className="text-4xl animate-float"
+            style={{ animationDelay: "0.2s" }}
+          >
+            ⭐
+          </div>
         </div>
         <div className="absolute top-3/4 right-1/4 transform translate-x-1/2 translate-y-1/2">
-          <div className="text-5xl animate-float" style={{ animationDelay: "0.4s" }}>✨</div>
+          <div
+            className="text-5xl animate-float"
+            style={{ animationDelay: "0.4s" }}
+          >
+            ✨
+          </div>
         </div>
         <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-          <div className="text-3xl animate-bounce-celebration" style={{ animationDelay: "0.6s" }}>🏆</div>
+          <div
+            className="text-3xl animate-bounce-celebration"
+            style={{ animationDelay: "0.6s" }}
+          >
+            🏆
+          </div>
         </div>
       </div>
     );
@@ -835,7 +858,8 @@ const MapMainView = () => {
             Lives Remaining: <span className="text-red-400 font-bold">0</span>
           </div>
           <p className="text-sm sm:text-base opacity-90 mb-8 leading-relaxed text-red-200">
-            The mystical realm has claimed another soul. Your SQL journey ends here, but legends never die...
+            The mystical realm has claimed another soul. Your SQL journey ends
+            here, but legends never die...
           </p>
           <button
             onClick={handleRestart}
@@ -862,7 +886,9 @@ const MapMainView = () => {
           }}
           onLoad={() => setBgImageLoaded(true)}
           onError={(e) => {
-            console.warn("Background image failed to load, falling back to gradient");
+            console.warn(
+              "Background image failed to load, falling back to gradient"
+            );
             e.target.style.display = "none";
             e.target.nextSibling.style.display = "block";
           }}
@@ -878,92 +904,100 @@ const MapMainView = () => {
 
       {/* Overlay for better contrast */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20 pointer-events-none z-10" />
- {/* ✅ UPDATED: Smaller, highly transparent header */}
-<div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-900/20 via-blue-900/20 to-purple-900/20 backdrop-blur-sm border-b border-blue-500/10 shadow-sm">
-  <div className="container mx-auto px-2 sm:px-3 lg:px-4">
-    <div className="flex flex-col sm:flex-row items-center justify-between py-1 sm:py-2 gap-1 sm:gap-2">
-      
-      {/* ✅ UPDATED: Smaller, more transparent Lives Display */}
-      <div className="flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-rose-900/30 to-red-900/30 rounded-lg px-2 sm:px-3 py-1 border border-rose-500/20 shadow-sm backdrop-blur-sm">
-        <div className="flex items-center space-x-1">
-          <span className="pixel-font text-white/90 font-bold text-xs">Lives</span>
-        </div>
-        <div className="flex space-x-0.5">
-          {[...Array(3)].map((_, i) => (
-            <div 
-              key={i} 
-              className={`text-xs transition-all duration-500 ${
-                i < gameState.lives 
-                  ? 'text-rose-400/90 animate-pulse' 
-                  : 'text-slate-600/50 grayscale opacity-30'
-              }`}
-            >
-              💖
+      {/* ✅ UPDATED: Smaller, highly transparent header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-900/20 via-blue-900/20 to-purple-900/20 backdrop-blur-sm border-b border-blue-500/10 shadow-sm">
+        <div className="container mx-auto px-2 sm:px-3 lg:px-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between py-1 sm:py-2 gap-1 sm:gap-2">
+            {/* ✅ UPDATED: Smaller, more transparent Lives Display */}
+            <div className="flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-rose-900/30 to-red-900/30 rounded-lg px-2 sm:px-3 py-1 border border-rose-500/20 shadow-sm backdrop-blur-sm">
+              <div className="flex items-center space-x-1">
+                <span className="pixel-font text-white/90 font-bold text-xs">
+                  Lives
+                </span>
+              </div>
+              <div className="flex space-x-0.5">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`text-xs transition-all duration-500 ${
+                      i < gameState.lives
+                        ? "text-rose-400/90 animate-pulse"
+                        : "text-slate-600/50 grayscale opacity-30"
+                    }`}
+                  >
+                    💖
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+
+            {/* ✅ UPDATED: Smaller, more transparent Progress Bar */}
+            <div className="flex-1 w-full sm:w-auto mx-1 sm:mx-2">
+              <div className="relative">
+                <div className="bg-slate-800/30 rounded-lg h-2 sm:h-3 overflow-hidden border border-blue-500/20 shadow-sm backdrop-blur-sm">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-600/80 via-purple-600/80 to-cyan-500/80 transition-all duration-1000 ease-out relative overflow-hidden"
+                    style={{
+                      width: `${
+                        (gameState.progress.length / levels.length) * 100
+                      }%`,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-white/10 animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="text-center mt-0.5">
+                  <span className="pixel-font text-blue-300/90 text-xs font-bold">
+                    <span className="inline-block animate-pulse">⚔️</span>{" "}
+                    {gameState.progress.length}/{levels.length}{" "}
+                    <span className="inline-block animate-pulse">🏆</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ✅ UPDATED: Smaller, more transparent Current Level Display */}
+            <div className="text-center sm:text-right bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg px-2 sm:px-3 py-1 border border-blue-500/20 shadow-sm backdrop-blur-sm">
+              <div className="flex items-center space-x-1">
+                <span className="text-xs animate-spin-slow">🔮</span>
+                <div>
+                  <div className="pixel-font text-blue-300/90 font-bold text-xs sm:text-sm">
+                    Level {gameState.currentLevel}
+                  </div>
+                  <div className="text-blue-400/80 text-xs font-medium">
+                    SQL Quest
+                  </div>
+                </div>
+              </div>
+
+              {levels[gameState.currentLevel - 1] && (
+                <div className="mt-0.5">
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-xs font-bold text-white/90 shadow-sm ${
+                      levels[gameState.currentLevel - 1].type === "basic"
+                        ? "bg-emerald-600/70"
+                        : levels[gameState.currentLevel - 1].type ===
+                          "intermediate"
+                        ? "bg-sky-600/70"
+                        : levels[gameState.currentLevel - 1].type === "advanced"
+                        ? "bg-violet-600/70"
+                        : levels[gameState.currentLevel - 1].type === "expert"
+                        ? "bg-rose-600/70"
+                        : "bg-amber-600/70"
+                    }`}
+                  >
+                    {levels[gameState.currentLevel - 1].type
+                      .charAt(0)
+                      .toUpperCase() +
+                      levels[gameState.currentLevel - 1].type.slice(1)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* ✅ UPDATED: Smaller, more transparent Progress Bar */}
-      <div className="flex-1 w-full sm:w-auto mx-1 sm:mx-2">
-        <div className="relative">
-          <div className="bg-slate-800/30 rounded-lg h-2 sm:h-3 overflow-hidden border border-blue-500/20 shadow-sm backdrop-blur-sm">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-600/80 via-purple-600/80 to-cyan-500/80 transition-all duration-1000 ease-out relative overflow-hidden" 
-              style={{ width: `${(gameState.progress.length / levels.length) * 100}%` }}
-            >
-              <div className="absolute inset-0 bg-white/10 animate-pulse" />
-            </div>
-          </div>
-          
-          <div className="text-center mt-0.5">
-            <span className="pixel-font text-blue-300/90 text-xs font-bold">
-              <span className="inline-block animate-pulse">⚔️</span>
-              {' '}{gameState.progress.length}/{levels.length}{' '}
-              <span className="inline-block animate-pulse">🏆</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ UPDATED: Smaller, more transparent Current Level Display */}
-      <div className="text-center sm:text-right bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg px-2 sm:px-3 py-1 border border-blue-500/20 shadow-sm backdrop-blur-sm">
-        <div className="flex items-center space-x-1">
-          <span className="text-xs animate-spin-slow">🔮</span>
-          <div>
-            <div className="pixel-font text-blue-300/90 font-bold text-xs sm:text-sm">
-              Level {gameState.currentLevel}
-            </div>
-            <div className="text-blue-400/80 text-xs font-medium">
-              SQL Quest
-            </div>
-          </div>
-        </div>
-        
-        {levels[gameState.currentLevel - 1] && (
-          <div className="mt-0.5">
-            <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold text-white/90 shadow-sm ${
-              levels[gameState.currentLevel - 1].type === "basic"
-                ? "bg-emerald-600/70"
-                : levels[gameState.currentLevel - 1].type === "intermediate"
-                ? "bg-sky-600/70"
-                : levels[gameState.currentLevel - 1].type === "advanced"
-                ? "bg-violet-600/70"
-                : levels[gameState.currentLevel - 1].type === "expert"
-                ? "bg-rose-600/70"
-                : "bg-amber-600/70"
-            }`}>
-              {levels[gameState.currentLevel - 1].type.charAt(0).toUpperCase() + 
-               levels[gameState.currentLevel - 1].type.slice(1)}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-</div>
-
-
 
       {/* ✅ NEW: Level completion celebration overlay */}
       {renderCompletionCelebration()}
@@ -993,14 +1027,15 @@ const MapMainView = () => {
 
       {/* ✅ ENHANCED: Bottom UI with better win state */}
       <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-        {isGameWon &&  (
+        {isGameWon && (
           <div className="bg-gradient-to-r from-amber-500/90 via-yellow-400/90 to-amber-500/90 backdrop-blur-xl rounded-3xl px-8 sm:px-12 py-6 border-2 border-yellow-300/50 shadow-2xl shadow-yellow-400/40">
             <div className="pixel-font text-white text-center">
               <div className="text-xl sm:text-2xl lg:text-3xl font-bold drop-shadow-lg animate-pulse mb-3">
                 🏆👑 LEGENDARY SQL MASTER! 👑🏆
               </div>
               <p className="text-sm sm:text-base opacity-90 mb-4 leading-relaxed">
-                You conquered all {levels.length} mystical challenges! The realm bows to your SQL mastery!
+                You conquered all {levels.length} mystical challenges! The realm
+                bows to your SQL mastery!
               </p>
               <div className="text-xs text-yellow-900 mb-4 space-y-1">
                 <div>🎯 Total Quests: {levels.length}</div>
@@ -1021,88 +1056,196 @@ const MapMainView = () => {
       {/* ✅ ENHANCED: Comprehensive CSS animations */}
       <style jsx>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0px) translateX(0px); }
-          25% { transform: translateY(-6px) translateX(2px); }
-          50% { transform: translateY(-12px) translateX(4px); }
-          75% { transform: translateY(-6px) translateX(2px); }
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px);
+          }
+          25% {
+            transform: translateY(-6px) translateX(2px);
+          }
+          50% {
+            transform: translateY(-12px) translateX(4px);
+          }
+          75% {
+            transform: translateY(-6px) translateX(2px);
+          }
         }
-        
+
         @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
         }
-        
+
         @keyframes shimmer-bg {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+          0%,
+          100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
         }
-        
+
         @keyframes zoom-pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+          0%,
+          100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
         }
-        
+
         @keyframes celebration {
-          0%, 100% { transform: scale(1) rotate(0deg); }
-          25% { transform: scale(1.2) rotate(5deg); }
-          50% { transform: scale(1.3) rotate(-5deg); }
-          75% { transform: scale(1.2) rotate(5deg); }
+          0%,
+          100% {
+            transform: scale(1) rotate(0deg);
+          }
+          25% {
+            transform: scale(1.2) rotate(5deg);
+          }
+          50% {
+            transform: scale(1.3) rotate(-5deg);
+          }
+          75% {
+            transform: scale(1.2) rotate(5deg);
+          }
         }
-        
+
         @keyframes bounce-celebration {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          25% { transform: translateY(-10px) scale(1.1); }
-          50% { transform: translateY(-20px) scale(1.2); }
-          75% { transform: translateY(-10px) scale(1.1); }
+          0%,
+          100% {
+            transform: translateY(0px) scale(1);
+          }
+          25% {
+            transform: translateY(-10px) scale(1.1);
+          }
+          50% {
+            transform: translateY(-20px) scale(1.2);
+          }
+          75% {
+            transform: translateY(-10px) scale(1.1);
+          }
         }
-        
+
         @keyframes character-celebration {
-          0%, 100% { transform: scale(1) rotate(0deg); filter: brightness(110%); }
-          20% { transform: scale(1.1) rotate(2deg); filter: brightness(150%); }
-          40% { transform: scale(1.2) rotate(-2deg); filter: brightness(130%); }
-          60% { transform: scale(1.15) rotate(1deg); filter: brightness(160%); }
-          80% { transform: scale(1.05) rotate(-1deg); filter: brightness(140%); }
+          0%,
+          100% {
+            transform: scale(1) rotate(0deg);
+            filter: brightness(110%);
+          }
+          20% {
+            transform: scale(1.1) rotate(2deg);
+            filter: brightness(150%);
+          }
+          40% {
+            transform: scale(1.2) rotate(-2deg);
+            filter: brightness(130%);
+          }
+          60% {
+            transform: scale(1.15) rotate(1deg);
+            filter: brightness(160%);
+          }
+          80% {
+            transform: scale(1.05) rotate(-1deg);
+            filter: brightness(140%);
+          }
         }
-        
+
         @keyframes celebration-glow {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
+          0%,
+          100% {
+            opacity: 0.6;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.3);
+          }
         }
-        
+
         @keyframes celebration-overlay {
-          0%, 100% { opacity: 0; }
-          50% { opacity: 0.3; }
+          0%,
+          100% {
+            opacity: 0;
+          }
+          50% {
+            opacity: 0.3;
+          }
         }
-        
+
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          25% {
+            transform: translateX(-5px);
+          }
+          75% {
+            transform: translateX(5px);
+          }
         }
-        
+
         @keyframes spin-slow {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
-        
+
         @keyframes bg-drift {
-          0% { transform: scale(1.03) translate(0px, 0px); }
-          100% { transform: scale(1.08) translate(-18px, -12px); }
+          0% {
+            transform: scale(1.03) translate(0px, 0px);
+          }
+          100% {
+            transform: scale(1.08) translate(-18px, -12px);
+          }
         }
-        
-        .animate-float { animation: float 4s ease-in-out infinite; }
-        .animate-shimmer { animation: shimmer 2.5s ease-in-out infinite; }
-        .animate-shimmer-bg { animation: shimmer-bg 3s ease-in-out infinite; }
-        .animate-zoom-pulse { animation: zoom-pulse 2.2s ease-in-out infinite; }
-        .animate-celebration { animation: celebration 1s ease-in-out infinite; }
-        .animate-bounce-celebration { animation: bounce-celebration 1s ease-in-out infinite; }
-        .animate-character-celebration { animation: character-celebration 2s ease-in-out infinite; }
-        .animate-celebration-glow { animation: celebration-glow 1.5s ease-in-out infinite; }
-        .animate-celebration-overlay { animation: celebration-overlay 2s ease-in-out infinite; }
-        .animate-spin-slow { animation: spin-slow 6s linear infinite; }
-        .shake-animation { animation: shake 0.6s ease-in-out; }
-        .bg-drift { animation: bg-drift 24s linear infinite alternate; }
-        
+
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        .animate-shimmer {
+          animation: shimmer 2.5s ease-in-out infinite;
+        }
+        .animate-shimmer-bg {
+          animation: shimmer-bg 3s ease-in-out infinite;
+        }
+        .animate-zoom-pulse {
+          animation: zoom-pulse 2.2s ease-in-out infinite;
+        }
+        .animate-celebration {
+          animation: celebration 1s ease-in-out infinite;
+        }
+        .animate-bounce-celebration {
+          animation: bounce-celebration 1s ease-in-out infinite;
+        }
+        .animate-character-celebration {
+          animation: character-celebration 2s ease-in-out infinite;
+        }
+        .animate-celebration-glow {
+          animation: celebration-glow 1.5s ease-in-out infinite;
+        }
+        .animate-celebration-overlay {
+          animation: celebration-overlay 2s ease-in-out infinite;
+        }
+        .animate-spin-slow {
+          animation: spin-slow 6s linear infinite;
+        }
+        .shake-animation {
+          animation: shake 0.6s ease-in-out;
+        }
+        .bg-drift {
+          animation: bg-drift 24s linear infinite alternate;
+        }
+
         .pixel-font {
           font-family: "Courier New", monospace;
           text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
@@ -1110,20 +1253,30 @@ const MapMainView = () => {
 
         /* Mobile optimizations */
         @media (max-width: 640px) {
-          .pixel-font { text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8); }
+          .pixel-font {
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+          }
         }
 
         /* Touch-friendly sizing */
         @media (max-width: 480px) {
-          .group { min-width: 44px; min-height: 44px; }
+          .group {
+            min-width: 44px;
+            min-height: 44px;
+          }
         }
 
         /* Prevent zoom on double tap */
-        * { touch-action: manipulation; }
+        * {
+          touch-action: manipulation;
+        }
 
         /* Improved tap targets for mobile */
         @media (hover: none) and (pointer: coarse) {
-          .group { min-width: 48px; min-height: 48px; }
+          .group {
+            min-width: 48px;
+            min-height: 48px;
+          }
         }
       `}</style>
     </div>
