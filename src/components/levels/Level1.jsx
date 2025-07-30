@@ -22,6 +22,13 @@ const Level1 = ({ onComplete }) => {
     attack: false,
   });
 
+  // Refs for each control button
+  const upBtnRef = useRef(null);
+  const downBtnRef = useRef(null);
+  const leftBtnRef = useRef(null);
+  const rightBtnRef = useRef(null);
+  const attackBtnRef = useRef(null);
+
   // Function to convert React icon to image data
   const iconToImageData = (IconComponent, color = "#ffffff", size = 32) => {
     const canvas = document.createElement("canvas");
@@ -867,7 +874,47 @@ const Level1 = ({ onComplete }) => {
     }, 50);
   };
 
-  return (
+   useEffect(() => {
+    const setups = [
+      { ref: upBtnRef, start: () => handleMobileControlStart("up"), end: () => handleMobileControlEnd("up") },
+      { ref: downBtnRef, start: () => handleMobileControlStart("down"), end: () => handleMobileControlEnd("down") },
+      { ref: leftBtnRef, start: () => handleMobileControlStart("left"), end: () => handleMobileControlEnd("left") },
+      { ref: rightBtnRef, start: () => handleMobileControlStart("right"), end: () => handleMobileControlEnd("right") },
+      { ref: attackBtnRef, start: handleAttack, end: null }, // Attack doesn't have a separate end
+    ];
+
+    setups.forEach(({ ref, start, end }) => {
+      const element = ref.current;
+      if (!element) return;
+
+      const onTouchStart = (e) => {
+        e.preventDefault();
+        start();
+      };
+      element.addEventListener("touchstart", onTouchStart, { passive: false });
+
+      let onTouchEnd;
+      if (end) {
+        onTouchEnd = (e) => {
+          e.preventDefault();
+          end();
+        };
+        element.addEventListener("touchend", onTouchEnd, { passive: false });
+        element.addEventListener("touchcancel", onTouchEnd, { passive: false });
+      }
+
+      // Cleanup on unmount or re-run
+      return () => {
+        element.removeEventListener("touchstart", onTouchStart);
+        if (end) {
+          element.removeEventListener("touchend", onTouchEnd);
+          element.removeEventListener("touchcancel", onTouchEnd);
+        }
+      };
+    });
+  }, [handleMobileControlStart, handleMobileControlEnd, handleAttack]);
+
+     return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the icons as reference in the UI */}
       <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
@@ -899,19 +946,13 @@ const Level1 = ({ onComplete }) => {
       </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">
-          Complete the SQL Query:
-        </div>
+        <div className="pixel-font text-slate-300 mb-2">Complete the SQL Query:</div>
         <div className="font-mono text-xl">
           <span>SELECT * </span>
           {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              FROM
-            </span>
+            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">FROM</span>
           ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-              __?__
-            </span>
+            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">__?__</span>
           )}
           <span> map </span>
         </div>
@@ -937,14 +978,16 @@ const Level1 = ({ onComplete }) => {
             <div className="relative">
               <div className="grid grid-cols-3 gap-1 w-36 h-36">
                 <div></div>
+                {/* UP */}
                 <button
+                  ref={upBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
+                  onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlStart("up");
                   }}
-                  onTouchEnd={(e) => {
+                  onPointerUp={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlEnd("up");
@@ -964,14 +1007,16 @@ const Level1 = ({ onComplete }) => {
                 </button>
                 <div></div>
 
+                {/* LEFT */}
                 <button
+                  ref={leftBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
+                  onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlStart("left");
                   }}
-                  onTouchEnd={(e) => {
+                  onPointerUp={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlEnd("left");
@@ -990,14 +1035,16 @@ const Level1 = ({ onComplete }) => {
                   ←
                 </button>
                 <div className="bg-slate-700 rounded"></div>
+                {/* RIGHT */}
                 <button
+                  ref={rightBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
+                  onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlStart("right");
                   }}
-                  onTouchEnd={(e) => {
+                  onPointerUp={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlEnd("right");
@@ -1017,14 +1064,16 @@ const Level1 = ({ onComplete }) => {
                 </button>
 
                 <div></div>
+                {/* DOWN */}
                 <button
+                  ref={downBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
+                  onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlStart("down");
                   }}
-                  onTouchEnd={(e) => {
+                  onPointerUp={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleMobileControlEnd("down");
@@ -1046,9 +1095,11 @@ const Level1 = ({ onComplete }) => {
               </div>
             </div>
 
+            {/* ATTACK */}
             <button
+              ref={attackBtnRef}
               className="bg-red-600 hover:bg-red-500 active:bg-red-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-              onTouchStart={(e) => {
+              onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleAttack();
@@ -1081,5 +1132,6 @@ const Level1 = ({ onComplete }) => {
     </div>
   );
 };
+
 
 export default Level1;
