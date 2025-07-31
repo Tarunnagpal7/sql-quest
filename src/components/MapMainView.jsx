@@ -151,6 +151,8 @@ const MapMainView = () => {
   // ✅ ENHANCED: Restart handler
   const handleRestart = () => {
     localStorage.removeItem("sql-quest-game");
+    // ✅ FIXED: Also remove our new localStorage flag when the game restarts.
+    localStorage.removeItem("videoWatched");
     dispatch(
       updateState({
         currentLevel: 1,

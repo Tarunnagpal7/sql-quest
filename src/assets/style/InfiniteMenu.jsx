@@ -1117,7 +1117,7 @@ export default function InfiniteMenu({ items = [] }) {
   }, [items]);
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full">
       <canvas
         id="infinite-grid-menu-canvas"
         ref={canvasRef}

@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { updateState } from "../redux/gameSlice";
 import AnimatedButton from "./AnimatedButton";
 
 function LandingHero() {
   const videoRef = useRef(null);
   const nav = useNavigate();
+  const dispatch = useDispatch();
   const game = useSelector((state) => state.game);
 
   useEffect(() => {
@@ -49,54 +51,72 @@ function LandingHero() {
     };
   }, []);
 
-  return (
-    <section className="relative h-screen w-full flex items-center justify-center snap-start overflow-hidden">
-      {/* Background Video */}
-      <video
-        ref={videoRef}
-        className="absolute top-0 left-0 w-full h-full object-cover -z-10"
-        src="/Intro.mp4"
-        autoPlay
-        loop
-        muted
-      />
-      <div className="absolute inset-0 bg-black/50 z-0" />
+  // ✅ NEW: Start Game handler - resets the game to initial state
+  const handleStartGame = () => {
+    // Clear only the game progress, but keep videoWatched as true
+    localStorage.removeItem("sql-quest-game");
+    // ✅ IMPORTANT: Don't remove videoWatched - keep it so intro doesn't replay
 
-       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-12 md:py-20">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-          
-          {/* Left Side - Text Content */}
-          <div className="text-center lg:text-left space-y-6 order-2 lg:order-1">
-            {/* Top Title Section */}
-            <h2 className="text-lg sm:text-xl md:text-2xl text-amber-100 font-bold tracking-widest uppercase drop-shadow">
-              Welcome to the
-            </h2>
+    // Reset Redux state to initial values but preserve videoWatched
+    dispatch(
+      updateState({
+        currentLevel: 1,
+        progress: [],
+        lives: 3,
+        skipCount: 0,
+        videoWatched: true, // ✅ Keep this as true to skip intro video
+      })
+    );
 
-            <div className="w-24 h-1 mx-auto lg:mx-0 bg-gradient-to-r from-blue-400 to-cyan-400 shadow-md"></div>
+    // Navigate directly to map (no intro video)
+    nav("/map");
+  };
 
-            {/* Main Title */}
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-widest mb-6 bg-gradient-to-r from-cyan-600 via-cyan-200 to-blue-300 bg-clip-text animate-fade-up text-transparent drop-shadow-2xl">
-              SQL QUEST
-            </h1>
+  // ✅ NEW: Continue Game handler - preserves existing state
+  const handleContinueGame = () => {
+    // Simply navigate to map with existing state
+    nav("/map");
+  };
 
-            <p className="text-sm sm:text-lg md:text-xl text-white/90 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              A gamified learning experience where stories, challenges, and stunning visuals unite to practice SQL like never before.
-            </p>
+  return (
+    <section className="relative h-screen w-full flex items-center justify-center snap-start overflow-hidden">
+      {/* Background Video */}
+      <div className="absolute inset-0 bg-black/50 z-0" />
+      <div className="relative z-10 px-6 py-12 md:py-20 w-full max-w-4xl text-center space-y-6">
+        {/* Top Title Section */}
+        <h2 className="text-lg sm:text-xl md:text-2xl text-amber-100 ml-13 font-bold tracking-widest uppercase drop-shadow">
+          Welcome to the
+        </h2>
 
-            {/* Buttons */}
-            <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-8">
-              <AnimatedButton label="Start Game" onClick={() => nav('/map')} />
-              {game.videoWatched && (
-                <AnimatedButton label="Continue" color="green" onClick={() => nav('/map')} />
-              )}
-            </div>
-          </div>
+        <div className="w-24 h-1 mx-auto bg-gradient-to-r from-blue-400 to-cyan-400 shadow-md"></div>
 
+        {/* New Animated Title */}
+        <h2 className="text-4xl md:text-6xl font-black tracking-widest mb-6 bg-gradient-to-r from-amber-600 via-cyan-200 to-blue-300 bg-clip-text animate-fade-up text-transparent drop-shadow-2xl">
+          SQL QUEST
+        </h2>
+
+        <p className="text-sm sm:text-lg md:text-xl text-white/90 max-w-xl mx-auto leading-relaxed">
+          A gamified learning experience where stories, challenges, and stunning
+          visuals unite to teach SQL like never before.
+        </p>
+
+        {/* Buttons */}
+        <div className="flex flex-wrap justify-center gap-4 mt-6">
+          {/* ✅ UPDATED: Start Game button with reset logic */}
+          <AnimatedButton label="Start Game" onClick={handleStartGame} />
+
+          {/* ✅ UPDATED: Continue button with preserve logic */}
+          {game.videoWatched && (
+            <AnimatedButton
+              label="Continue"
+              color="green"
+              onClick={handleContinueGame}
+            />
+          )}
         </div>
       </div>
-    </section>
-  );
+    </section>
+  );
 }
 
-
-export default LandingHero
+export default LandingHero;
