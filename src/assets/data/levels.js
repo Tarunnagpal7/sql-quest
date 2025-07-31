@@ -2,7 +2,7 @@ export const levels = [
   {
     id: 1,
     position: {
-      desktop: { x: 81, y: 102 },
+      desktop: { x: 68, y: 60 },
       mobile: { x: 86, y: 90 },
     },
     title: "Path to the Hidden Map",
@@ -17,7 +17,7 @@ export const levels = [
   {
     id: 2,
     position: {
-      desktop: { x: 39, y: 102 },
+      desktop: { x: 43, y: 60 },
       mobile: { x: 41, y: 87 },
     },
     title: "The Brave Shall Pass",
@@ -37,7 +37,7 @@ export const levels = [
   {
     id: 3,
     position: {
-      desktop: { x: 67, y: 70 },
+      desktop: { x: 60, y: 40 },
       mobile: { x: 72, y: 63 },
     },
     title: "Open the Temple Gates",
@@ -60,7 +60,7 @@ CREATE TABLE jungle_explorers (
   {
     id: 4,
     position: {
-      desktop: { x: 82, y: 56 },
+      desktop: { x: 69, y: 32 },
       mobile: { x: 87, y: 50 },
     },
     title: "Build the Raft",
@@ -79,7 +79,7 @@ CREATE TABLE jungle_explorers (
   {
     id: 5,
     position: {
-      desktop: { x: 53, y: 58 },
+      desktop: { x: 52, y: 35 },
       mobile: { x: 54, y: 52 },
     },
     title: "Free the Sacred Beast",
@@ -99,7 +99,7 @@ CREATE TABLE jungle_explorers (
   {
     id: 6,
     position: {
-      desktop: { x: 38, y: 70 },
+      desktop: { x: 33, y: 33 },
       mobile: { x: 42, y: 62 },
     },
     title: "Restore the Memory Crystal",
@@ -119,7 +119,7 @@ CREATE TABLE jungle_explorers (
   {
     id: 7,
     position: {
-      desktop: { x: 23, y: 55 },
+      desktop: { x: 44, y: 25 },
       mobile: { x: 24, y: 50 },
     },
     title: "Arm the Heroes",
@@ -144,7 +144,7 @@ CREATE TABLE weapons (
   {
     id: 8,
     position: {
-      desktop: { x: 40, y: 41 },
+      desktop: { x: 57, y: 22 },
       mobile: { x: 42, y: 38 },
     },
     title: "SQL Speed Circuit - Average Courage Race",
@@ -163,7 +163,7 @@ CREATE TABLE weapons (
   {
     id: 9,
     position: {
-      desktop: { x: 63, y: 35 },
+      desktop: { x: 65, y: 18 },
       mobile: { x: 70, y: 34 },
     },
     title: "SQL Battle Arena - Mystic Duel",
@@ -210,7 +210,7 @@ CREATE TABLE potions (
   {
     id: 10,
     position: {
-      desktop: { x: 88, y: 18 },
+      desktop: { x: 72, y: 12 },
       mobile: { x: 93, y: 19 },
     },
     title: "Ancient Jungle Temple Quest",
@@ -233,7 +233,7 @@ CREATE TABLE potions (
 
 export const levelPaths = {
   1: [
-    { x: 81, y: 102 }, // Start at level 1
+    { x: 70, y: 80 }, // Start at level 1
     { x: 88, y: 70 }, // Move left
     { x: 65, y: 102 }, // Continue left
     { x: 55, y: 102 }, // More left

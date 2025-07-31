@@ -873,13 +873,13 @@ const MapMainView = () => {
   }
 
   return (
-    <div className="min-h-screen pb-60 relative overflow-hidden">
+    <div className="min-h-screen  relative overflow-hidden  bg-gradient-to-b from-cyan-900/35 via-blue-900/35 to-black">
       {/* Background Image Container */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden">
+      <div className="absolute inset-0 w-full mt-36 sm:mt-20 h-full overflow-hidden">
         <img
-          src={isMobile ? ASSETS.bgMapMobile : ASSETS.bgMap}
+          src={ASSETS.bgMap}
           alt="SQL Quest Map Background"
-          className="w-full h-full object-fill object-center bg-drift"
+          className=" m-auto object-fill object-center bg-drift"
           style={{
             imageRendering: "crisp-edges",
             filter: "brightness(0.85) contrast(1.1) saturate(1.2)",
