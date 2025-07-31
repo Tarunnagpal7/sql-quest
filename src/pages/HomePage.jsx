@@ -91,8 +91,8 @@ function HomePage() {
     >
       {/* Welcome message for users who just watched the video */}
       {localStorage.getItem("videoWatched") === "true" && currentStep === 0 && (
-        <div className="absolute top-4 right-4 z-50 bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 animate-fade-in">
-          <div className="text-sm font-medium">Welcome to SQL Quest! 🎮</div>
+        <div className="absolute top-4 right-4 z-50 bg-gradient-to-r from-gray-600/90 to-cyan-800/90 text-white px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 animate-fade-in">
+          <div className="text-sm font-medium">Presented by Team WhiteSnake! 🎮</div>
         </div>
       )}
 
