@@ -1,7 +1,7 @@
 // components/AnimatedButton.jsx
 const AnimatedButton = ({ label, onClick, color = "blue" }) => {
   const colorVariants = {
-    blue: 'from-blue-500 to-cyan-500 hover:to-blue-400',
+    blue: 'from-blue-800 to-cyan-500 hover:to-blue-700',
     green: 'from-emerald-500 to-green-400 hover:to-green-300',
   };
 

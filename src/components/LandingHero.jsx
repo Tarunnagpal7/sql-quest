@@ -97,22 +97,13 @@ function LandingHero() {
 
         <p className="text-sm sm:text-lg md:text-xl text-white/90 max-w-xl mx-auto leading-relaxed">
           A gamified learning experience where stories, challenges, and stunning
-          visuals unite to teach SQL like never before.
+          visuals unite to practice SQL like never before.
         </p>
 
         {/* Buttons */}
         <div className="flex flex-wrap justify-center gap-4 mt-6">
           {/* ✅ UPDATED: Start Game button with reset logic */}
-          <AnimatedButton label="Start Game" onClick={handleStartGame} />
-
-          {/* ✅ UPDATED: Continue button with preserve logic */}
-          {game.videoWatched && (
-            <AnimatedButton
-              label="Continue"
-              color="green"
-              onClick={handleContinueGame}
-            />
-          )}
+          <AnimatedButton label={`Play Now`} onClick={handleStartGame} />
         </div>
       </div>
     </section>

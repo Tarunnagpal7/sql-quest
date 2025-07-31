@@ -11,11 +11,6 @@ const FinalCTA = () => {
   return (
     <section
       className="relative bg-gradient-to-t from-black via-blue-950 to-black snap-start flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 md:px-12 text-white overflow-hidden"
-      style={{
-        backgroundImage: `url('/image3.png')`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-      }}
     >
       {/* Enhanced Hero Section with Icons */}
       <div className="relative flex flex-col items-center justify-center flex-1 w-full max-w-7xl mx-auto py-12">
@@ -78,10 +73,10 @@ const FinalCTA = () => {
           <div className="scale-75 sm:scale-90 md:scale-100 transition-transform duration-300">
             <PixelCard variant="blue">
               <h1
-                className="cursor-pointer text-lg sm:text-xl md:text-2xl lg:text-3xl font-black tracking-widest px-4 py-2 text-center hover:scale-105 transition-transform duration-200"
+                className="cursor-pointer  text-lg sm:text-xl md:text-2xl lg:text-3xl font-black tracking-widest px-4 py-2 text-center hover:scale-105 transition-transform duration-200"
                 onClick={() => nav("/map")}
               >
-                {game.videoWatched ? "CONTINUE" : "PLAY NOW"}
+                {"PLAY NOW"}
               </h1>
             </PixelCard>
           </div>
@@ -91,7 +86,11 @@ const FinalCTA = () => {
       {/* Footer Branding */}
       <footer className="w-full flex flex-col sm:flex-row items-center justify-between border-t border-white/30 pt-6 pb-4 text-sm text-white/80 max-w-6xl mx-auto gap-4">
         <div className="flex items-center space-x-2">
-          <span className="text-2xl">⚡</span>
+          <span className="text-2xl w-8">
+            <img 
+             src= "./rock.png"
+            />
+          </span>
           <div className="tracking-widest font-semibold text-base md:text-lg text-white drop-shadow-sm">
             SQL QUEST
           </div>
