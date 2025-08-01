@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { items } from "../assets/data/story";
-
+import Particles from "../assets/style/Particles";
 const StoryCarousel = () => {
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -27,13 +27,29 @@ const StoryCarousel = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
+
+       <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 1 }}
+      >
+        <Particles
+          particleColors={["#fff"]}
+          particleCount={150}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+        />
+      </div>
+
       {/* Title Section */}
       <div className="mb-8 md:mb-12 max-w-4xl  mx-auto">
-        <h2 className="text-4xl font-black tracking-widest mb-4 bg-gradient-to-r from-purple-300 via-blue-300 to-cyan-300 bg-clip-text text-transparent drop-shadow-2xl">
-          THE LEGEND UNFOLDS
-        </h2>
-
-        <div className="w-32 h-1 bg-gradient-to-r from-purple-400 to-cyan-400 mx-auto shadow-lg shadow-purple-400/50 mb-6" />
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-widest mb-4 bg-gradient-to-r from-cyan-300 via-purple-300 to-blue-300 bg-clip-text text-transparent drop-shadow-2xl">
+            The Story 
+          </h2>
+          <div className="w-24 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 mx-auto shadow-lg shadow-cyan-400/50 mb-4" />
       </div>
 
       {/* Story Content */}

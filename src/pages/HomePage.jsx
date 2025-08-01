@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import LandingHero from "../components/LandingHero";
-// import Roadmap from "../components/Roadmap";
+import About from "../components/About";
 import StoryCarousel from "../components/Story";
 import FinalCTA from "../components/FinalCTA";
 import { useDispatch, useSelector } from "react-redux";
@@ -55,7 +55,7 @@ function HomePage() {
 
   const components = [
     { component: <LandingHero />, name: "Hero" },
-    // { component: <Roadmap />, name: "Roadmap" },
+    {component: <About /> , name : 'About'},
     { component: <StoryCarousel />, name: "Story" },
     { component: <FinalCTA />, name: "CTA" },
   ];
