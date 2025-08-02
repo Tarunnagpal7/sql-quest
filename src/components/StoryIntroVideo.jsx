@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
 const StoryIntroVideo = ({ onEnd, onSkip }) => {
   const videoRef = useRef(null);
@@ -18,12 +18,14 @@ const StoryIntroVideo = ({ onEnd, onSkip }) => {
             const handleClick = () => {
               video.muted = false;
               video.volume = 0.8;
-              document.removeEventListener('click', handleClick);
-              document.removeEventListener('touchstart', handleClick);
+              document.removeEventListener("click", handleClick);
+              document.removeEventListener("touchstart", handleClick);
             };
-            document.addEventListener('click', handleClick);
-            document.addEventListener('touchstart', handleClick);
-          } catch (e) { /* If even this fails, do nothing. */ }
+            document.addEventListener("click", handleClick);
+            document.addEventListener("touchstart", handleClick);
+          } catch (e) {
+            /* If even this fails, do nothing. */
+          }
         }
       };
       attemptPlay();
