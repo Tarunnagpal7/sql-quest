@@ -2,8 +2,8 @@ export const levels = [
   {
     id: 1,
     position: {
-      desktop: { x: 68, y: 60 },
-      mobile: { x: 86, y: 90 },
+      desktop: { x: 70,y: 65 },
+      mobile: { x: 83, y: 45 },
     },
     title: "Path to the Hidden Map",
     query: "SELECT * FROM map",
@@ -17,8 +17,8 @@ export const levels = [
   {
     id: 2,
     position: {
-      desktop: { x: 43, y: 60 },
-      mobile: { x: 41, y: 87 },
+      desktop: { x: 43, y: 65 },
+      mobile: { x: 41, y: 45 },
     },
     title: "The Brave Shall Pass",
     query: "SELECT * FROM jungle_explorers WHERE courage_level > 80;",
@@ -37,8 +37,8 @@ export const levels = [
   {
     id: 3,
     position: {
-      desktop: { x: 60, y: 40 },
-      mobile: { x: 72, y: 63 },
+      desktop: { x: 61, y: 45 },
+      mobile: { x: 70, y: 33 },
     },
     title: "Open the Temple Gates",
     query: "SELECT * FROM artifacts WHERE found_by IS NOT NULL;",
@@ -60,8 +60,8 @@ CREATE TABLE jungle_explorers (
   {
     id: 4,
     position: {
-      desktop: { x: 69, y: 32 },
-      mobile: { x: 87, y: 50 },
+      desktop: { x: 70, y: 36 },
+      mobile: { x: 85, y: 30 },
     },
     title: "Build the Raft",
     query: "SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;",
@@ -79,8 +79,8 @@ CREATE TABLE jungle_explorers (
   {
     id: 5,
     position: {
-      desktop: { x: 52, y: 35 },
-      mobile: { x: 54, y: 52 },
+      desktop: { x: 51, y: 37 },
+      mobile: { x: 54, y: 29 },
     },
     title: "Free the Sacred Beast",
     query:
@@ -99,8 +99,8 @@ CREATE TABLE jungle_explorers (
   {
     id: 6,
     position: {
-      desktop: { x: 33, y: 33 },
-      mobile: { x: 42, y: 62 },
+      desktop: { x: 33, y: 37 },
+      mobile: { x: 23, y: 28 },
     },
     title: "Restore the Memory Crystal",
     query:
@@ -119,8 +119,8 @@ CREATE TABLE jungle_explorers (
   {
     id: 7,
     position: {
-      desktop: { x: 44, y: 25 },
-      mobile: { x: 24, y: 50 },
+      desktop: { x: 44, y: 28 },
+      mobile: { x: 41, y: 24 },
     },
     title: "Arm the Heroes",
     query:
@@ -144,8 +144,8 @@ CREATE TABLE weapons (
   {
     id: 8,
     position: {
-      desktop: { x: 57, y: 22 },
-      mobile: { x: 42, y: 38 },
+      desktop: { x: 58, y: 23 },
+      mobile: { x: 65, y: 22 },
     },
     title: "SQL Speed Circuit - Average Courage Race",
     query: "SELECT AVG(courage_level) FROM jungle_explorers;",
@@ -163,8 +163,8 @@ CREATE TABLE weapons (
   {
     id: 9,
     position: {
-      desktop: { x: 65, y: 18 },
-      mobile: { x: 70, y: 34 },
+      desktop: { x: 67, y: 20 },
+      mobile: { x: 80, y: 20 },
     },
     title: "SQL Battle Arena - Mystic Duel",
     query:
@@ -210,8 +210,8 @@ CREATE TABLE potions (
   {
     id: 10,
     position: {
-      desktop: { x: 72, y: 12 },
-      mobile: { x: 93, y: 19 },
+      desktop: { x: 74, y: 14 },
+      mobile: { x: 92, y: 16 },
     },
     title: "Ancient Jungle Temple Quest",
     query:
