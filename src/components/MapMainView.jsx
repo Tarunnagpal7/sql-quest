@@ -875,13 +875,13 @@ const MapMainView = () => {
   }
 
   return (
-    <div className="min-h-screen  relative overflow-hidden  bg-gradient-to-b from-cyan-900/35 via-blue-900/35 to-black">
+    <div className="min-h-screen pb-60 relative overflow-hidden">
       {/* Background Image Container */}
-      <div className="absolute inset-0 w-full mt-36 sm:mt-20 h-full overflow-hidden">
+      <div className="absolute inset-0 w-full h-full overflow-hidden">
         <img
-          src={ASSETS.bgMap}
+          src={isMobile ? ASSETS.bgMapMobile : ASSETS.bgMap}
           alt="SQL Quest Map Background"
-          className=" m-auto object-fill object-center bg-drift"
+          className="w-full h-full object-fill object-center bg-drift"
           style={{
             imageRendering: "crisp-edges",
             filter: "brightness(0.85) contrast(1.1) saturate(1.2)",
@@ -965,7 +965,9 @@ const MapMainView = () => {
                 <span className="text-xs animate-spin-slow">🔮</span>
                 <div>
                   <div className="pixel-font text-blue-300/90 font-bold text-xs sm:text-sm">
-                    Level {gameState.currentLevel}
+                    {gameState.currentLevel >= levels.length + 1
+                      ? "All Levels Completed"
+                      : `Level ${gameState.currentLevel}`}
                   </div>
                   <div className="text-blue-400/80 text-xs font-medium">
                     SQL Quest
@@ -1028,14 +1030,14 @@ const MapMainView = () => {
       </div>
 
       {/* ✅ ENHANCED: Bottom UI with better win state */}
-      <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-xs sm:max-w-md">
         {isGameWon && (
-          <div className="bg-gradient-to-r from-amber-500/90 via-yellow-400/90 to-amber-500/90 backdrop-blur-xl rounded-3xl px-8 sm:px-12 py-6 border-2 border-yellow-300/50 shadow-2xl shadow-yellow-400/40">
+          <div className="bg-gradient-to-r from-amber-500/90 via-yellow-400/90 to-amber-500/90 backdrop-blur-xl rounded-3xl px-4 sm:px-12 py-4 sm:py-6 border-2 border-yellow-300/50 shadow-2xl shadow-yellow-400/40">
             <div className="pixel-font text-white text-center">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold drop-shadow-lg animate-pulse mb-3">
+              <div className="text-lg sm:text-2xl lg:text-3xl font-bold drop-shadow-lg animate-pulse mb-2 sm:mb-3">
                 🏆👑 LEGENDARY SQL MASTER! 👑🏆
               </div>
-              <p className="text-sm sm:text-base opacity-90 mb-4 leading-relaxed">
+              <p className="text-xs sm:text-sm opacity-90 mb-3 leading-relaxed">
                 You conquered all {levels.length} mystical challenges! The realm
                 bows to your SQL mastery!
               </p>
@@ -1046,7 +1048,7 @@ const MapMainView = () => {
               </div>
               <button
                 onClick={handleRestart}
-                className="pixel-font text-yellow-900 font-bold bg-gradient-to-r from-yellow-300 to-amber-400 hover:from-yellow-200 hover:to-amber-300 px-6 sm:px-8 py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 hover:shadow-yellow-300/60 w-full sm:w-auto"
+                className="pixel-font text-yellow-900 font-bold bg-gradient-to-r from-yellow-300 to-amber-400 hover:from-yellow-200 hover:to-amber-300 px-4 sm:px-8 py-2 sm:py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 hover:shadow-yellow-300/60 w-full"
               >
                 🌟 Start New Legend
               </button>

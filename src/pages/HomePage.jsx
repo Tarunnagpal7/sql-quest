@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import LandingHero from "../components/LandingHero";
-import Roadmap from "../components/Roadmap";
+import About from "../components/About";
 import StoryCarousel from "../components/Story";
 import FinalCTA from "../components/FinalCTA";
 import { useDispatch, useSelector } from "react-redux";
@@ -55,7 +55,7 @@ function HomePage() {
 
   const components = [
     { component: <LandingHero />, name: "Hero" },
-    { component: <Roadmap />, name: "Roadmap" },
+    {component: <About /> , name : 'About'},
     { component: <StoryCarousel />, name: "Story" },
     { component: <FinalCTA />, name: "CTA" },
   ];
@@ -83,7 +83,7 @@ function HomePage() {
       ref={containerRef}
       className="min-h-screen w-screen bg-black overflow-hidden relative"
       style={{
-        backgroundImage: `url('/map.jpg')`,
+        backgroundImage: `url('/home.png')`,
         bacckgroundPosition: "center",
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat",
@@ -91,8 +91,8 @@ function HomePage() {
     >
       {/* Welcome message for users who just watched the video */}
       {localStorage.getItem("videoWatched") === "true" && currentStep === 0 && (
-        <div className="absolute top-4 right-4 z-50 bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 animate-fade-in">
-          <div className="text-sm font-medium">Welcome to SQL Quest! 🎮</div>
+        <div className="absolute top-4 right-4 z-50 bg-gradient-to-r from-gray-900/90 to-blue-900/90 text-white px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 animate-fade-in">
+          <div className="text-sm font-medium">Presented by Team WhiteSnake! 🎮</div>
         </div>
       )}
 
@@ -169,7 +169,7 @@ function HomePage() {
         {currentStep < components.length - 1 && (
           <button
             onClick={goToNext}
-            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-md hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xs"
+            className="px-4 py-2 bg-gradient-to-b from-blue-700 to-blue-900 text-white rounded-md hover:from-black hover:to-blue-900 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-xs"
           >
             Next
           </button>

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { items } from "../assets/data/story";
-
+import Particles from "../assets/style/Particles";
 const StoryCarousel = () => {
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -19,14 +19,37 @@ const StoryCarousel = () => {
   };
 
   return (
-    <section className="relative snap-start w-full min-h-screen bg-black flex flex-col items-center justify-center overflow-hidden py-12 px-4 sm:px-6 md:px-12">
-      {/* Title Section */}
-      <div className="mb-8 md:mb-12 max-w-4xl mx-auto">
-        <h2 className="text-4xl font-black tracking-widest mb-4 bg-gradient-to-r from-purple-300 via-blue-300 to-cyan-300 bg-clip-text text-transparent drop-shadow-2xl">
-          THE LEGEND UNFOLDS
-        </h2>
+    <section className="relative snap-start w-full min-h-screen  bg-black flex flex-col items-center justify-center overflow-hidden py-12 px-4 sm:px-6 md:px-12"
+        style={{
+        backgroundImage: `url('/final.png')`,
+        bacckgroundPosition: "center",
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
 
-        <div className="w-32 h-1 bg-gradient-to-r from-purple-400 to-cyan-400 mx-auto shadow-lg shadow-purple-400/50 mb-6" />
+       <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 1 }}
+      >
+        <Particles
+          particleColors={["#fff"]}
+          particleCount={150}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+        />
+      </div>
+
+      {/* Title Section */}
+      <div className="mb-8 md:mb-12 max-w-4xl  mx-auto">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-widest mb-4 bg-gradient-to-r from-cyan-300 via-purple-300 to-blue-300 bg-clip-text text-transparent drop-shadow-2xl">
+            The Story 
+          </h2>
+          <div className="w-24 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 mx-auto shadow-lg shadow-cyan-400/50 mb-4" />
       </div>
 
       {/* Story Content */}
@@ -34,7 +57,7 @@ const StoryCarousel = () => {
         {/* Navigation Buttons */}
         <button
           onClick={prevPage}
-          className="absolute left-4 z-10 p-3 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 sm:p-2 sm:bg-none sm:bg-transparent sm:shadow-none sm:hover:bg-transparent sm:rounded-none"
+          className="absolute left-4 z-10 p-3 rounded-full bg-gradient-to-r from-blue-900 to-cyan-700 text-white hover:from-black hover:to-blue-700  shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 sm:p-2 "
           disabled={items.length <= 1}
         >
           <ChevronLeft size={24} className="sm:w-8 sm:h-8" />
@@ -42,7 +65,7 @@ const StoryCarousel = () => {
 
         <button
           onClick={nextPage}
-          className="absolute right-4 z-10 p-3 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 sm:p-2 sm:bg-none sm:bg-transparent sm:shadow-none sm:hover:bg-transparent sm:rounded-none"
+          className="absolute right-4 z-10 p-3 rounded-full bg-gradient-to-r from-cyan-700 to-blue-900 text-white hover:from-blue-700 hover:to-black  shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 sm:p-2 "
           disabled={items.length <= 1}
         >
           <ChevronRight size={24} className="sm:w-8 sm:h-8" />
@@ -80,21 +103,6 @@ const StoryCarousel = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Page Indicators */}
-      <div className="mt-8 flex space-x-2">
-        {items.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToPage(index)}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              index === currentPage
-                ? "bg-gradient-to-r from-purple-400 to-cyan-400 shadow-lg shadow-purple-400/50"
-                : "bg-gray-600 hover:bg-gray-500"
-            }`}
-          />
-        ))}
       </div>
 
       {/* Page Counter */}

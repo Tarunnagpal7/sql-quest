@@ -17,12 +17,7 @@ export const items = [
   {
     image: '/image4.png', // Prompt: "Inside an ancient temple with stone pillars and glowing walls full of encrypted SQL code, eerie light all around"
     title: 'Temple of Queries',
-    description: 'Within a forgotten temple, stone tablets pose SQL riddles. “Find the name of the warrior with the highest wisdom,” one says. Arin must query his way forward.'
-  },
-  {
-    image: '/image5.png', // Prompt: "A massive broken bridge floating above lava, with ancient statues and runes forming parts of an SQL statement"
-    title: 'Bridge of Conditions',
-    description: 'The only way across the abyss is to reconstruct a broken query. Each step on the bridge forms part of a SQL WHERE clause. One wrong step means falling.'
+    description: 'Within a forgotten temple, stone tablets pose SQL riddles. Arin must query his way forward.'
   },
   {
     image: '/image6.png', // Prompt: "A giant door with glowing lock made of databases and code symbols, a puzzle projected in mid-air before it"

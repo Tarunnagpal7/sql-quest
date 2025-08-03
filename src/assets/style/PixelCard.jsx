@@ -251,7 +251,7 @@ export default function PixelCard({
         w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-4xl
         h-[10vh] sm:h-[13vh] md:h-[17vh] lg:h-[20vh] xl:h-[23vh]
         min-h-[110px] sm:min-h-[130px] md:min-h-[150px] lg:min-h-[170px] xl:min-h-[230px]
-        border border-[#27272a] rounded-[25px] isolate 
+        border border-[#8787ef] rounded-[25px] isolate 
         transition-colors duration-200 ease-[cubic-bezier(0.5,1,0.89,1)] select-none
         ${className}
       `}
