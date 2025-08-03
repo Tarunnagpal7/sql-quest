@@ -41,7 +41,7 @@ const LevelHeader = ({  lives, onSkip, onBack }) => {
           className="group pixel-font text-cyan-300 hover:text-white transition-all duration-300 text-sm sm:text-base flex items-center gap-1 sm:gap-2 bg-slate-800/50 hover:bg-slate-700/70 px-3 py-2 rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg hover:shadow-cyan-400/20 backdrop-blur-sm"
         >
           <span className="font-bold">Skip</span>
-          <span className="text-rose-300 hidden sm:inline">(-1💖)</span>
+          <span className="text-rose-300 hidden sm:inline">(-1❤️)</span>
         </button>
         :
 
@@ -317,7 +317,7 @@ function LevelPage() {
                         }`}
                         style={{ animationDelay: `${i * 0.2}s` }}
                       >
-                        💖
+                        ❤️
                       </div>
                     ))}
                   </div>

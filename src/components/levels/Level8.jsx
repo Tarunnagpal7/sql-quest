@@ -875,7 +875,7 @@ const Level8 = ({ onComplete }) => {
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      <div className="flex items-center flex-wrap justify-center gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <GiBoatFishing size={20} color="#8b4513" />
           <span>Your Raft</span>
@@ -1035,6 +1035,16 @@ const Level8 = ({ onComplete }) => {
         </div>
       )}
 
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            {/* Use the MobileControls component */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+          </div>
+        </div>
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">🏊 Jungle River Raft Race - Strategic SQL Racing:</div>
         <div className="font-mono text-lg">
@@ -1066,8 +1076,8 @@ const Level8 = ({ onComplete }) => {
       </div>
 
       {/* Use the reusable MobileControls component with custom Query buttons */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>JUNGLE RAFT CONTROLS:</strong></div>
+      <div className="w-full max-w-3xl p-3 hidden md:block bg-slate-800/50 rounded-lg border border-slate-600">
+        <div className="pixel-font hidden md:block text-slate-400 text-sm mb-2 text-center"><strong>JUNGLE RAFT CONTROLS:</strong></div>
         
         <div className="hidden md:block">
           <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
@@ -1077,16 +1087,6 @@ const Level8 = ({ onComplete }) => {
           </div>
         </div>
 
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-          </div>
-        </div>
       </div>
 
       <style jsx>{`

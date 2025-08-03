@@ -1482,7 +1482,7 @@ const Level6 = ({ onComplete }) => {
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-gradient-to-b from-purple-600 to-purple-800 rounded-full flex items-center justify-center">
             <span className="text-xs text-yellow-300">🧙</span>
@@ -1582,55 +1582,54 @@ const Level6 = ({ onComplete }) => {
           </div>
         </div>
       )}
+      {/* Mobile Controls - Custom for Level6 with Interact button */}
+      <div className="block md:hidden">
+        <div className="flex flex-col items-center gap-4">
+          {/* Use the MobileControls component but add extra interact functionality */}
+          <MobileControls
+            mobileControlsRef={mobileControlsRef}
+            setMobileControls={setMobileControls}
+          />
+        </div>
 
-      <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">
-          SQL Query Challenge:
-        </div>
-        <div className="font-mono text-lg">
-          {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Memory Crystal Restored!
-            </span>
-          ) : uiState.fragmentsCollected === uiState.totalFragments ? (
-            <span className="text-yellow-400 font-bold bg-yellow-900/50 px-2 py-1 rounded animate-pulse">
-              All fragments collected! Approach the altar and write the query
-            </span>
-          ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">
-              Collect fragments from explorers with 'a' in names • Fight those
-              without 'a'
-            </span>
-          )}
-        </div>
-        <div className="text-xs text-slate-500 mt-2">
-          Logic: Maya, Elena, Sara, Alex, Zara have 'a' → Friendly | Tom, Jin
-          don't have 'a' → Enemies
-        </div>
-      </div>
-
-      {/* Use the reusable MobileControls component with custom Interact button */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        {/* Desktop Controls */}
-        <div className="hidden md:block">
-          <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
-            <strong>CONTROLS:</strong>
+        <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
+          <div className="pixel-font text-slate-300 mb-2">
+            SQL Query Challenge:
           </div>
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE : Attack </div>
-            <div>E : Interact with Altar</div>
+          <div className="font-mono text-lg">
+            {uiState.isQueryComplete ? (
+              <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
+                Memory Crystal Restored!
+              </span>
+            ) : uiState.fragmentsCollected === uiState.totalFragments ? (
+              <span className="text-yellow-400 font-bold bg-yellow-900/50 px-2 py-1 rounded animate-pulse">
+                All fragments collected! Approach the altar and write the query
+              </span>
+            ) : (
+              <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">
+                Collect fragments from explorers with 'a' in names • Fight those
+                without 'a'
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 mt-2">
+            Logic: Maya, Elena, Sara, Alex, Zara have 'a' → Friendly | Tom, Jin
+            don't have 'a' → Enemies
           </div>
         </div>
 
-        {/* Mobile Controls - Custom for Level6 with Interact button */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra interact functionality */}
-            <MobileControls
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
+        {/* Use the reusable MobileControls component with custom Interact button */}
+        <div className="w-full hidden md:block max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+          {/* Desktop Controls */}
+          <div className="hidden md:block">
+            <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
+              <strong>CONTROLS:</strong>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
+              <div>↑↓←→ Move</div>
+              <div>SPACE : Attack </div>
+              <div>E : Interact with Altar</div>
+            </div>
           </div>
         </div>
       </div>
