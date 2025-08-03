@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Phaser from "phaser";
 import { levels } from "../../assets/data/levels";
 import { CgGhostCharacter } from "react-icons/cg";
@@ -7,13 +7,20 @@ import { AiFillBug } from "react-icons/ai";
 const Level1 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+  });
 
   const [uiState, setUiState] = useState({
     health: 100,
     isQueryComplete: false,
   });
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -52,6 +59,94 @@ const Level1 = ({ onComplete }) => {
     // This is a workaround since direct React icon rendering in Phaser is complex
     return canvas;
   };
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  // Mobile controls setup effect
+  useEffect(() => {
+    const cleanupFunctions = [];
+
+    const setupButton = (ref, direction, isAttack = false) => {
+      const element = ref.current;
+      if (!element) return;
+
+      const onStart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isAttack) {
+          handleAttack();
+        } else {
+          handleMobileControlStart(direction);
+        }
+      };
+
+      const onEnd = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isAttack) {
+          handleMobileControlEnd(direction);
+        }
+      };
+
+      // Use only pointer events for better mobile support
+      element.addEventListener("pointerdown", onStart, { passive: false });
+      
+      if (!isAttack) {
+        element.addEventListener("pointerup", onEnd, { passive: false });
+        element.addEventListener("pointerleave", onEnd, { passive: false });
+        element.addEventListener("pointercancel", onEnd, { passive: false });
+      }
+
+      // Add to cleanup functions
+      cleanupFunctions.push(() => {
+        element.removeEventListener("pointerdown", onStart);
+        if (!isAttack) {
+          element.removeEventListener("pointerup", onEnd);
+          element.removeEventListener("pointerleave", onEnd);
+          element.removeEventListener("pointercancel", onEnd);
+        }
+      });
+    };
+
+    // Setup all buttons
+    setupButton(upBtnRef, "up");
+    setupButton(downBtnRef, "down");
+    setupButton(leftBtnRef, "left");
+    setupButton(rightBtnRef, "right");
+    setupButton(attackBtnRef, "attack", true);
+
+    // Cleanup function
+    return () => {
+      cleanupFunctions.forEach(cleanup => cleanup());
+    };
+  }, [handleMobileControlStart, handleMobileControlEnd, handleAttack]);
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
@@ -185,7 +280,6 @@ const Level1 = ({ onComplete }) => {
       playerGraphics.generateTexture("player", 32, 40);
       playerGraphics.destroy();
 
-      // ... rest of your enemy and other texture creation code remains the same ...
       // --- MODIFIED: Create Bug Enemies with Different Colors ---
       const enemyColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff]; // Red, Green, Blue, Yellow, Magenta
 
@@ -540,20 +634,21 @@ const Level1 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 200;
 
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
 
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
 
       if (
-        (Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) &&
+        (Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) &&
         gameState.canAttack
       ) {
         attack.call(this);
@@ -850,71 +945,9 @@ const Level1 = ({ onComplete }) => {
     return () => {
       gameInstance.current?.destroy(true);
     };
-  }, [onComplete]);
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
-  // Mobile control handlers (unchanged)
-  const handleMobileControlStart = (direction) => {
-    setMobileControls((prev) => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls((prev) => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls((prev) => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls((prev) => ({ ...prev, attack: false }));
-    }, 50);
-  };
-
-   useEffect(() => {
-    const setups = [
-      { ref: upBtnRef, start: () => handleMobileControlStart("up"), end: () => handleMobileControlEnd("up") },
-      { ref: downBtnRef, start: () => handleMobileControlStart("down"), end: () => handleMobileControlEnd("down") },
-      { ref: leftBtnRef, start: () => handleMobileControlStart("left"), end: () => handleMobileControlEnd("left") },
-      { ref: rightBtnRef, start: () => handleMobileControlStart("right"), end: () => handleMobileControlEnd("right") },
-      { ref: attackBtnRef, start: handleAttack, end: null }, // Attack doesn't have a separate end
-    ];
-
-    setups.forEach(({ ref, start, end }) => {
-      const element = ref.current;
-      if (!element) return;
-
-      const onTouchStart = (e) => {
-        e.preventDefault();
-        start();
-      };
-      element.addEventListener("touchstart", onTouchStart, { passive: false });
-
-      let onTouchEnd;
-      if (end) {
-        onTouchEnd = (e) => {
-          e.preventDefault();
-          end();
-        };
-        element.addEventListener("touchend", onTouchEnd, { passive: false });
-        element.addEventListener("touchcancel", onTouchEnd, { passive: false });
-      }
-
-      // Cleanup on unmount or re-run
-      return () => {
-        element.removeEventListener("touchstart", onTouchStart);
-        if (end) {
-          element.removeEventListener("touchend", onTouchEnd);
-          element.removeEventListener("touchcancel", onTouchEnd);
-        }
-      };
-    });
-  }, [handleMobileControlStart, handleMobileControlEnd, handleAttack]);
-
-     return (
+  return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the icons as reference in the UI */}
       <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
@@ -982,25 +1015,6 @@ const Level1 = ({ onComplete }) => {
                 <button
                   ref={upBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("up");
-                  }}
-                  onPointerUp={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("up");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("up");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("up");
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd("up")}
                   style={{ touchAction: "none" }}
                 >
                   ↑
@@ -1011,25 +1025,6 @@ const Level1 = ({ onComplete }) => {
                 <button
                   ref={leftBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("left");
-                  }}
-                  onPointerUp={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("left");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("left");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("left");
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd("left")}
                   style={{ touchAction: "none" }}
                 >
                   ←
@@ -1039,25 +1034,6 @@ const Level1 = ({ onComplete }) => {
                 <button
                   ref={rightBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("right");
-                  }}
-                  onPointerUp={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("right");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("right");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("right");
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd("right")}
                   style={{ touchAction: "none" }}
                 >
                   →
@@ -1068,25 +1044,6 @@ const Level1 = ({ onComplete }) => {
                 <button
                   ref={downBtnRef}
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("down");
-                  }}
-                  onPointerUp={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("down");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("down");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("down");
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd("down")}
                   style={{ touchAction: "none" }}
                 >
                   ↓
@@ -1099,15 +1056,6 @@ const Level1 = ({ onComplete }) => {
             <button
               ref={attackBtnRef}
               className="bg-red-600 hover:bg-red-500 active:bg-red-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleAttack();
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleAttack();
-              }}
               style={{ touchAction: "none" }}
             >
               ATTACK
@@ -1132,6 +1080,5 @@ const Level1 = ({ onComplete }) => {
     </div>
   );
 };
-
 
 export default Level1;
