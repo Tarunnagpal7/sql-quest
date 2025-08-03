@@ -28,7 +28,8 @@ const Level4 = ({ onComplete }) => {
   const [querySuccess, setQuerySuccess] = useState(false);
 
   // Mobile controls state
-  const [mobileControls, setMobileControls] = useState({
+  // Mobile controls ref
+  const mobileControlsRef = useRef({
     up: false,
     down: false,
     left: false,
@@ -36,6 +37,36 @@ const Level4 = ({ onComplete }) => {
     attack: false,
     build: false,
   });
+
+  const resetAllMobileControls = () => {
+    mobileControlsRef.current = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      attack: false,
+      build: false,
+    };
+  };
+
+  useEffect(() => {
+    const handleGlobalTouchEnd = () => {
+      // Reset all controls when touch ends anywhere
+      resetAllMobileControls();
+    };
+
+    document.addEventListener("touchend", handleGlobalTouchEnd, {
+      passive: true,
+    });
+    document.addEventListener("touchcancel", handleGlobalTouchEnd, {
+      passive: true,
+    });
+
+    return () => {
+      document.removeEventListener("touchend", handleGlobalTouchEnd);
+      document.removeEventListener("touchcancel", handleGlobalTouchEnd);
+    };
+  }, []);
 
   // Expected correct queries
   const correctQueries = [
@@ -109,6 +140,8 @@ const Level4 = ({ onComplete }) => {
     };
 
     let sceneRef;
+    // Make mobile controls accessible to Phaser
+    const getMobileControls = () => mobileControlsRef.current;
 
     function preload() {
       sceneRef = this;
@@ -710,30 +743,43 @@ const Level4 = ({ onComplete }) => {
     function update() {
       if (gameState.isLevelComplete || gameState.gameOverTriggered) return;
 
+      const currentMobileControls = getMobileControls();
+      const activeControls = Object.values(currentMobileControls).filter(
+        Boolean
+      ).length;
+      if (activeControls > 2) {
+        // Too many controls active, likely stuck - reset all
+        Object.keys(mobileControlsRef.current).forEach((key) => {
+          if (key !== "attack") mobileControlsRef.current[key] = false;
+        });
+      }
+
       player.setVelocity(0);
       const speed = 200; // Slightly faster movement
 
-      if (cursors.left.isDown || mobileControls.left) {
+      if (cursors.left.isDown || currentMobileControls.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || currentMobileControls.right) {
         player.setVelocityX(speed);
       }
 
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || currentMobileControls.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || currentMobileControls.down) {
         player.setVelocityY(speed);
       }
 
       if (
-        (Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) &&
+        (Phaser.Input.Keyboard.JustDown(spaceKey) ||
+          currentMobileControls.attack) &&
         gameState.canAttack
       ) {
         attack.call(this);
       }
 
       if (
-        (Phaser.Input.Keyboard.JustDown(buildKey) || mobileControls.build) &&
+        (Phaser.Input.Keyboard.JustDown(buildKey) ||
+          currentMobileControls.build) &&
         gameState.canBuild
       ) {
         buildRaft.call(this);
@@ -1258,31 +1304,31 @@ const Level4 = ({ onComplete }) => {
 
   // Mobile control handlers
   const handleMobileControlStart = (direction) => {
-    setMobileControls((prev) => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
+    mobileControlsRef.current[direction] = true;
   };
 
   const handleMobileControlEnd = (direction) => {
-    setMobileControls((prev) => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
+    mobileControlsRef.current[direction] = false;
+    // Add a small delay to ensure state is properly reset
+    setTimeout(() => {
+      if (!mobileControlsRef.current[direction]) {
+        mobileControlsRef.current[direction] = false;
+      }
+    }, 50);
   };
 
   const handleAttack = () => {
-    setMobileControls((prev) => ({ ...prev, attack: true }));
+    mobileControlsRef.current.attack = true;
     setTimeout(() => {
-      setMobileControls((prev) => ({ ...prev, attack: false }));
-    }, 50);
+      mobileControlsRef.current.attack = false;
+    }, 100);
   };
 
   const handleBuild = () => {
-    setMobileControls((prev) => ({ ...prev, build: true }));
+    mobileControlsRef.current.build = true;
     setTimeout(() => {
-      setMobileControls((prev) => ({ ...prev, build: false }));
-    }, 50);
+      mobileControlsRef.current.build = false;
+    }, 100);
   };
 
   return (
@@ -1434,25 +1480,16 @@ const Level4 = ({ onComplete }) => {
                 <div></div>
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("up");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("up");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("up");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("up");
-                  }}
+                  onTouchStart={() => handleMobileControlStart("up")}
+                  onTouchEnd={() => handleMobileControlEnd("up")}
+                  onMouseDown={() => handleMobileControlStart("up")}
+                  onMouseUp={() => handleMobileControlEnd("up")}
                   onMouseLeave={() => handleMobileControlEnd("up")}
+                  onTouchCancel={
+                    () => handleMobileControlEnd("up") // replace "right" with appropriate direction
+                  }
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
                   style={{ touchAction: "none" }}
                 >
                   ↑
@@ -1461,25 +1498,16 @@ const Level4 = ({ onComplete }) => {
 
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("left");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("left");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("left");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("left");
-                  }}
+                  onTouchStart={() => handleMobileControlStart("left")}
+                  onTouchEnd={() => handleMobileControlEnd("left")}
+                  onMouseDown={() => handleMobileControlStart("left")}
+                  onMouseUp={() => handleMobileControlEnd("left")}
                   onMouseLeave={() => handleMobileControlEnd("left")}
+                  onTouchCancel={
+                    () => handleMobileControlEnd("left") // replace "right" with appropriate direction
+                  }
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
                   style={{ touchAction: "none" }}
                 >
                   ←
@@ -1487,25 +1515,16 @@ const Level4 = ({ onComplete }) => {
                 <div className="bg-slate-700 rounded"></div>
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("right");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("right");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("right");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("right");
-                  }}
+                  onTouchStart={() => handleMobileControlStart("right")}
+                  onTouchEnd={() => handleMobileControlEnd("right")}
+                  onMouseDown={() => handleMobileControlStart("right")}
+                  onMouseUp={() => handleMobileControlEnd("right")}
                   onMouseLeave={() => handleMobileControlEnd("right")}
+                  onTouchCancel={
+                    () => handleMobileControlEnd("right") // replace "right" with appropriate direction
+                  }
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
                   style={{ touchAction: "none" }}
                 >
                   →
@@ -1514,25 +1533,16 @@ const Level4 = ({ onComplete }) => {
                 <div></div>
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlStart("down");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileControlEnd("down");
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart("down");
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd("down");
-                  }}
+                  onTouchStart={() => handleMobileControlStart("down")}
+                  onTouchEnd={() => handleMobileControlEnd("down")}
+                  onMouseDown={() => handleMobileControlStart("down")}
+                  onMouseUp={() => handleMobileControlEnd("down")}
                   onMouseLeave={() => handleMobileControlEnd("down")}
+                  onTouchCancel={
+                    () => handleMobileControlEnd("down") // replace "right" with appropriate direction
+                  }
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
                   style={{ touchAction: "none" }}
                 >
                   ↓
@@ -1544,15 +1554,8 @@ const Level4 = ({ onComplete }) => {
             <div className="flex gap-4">
               <button
                 className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAttack();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
+                onTouchStart={() => handleAttack()}
+                onMouseDown={() => handleAttack()}
                 style={{ touchAction: "none" }}
               >
                 MAGIC

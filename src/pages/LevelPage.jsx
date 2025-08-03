@@ -17,7 +17,7 @@ import Level9 from "../components/levels/Level9";
 import Level10 from "../components/levels/Level10";
 
 // Enhanced Header Component with better styling
-const LevelHeader = ({ levelId, lives, onSkip, onBack }) => {
+const LevelHeader = ({  lives, onSkip, onBack }) => {
   const canSkip = lives > 0;
   return (
     <header className="fixed top-0 left-0 right-0 z-50 ">
@@ -34,6 +34,7 @@ const LevelHeader = ({ levelId, lives, onSkip, onBack }) => {
         </button>
 
         {/* Skip Button - Enhanced */}
+        {lives != 0 ?
         <button
           onClick={onSkip}
           disabled={!canSkip}
@@ -42,6 +43,17 @@ const LevelHeader = ({ levelId, lives, onSkip, onBack }) => {
           <span className="font-bold">Skip</span>
           <span className="text-rose-300 hidden sm:inline">(-1💖)</span>
         </button>
+        :
+
+        <div 
+          className="group pixel-font text-cyan-300 hover:text-white transition-all duration-300 text-sm sm:text-base flex items-center gap-1 sm:gap-2 bg-slate-800/50 hover:bg-slate-700/70 px-3 py-2 rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg hover:shadow-cyan-400/20 backdrop-blur-sm"
+          >
+             <span className="font-bold">💀 Out of Skip</span>
+
+        </div>
+
+        
+      }
       </div>
     </header>
   );
@@ -66,7 +78,7 @@ function LevelPage() {
   };
 
   const handleSkip = () => {
-    if (lives <= 0 || !levelData) return;
+    if (lives < 0 || !levelData) return;
     const nextLevelId = levelData.id + 1;
     if (nextLevelId > levels.length) {
       handleCompleteLevel();
@@ -166,7 +178,7 @@ function LevelPage() {
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src="/jungle_map_bg.png"
+          src="/mapbg.png"
           alt="Background"
           className="w-full h-full object-cover opacity-80"
         />
@@ -187,7 +199,6 @@ function LevelPage() {
       </div>
 
       <LevelHeader
-        levelId={levelData.id}
         lives={lives}
         onSkip={handleSkip}
         onBack={() => navigate("/map")}
@@ -228,7 +239,7 @@ function LevelPage() {
                 {/* Quest Header */}
                 <div className="flex items-center justify-center gap-2 mb-4">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                  <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text font-bold">
+                  <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 to-blue-300  bg-clip-text font-bold">
                     ⚡ Your Quest ⚡
                   </h2>
                   <div

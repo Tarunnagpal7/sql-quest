@@ -61,15 +61,8 @@ button {
 button:hover {
   border-color: #646cff;
   color : #fff;
-  transition : transform 0.3s ease;
 }
-button:hover {
-  transform: translateY(-10px); /* Shift the element up by 20px on hover */
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+
 
 @media (prefers-color-scheme: light) {
   :root {
