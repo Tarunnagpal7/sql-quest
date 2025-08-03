@@ -243,7 +243,7 @@ const MapMainView = () => {
                       i < remainingLives ? "text-red-400" : "text-gray-600"
                     }`}
                   >
-                    ❤️
+                     {i < remainingLives ?  "❤️" : "🖤" }
                   </div>
                 ))}
               </div>

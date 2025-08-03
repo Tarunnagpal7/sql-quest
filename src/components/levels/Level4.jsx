@@ -977,7 +977,7 @@ const Level4 = ({ onComplete }) => {
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      <div className="flex  items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
             <span className="text-xs text-yellow-300">🧙</span>
@@ -1052,38 +1052,6 @@ const Level4 = ({ onComplete }) => {
           </div>
         </div>
       )}
-
-      <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
-        <div className="font-mono text-lg">
-          {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Query Completed Successfully!
-            </span>
-          ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-              Find explorers with artifacts to help build the raft
-            </span>
-          )}
-        </div>
-        <div className="text-bold text-slate-500 mt-2">
-          Collect all artifacts, and list from jungle_explorers where artifact_found TRUE
-        </div>
-      </div>
-
-      {/* Use the reusable MobileControls component with custom buttons */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-        
-        {/* Desktop Controls */}
-        <div className="hidden md:block">
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE : Attack</div>
-            <div>B : Build Raft</div>
-          </div>
-        </div>
-
         {/* Mobile Controls - Custom for Level4 with Build button */}
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
@@ -1112,6 +1080,38 @@ const Level4 = ({ onComplete }) => {
             </button>
           </div>
         </div>
+
+      <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
+        <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
+        <div className="font-mono text-lg">
+          {uiState.isQueryComplete ? (
+            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
+              Query Completed Successfully!
+            </span>
+          ) : (
+            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
+              Find explorers with artifacts to help build the raft
+            </span>
+          )}
+        </div>
+        <div className="text-bold text-slate-500 mt-2">
+          Collect all artifacts, and list from jungle_explorers where artifact_found TRUE
+        </div>
+      </div>
+
+      {/* Use the reusable MobileControls component with custom buttons */}
+        
+        {/* Desktop Controls */}
+      <div className="w-full max-w-3xl p-3 hidden  md:block bg-slate-800/50 rounded-lg border border-slate-600">
+        <div className="hidden md:block">
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
+          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
+            <div>↑↓←→ Move</div>
+            <div>SPACE : Attack</div>
+            <div>B : Build Raft</div>
+          </div>
+        </div>
+
       </div>
 
       <style jsx>{`

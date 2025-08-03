@@ -1083,7 +1083,7 @@ const Level5 = ({ onComplete }) => {
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
             <GiSailboat size={12} color="white" />
@@ -1158,6 +1158,28 @@ const Level5 = ({ onComplete }) => {
           </div>
         </div>
       )}
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            {/* Use the MobileControls component but add extra fish functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+            {/* Extra Fish Button for Level5 - positioned separately */}
+            <button
+              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                handleFish();
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              FISH
+            </button>
+          </div>
+        </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
@@ -1182,7 +1204,7 @@ const Level5 = ({ onComplete }) => {
       </div>
 
       {/* Use the reusable MobileControls component with custom Fishing button */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+      <div className="w-full hidden md:block max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
         
         {/* Desktop Controls */}
         <div className="hidden md:block">
@@ -1195,28 +1217,6 @@ const Level5 = ({ onComplete }) => {
         </div>
 
         {/* Mobile Controls - Custom for Level5 with Fish button */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra fish functionality */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-            {/* Extra Fish Button for Level5 - positioned separately */}
-            <button
-              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-              onPointerDown={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                handleFish();
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              FISH
-            </button>
-          </div>
-        </div>
       </div>
 
       <style jsx>{`

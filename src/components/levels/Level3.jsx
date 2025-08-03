@@ -1132,11 +1132,11 @@ const Level3 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Use the reusable MobileControls component */}
-      <MobileControls 
-        mobileControlsRef={mobileControlsRef}
-        setMobileControls={setMobileControls}
-      />
+              {/* Use the reusable MobileControls component */}
+              <MobileControls 
+                mobileControlsRef={mobileControlsRef}
+                setMobileControls={setMobileControls}
+              />
 
       <style jsx>{`
         .pixel-font {

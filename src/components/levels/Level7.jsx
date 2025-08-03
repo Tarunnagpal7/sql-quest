@@ -1224,7 +1224,7 @@ const Level7 = ({ onComplete }) => {
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-gradient-to-b from-red-600 to-red-800 rounded-full flex items-center justify-center">
             <span className="text-xs text-yellow-300">🧙</span>
@@ -1316,6 +1316,29 @@ const Level7 = ({ onComplete }) => {
           </div>
         </div>
       )}
+        {/* Mobile Controls - Custom for Level7 with Evacuate button */}
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            {/* Use the MobileControls component but add extra evacuate functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+            {/* Extra Evacuate Button for Level7 - positioned separately */}
+            <button
+              className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                handleInteract();
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              Evacuate
+            </button>
+          </div>
+        </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">Advanced SQL Challenge - JOIN Tables:</div>
@@ -1336,7 +1359,7 @@ const Level7 = ({ onComplete }) => {
       </div>
 
       {/* Use the reusable MobileControls component with custom Evacuate button */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+      <div className="w-full hidden md:block max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
         
         {/* Desktop Controls */}
         <div className="hidden md:block">
@@ -1348,29 +1371,6 @@ const Level7 = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* Mobile Controls - Custom for Level7 with Evacuate button */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra evacuate functionality */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-            {/* Extra Evacuate Button for Level7 - positioned separately */}
-            <button
-              className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-              onPointerDown={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                handleInteract();
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              EVAC
-            </button>
-          </div>
-        </div>
       </div>
 
       <style jsx>{`

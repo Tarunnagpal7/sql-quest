@@ -909,7 +909,7 @@ const Level9 = ({ onComplete }) => {
   return (
     <div className="w-full flex flex-col items-center gap-2 sm:gap-4 text-white px-2 sm:px-4">
       {/* Battle HUD - Responsive layout */}
-      <div className={`flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-400 mb-2 ${isMobile ? 'flex-wrap justify-center' : ''}`}>
+      <div className={`flex items-center justify-center flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-slate-400 mb-2 ${isMobile ? 'flex-wrap justify-center' : ''}`}>
         <div className="flex items-center gap-1 sm:gap-2">
           <GiMagicSwirl size={isMobile ? 16 : 20} color="#2196f3" />
           <span className="whitespace-nowrap">Your Wizard</span>

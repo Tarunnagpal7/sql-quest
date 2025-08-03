@@ -1218,7 +1218,7 @@ const Level6 = ({ onComplete }) => {
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-gradient-to-b from-purple-600 to-purple-800 rounded-full flex items-center justify-center">
             <span className="text-xs text-yellow-300">🧙</span>
@@ -1299,6 +1299,16 @@ const Level6 = ({ onComplete }) => {
           </div>
         </div>
       )}
+        {/* Mobile Controls - Custom for Level6 with Interact button */}
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            {/* Use the MobileControls component but add extra interact functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+          </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
@@ -1323,7 +1333,7 @@ const Level6 = ({ onComplete }) => {
       </div>
 
       {/* Use the reusable MobileControls component with custom Interact button */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+      <div className="w-full hidden md:block max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
         
         {/* Desktop Controls */}
         <div className="hidden md:block">
@@ -1335,16 +1345,6 @@ const Level6 = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* Mobile Controls - Custom for Level6 with Interact button */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra interact functionality */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-          </div>
         </div>
       </div>
 
