@@ -1,12 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiFishing, GiMonkey, GiSeaSerpent , GiSailboat } from "react-icons/gi";
-
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level5 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+    fish: false // Added fish control
+  });
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -27,7 +35,7 @@ const Level5 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -44,6 +52,45 @@ const Level5 = ({ onComplete }) => {
     'SELECT * FROM jungle_explorers ORDER BY courage_level DESC LIMIT 1',
     'select * from jungle_explorers order by courage_level desc limit 1'
   ];
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  const handleFish = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.fish = true;
+    setMobileControls((prev) => ({ ...prev, fish: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.fish = false;
+      setMobileControls((prev) => ({ ...prev, fish: false }));
+    }, 50);
+  }, []);
 
   const handleQuerySubmit = () => {
     const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -214,46 +261,45 @@ const Level5 = ({ onComplete }) => {
       });
       
       // --- Create Dangerous Sharks ---
-const sharkTypes = ['tiger_shark', 'bull_shark', 'great_white'];
-const sharkColors = [0x2f4f4f, 0x708090, 0xdcdcdc];
+      const sharkTypes = ['tiger_shark', 'bull_shark', 'great_white'];
+      const sharkColors = [0x2f4f4f, 0x708090, 0xdcdcdc];
 
-sharkTypes.forEach((type, index) => {
-  const sharkGraphics = this.add.graphics();
-  const color = sharkColors[index];
-  
-  // Shark body
-  sharkGraphics.fillStyle(color, 1);
-  sharkGraphics.fillEllipse(25, 20, 40, 16);
-  
-  // Shark head
-  sharkGraphics.fillTriangle(45, 20, 55, 15, 55, 25);
-  
-  // Shark fins
-  sharkGraphics.fillTriangle(25, 12, 20, 5, 30, 8);  // Top fin
-  sharkGraphics.fillTriangle(10, 25, 5, 30, 15, 28); // Side fin
-  sharkGraphics.fillTriangle(5, 20, 0, 15, 0, 25);   // Tail
-  
-  // Shark teeth - FIXED LINES
-  sharkGraphics.fillStyle(0xffffff, 1);
-  for (let i = 0; i < 5; i++) {
-    const x = 48 + (i * 2);
-    sharkGraphics.fillTriangle(x, 18, x + 1, 16, x + 2, 18); // ✅ Fixed
-    sharkGraphics.fillTriangle(x, 22, x + 1, 24, x + 2, 22); // ✅ Fixed
-  }
-  
-  // Menacing eyes
-  sharkGraphics.fillStyle(0xff0000, 1);
-  sharkGraphics.fillCircle(40, 17, 3);
-  sharkGraphics.fillCircle(40, 23, 3);
-  
-  // Danger aura
-  sharkGraphics.fillStyle(0xff4444, 0.3);
-  sharkGraphics.fillCircle(25, 20, 35);
-  
-  sharkGraphics.generateTexture(type, 60, 40);
-  sharkGraphics.destroy();
-});
-
+      sharkTypes.forEach((type, index) => {
+        const sharkGraphics = this.add.graphics();
+        const color = sharkColors[index];
+        
+        // Shark body
+        sharkGraphics.fillStyle(color, 1);
+        sharkGraphics.fillEllipse(25, 20, 40, 16);
+        
+        // Shark head
+        sharkGraphics.fillTriangle(45, 20, 55, 15, 55, 25);
+        
+        // Shark fins
+        sharkGraphics.fillTriangle(25, 12, 20, 5, 30, 8);  // Top fin
+        sharkGraphics.fillTriangle(10, 25, 5, 30, 15, 28); // Side fin
+        sharkGraphics.fillTriangle(5, 20, 0, 15, 0, 25);   // Tail
+        
+        // Shark teeth - FIXED LINES
+        sharkGraphics.fillStyle(0xffffff, 1);
+        for (let i = 0; i < 5; i++) {
+          const x = 48 + (i * 2);
+          sharkGraphics.fillTriangle(x, 18, x + 1, 16, x + 2, 18); // ✅ Fixed
+          sharkGraphics.fillTriangle(x, 22, x + 1, 24, x + 2, 22); // ✅ Fixed
+        }
+        
+        // Menacing eyes
+        sharkGraphics.fillStyle(0xff0000, 1);
+        sharkGraphics.fillCircle(40, 17, 3);
+        sharkGraphics.fillCircle(40, 23, 3);
+        
+        // Danger aura
+        sharkGraphics.fillStyle(0xff4444, 0.3);
+        sharkGraphics.fillCircle(25, 20, 35);
+        
+        sharkGraphics.generateTexture(type, 60, 40);
+        sharkGraphics.destroy();
+      });
       
       // --- Create Sacred Monkey Trapped in Stone ---
       const monkeyGraphics = this.add.graphics();
@@ -565,57 +611,55 @@ sharkTypes.forEach((type, index) => {
       });
     }
     
-   
-    
     function createCourageDisplay() {
-  // Create courage meter at top of screen
-  const courageText = sceneRef.add.text(20, 20, 'Courage Level:', {
-    fontSize: '16px',
-    fontFamily: 'Courier New',
-    color: '#ffffff',
-    backgroundColor: '#000000',
-    padding: { x: 8, y: 4 }
-  });
-  
-  const courageBar = sceneRef.add.graphics();
-  courageBar.x = 20;
-  courageBar.y = 50;
-  sceneRef.courageBar = courageBar;
-  
-  // Create separate text object for courage numbers
-  const courageValueText = sceneRef.add.text(120, 60, '', {
-    fontSize: '12px',
-    fontFamily: 'Courier New',
-    color: '#ffffff',
-    fontStyle: 'bold'
-  }).setOrigin(0.5);
-  sceneRef.courageValueText = courageValueText;
-  
-  updateCourageBar();
-}
+      // Create courage meter at top of screen
+      const courageText = sceneRef.add.text(20, 20, 'Courage Level:', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+        padding: { x: 8, y: 4 }
+      });
+      
+      const courageBar = sceneRef.add.graphics();
+      courageBar.x = 20;
+      courageBar.y = 50;
+      sceneRef.courageBar = courageBar;
+      
+      // Create separate text object for courage numbers
+      const courageValueText = sceneRef.add.text(120, 60, '', {
+        fontSize: '12px',
+        fontFamily: 'Courier New',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      sceneRef.courageValueText = courageValueText;
+      
+      updateCourageBar();
+    }
 
-function updateCourageBar() {
-  if (!sceneRef.courageBar) return;
-  
-  sceneRef.courageBar.clear();
-  
-  // Background
-  sceneRef.courageBar.fillStyle(0x333333, 1);
-  sceneRef.courageBar.fillRect(0, 0, 200, 20);
-  
-  // Courage fill
-  const couragePercent = gameState.courageLevel / gameState.maxCourage;
-  const fillWidth = 196 * couragePercent;
-  const color = couragePercent >= 0.8 ? 0x00ff00 : couragePercent >= 0.5 ? 0xffff00 : 0xff4444;
-  
-  sceneRef.courageBar.fillStyle(color, 1);
-  sceneRef.courageBar.fillRect(2, 2, fillWidth, 16);
-  
-  // ✅ Update the separate text object instead
-  if (sceneRef.courageValueText) {
-    sceneRef.courageValueText.setText(`${gameState.courageLevel}/${gameState.maxCourage}`);
-  }
-}
+    function updateCourageBar() {
+      if (!sceneRef.courageBar) return;
+      
+      sceneRef.courageBar.clear();
+      
+      // Background
+      sceneRef.courageBar.fillStyle(0x333333, 1);
+      sceneRef.courageBar.fillRect(0, 0, 200, 20);
+      
+      // Courage fill
+      const couragePercent = gameState.courageLevel / gameState.maxCourage;
+      const fillWidth = 196 * couragePercent;
+      const color = couragePercent >= 0.8 ? 0x00ff00 : couragePercent >= 0.5 ? 0xffff00 : 0xff4444;
+      
+      sceneRef.courageBar.fillStyle(color, 1);
+      sceneRef.courageBar.fillRect(2, 2, fillWidth, 16);
+      
+      // ✅ Update the separate text object instead
+      if (sceneRef.courageValueText) {
+        sceneRef.courageValueText.setText(`${gameState.courageLevel}/${gameState.maxCourage}`);
+      }
+    }
 
     function update() {
       if (gameState.isLevelComplete) return;
@@ -626,27 +670,28 @@ function updateCourageBar() {
       
       const speed = 160;
       
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
         raft.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
         raft.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
         raft.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
         raft.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
         attack.call(this);
       }
       
-      if ((Phaser.Input.Keyboard.JustDown(fishKey) || mobileControls.fish) && gameState.canFish) {
+      if ((Phaser.Input.Keyboard.JustDown(fishKey) || mobileControlsRef.current.fish) && gameState.canFish) {
         tryFishing.call(this);
       }
 
@@ -955,7 +1000,7 @@ function updateCourageBar() {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 350, 'The Sacred Monkey is free! Click to return to map', {
-        fontSize: '16px',
+        fontSize: '28px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1033,36 +1078,7 @@ function updateCourageBar() {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
-
-  // Mobile control handlers
-  const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
-    }, 50);
-  };
-
-  const handleFish = () => {
-    setMobileControls(prev => ({ ...prev, fish: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, fish: false }));
-    }, 50);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -1165,168 +1181,40 @@ function updateCourageBar() {
         </div>
       </div>
 
-      {/* Controls section */}
+      {/* Use the reusable MobileControls component with custom Fishing button */}
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
         
         {/* Desktop Controls */}
         <div className="hidden md:block">
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
           <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
             <div>↑↓←→ Navigate Raft</div>
-            <div>SPACE Magic Attack</div>
-            <div>F Fishing</div>
+            <div>SPACE : Attack</div>
+            <div>F : Fishing</div>
           </div>
         </div>
 
-        {/* Mobile Controls */}
+        {/* Mobile Controls - Custom for Level5 with Fish button */}
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('up'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('up'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('up');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('up');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↑
-                </button>
-                <div></div>
-                
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('left'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('left'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('left');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('left');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('right'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('right'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('right');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('right');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
-                >
-                  →
-                </button>
-                
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('down'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('down'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('down');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('down');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleAttack(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                MAGIC
-              </button>
-              
-              <button
-                className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleFish(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleFish();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                FISH
-              </button>
-            </div>
+            {/* Use the MobileControls component but add extra fish functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+            {/* Extra Fish Button for Level5 - positioned separately */}
+            <button
+              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                handleFish();
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              FISH
+            </button>
           </div>
         </div>
       </div>
@@ -1335,13 +1223,6 @@ function updateCourageBar() {
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-        }
-        
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

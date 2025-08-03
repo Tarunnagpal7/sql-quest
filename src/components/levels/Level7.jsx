@@ -1,12 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiCrossedSwords, GiVolcano } from "react-icons/gi";
 import { FaExclamationTriangle } from "react-icons/fa";
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level7 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+    interact: false // Added interact control
+  });
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -27,7 +36,7 @@ const Level7 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -36,6 +45,45 @@ const Level7 = ({ onComplete }) => {
     attack: false,
     interact: false
   });
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  const handleInteract = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.interact = true;
+    setMobileControls((prev) => ({ ...prev, interact: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.interact = false;
+      setMobileControls((prev) => ({ ...prev, interact: false }));
+    }, 50);
+  }, []);
 
   // Expected correct queries
   const correctQueries = [
@@ -318,7 +366,7 @@ const Level7 = ({ onComplete }) => {
       
       evacuationGraphics.generateTexture('evacuation_zone', 80, 80);
       evacuationGraphics.destroy();
-      
+
       // Create volcanic environment
       this.add.graphics().fillStyle(0x8b0000).fillRect(0, 0, 800, 500).generateTexture('volcanic_background', 800, 500);
       this.add.graphics().fillStyle(0x2f2f2f).fillRect(0, 0, 40, 40).generateTexture('volcanic_wall', 40, 40);
@@ -768,23 +816,24 @@ const Level7 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 180;
       
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
         attack.call(this);
       }
       
-      if ((Phaser.Input.Keyboard.JustDown(interactKey) || mobileControls.interact) && gameState.canInteract) {
+      if ((Phaser.Input.Keyboard.JustDown(interactKey) || mobileControlsRef.current.interact) && gameState.canInteract) {
         // Check if near evacuation zone
         const distanceToEvacuation = Phaser.Math.Distance.Between(player.x, player.y, evacuationZone.x, evacuationZone.y);
         if (distanceToEvacuation <= 80) {
@@ -1122,7 +1171,7 @@ const Level7 = ({ onComplete }) => {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 420, 'The evacuation route is secure! Click to return to map', {
-        fontSize: '16px',
+        fontSize: '22px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1170,36 +1219,7 @@ const Level7 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
-
-  // Mobile control handlers
-  const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
-    }, 50);
-  };
-
-  const handleInteract = () => {
-    setMobileControls(prev => ({ ...prev, interact: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, interact: false }));
-    }, 50);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -1315,168 +1335,40 @@ const Level7 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Controls section */}
+      {/* Use the reusable MobileControls component with custom Evacuate button */}
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
         
         {/* Desktop Controls */}
         <div className="hidden md:block">
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
           <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
             <div>↑↓←→ Move</div>
-            <div>SPACE Fire Magic</div>
-            <div>E Evacuate</div>
+            <div>SPACE: Attack</div>
+            <div>E : Evacuate</div>
           </div>
         </div>
 
-        {/* Mobile Controls */}
+        {/* Mobile Controls - Custom for Level7 with Evacuate button */}
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('up'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('up'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('up');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('up');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↑
-                </button>
-                <div></div>
-                
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('left'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('left'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('left');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('left');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('right'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('right'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('right');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('right');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
-                >
-                  →
-                </button>
-                
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('down'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('down'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('down');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('down');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-red-600 hover:bg-red-500 active:bg-red-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleAttack(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                FIRE
-              </button>
-              
-              <button
-                className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleInteract(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleInteract();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                EVAC
-              </button>
-            </div>
+            {/* Use the MobileControls component but add extra evacuate functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+            {/* Extra Evacuate Button for Level7 - positioned separately */}
+            <button
+              className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                handleInteract();
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              EVAC
+            </button>
           </div>
         </div>
       </div>
@@ -1485,13 +1377,6 @@ const Level7 = ({ onComplete }) => {
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-        }
-        
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

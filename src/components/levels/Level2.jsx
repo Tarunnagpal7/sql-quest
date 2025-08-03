@@ -3,10 +3,18 @@ import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { AiFillBug } from "react-icons/ai";
 import { GiDragonHead, GiTreasureMap } from "react-icons/gi";
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level2 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+  });
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -17,7 +25,7 @@ const Level2 = ({ onComplete }) => {
     courageThreshold: 80
   });
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -166,7 +174,6 @@ const Level2 = ({ onComplete }) => {
         // Explorer eyes
         explorerGraphics.fillStyle(0x000000, 1);
         explorerGraphics.fillCircle(13, 14, 1);
-        
         explorerGraphics.fillCircle(19, 14, 1);
         
         // Courage indicator (glowing aura)
@@ -389,19 +396,20 @@ const Level2 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 180;
       
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
         attack.call(this);
       }
 
@@ -622,7 +630,7 @@ const Level2 = ({ onComplete }) => {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 320, 'Click to return to map', {
-        fontSize: '16px',
+        fontSize: '32px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -704,29 +712,7 @@ const Level2 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
-
-  // Mobile control handlers (same as Level 1)
-  const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
-    }, 50);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -783,164 +769,16 @@ const Level2 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Controls section - same as Level 1 */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-        
-        {/* Desktop Controls */}
-        <div className="hidden md:block">
-          <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE Magic Attack</div>
-          </div>
-        </div>
-
-        {/* Mobile Controls */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('up'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('up'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('up');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('up');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↑
-                </button>
-                <div></div>
-                
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('left'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('left'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('left');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('left');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('right'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('right'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('right');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('right');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
-                >
-                  →
-                </button>
-                
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('down'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('down'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('down');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('down');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <button
-              className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-              onTouchStart={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                handleAttack(); 
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleAttack();
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              MAGIC
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Use the reusable MobileControls component */}
+      <MobileControls 
+        mobileControlsRef={mobileControlsRef}
+        setMobileControls={setMobileControls}
+      />
 
       <style jsx>{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-        }
-        
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

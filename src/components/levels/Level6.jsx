@@ -1,12 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiCrystalBall, GiTreasureMap, GiCampfire, GiCrystalCluster } from "react-icons/gi";
 import { FaUsers } from "react-icons/fa";
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level6 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+  });
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -27,7 +35,7 @@ const Level6 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -45,6 +53,45 @@ const Level6 = ({ onComplete }) => {
     "select name, skill from jungle_explorers where name like '%a%' and skill in ('magic', 'healing')",
     "select name, skill from jungle_explorers where name = '%a%' and skill in ('magic' , 'healing')"
   ];
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  const handleInteract = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.interact = true;
+    setMobileControls((prev) => ({ ...prev, interact: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.interact = false;
+      setMobileControls((prev) => ({ ...prev, interact: false }));
+    }, 50);
+  }, []);
 
   const handleQuerySubmit = () => {
     const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -676,23 +723,24 @@ const Level6 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 180;
       
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
         attack.call(this);
       }
       
-      if ((Phaser.Input.Keyboard.JustDown(interactKey) || mobileControls.interact) && gameState.canInteract) {
+      if ((Phaser.Input.Keyboard.JustDown(interactKey) || mobileControlsRef.current.interact) && gameState.canInteract) {
         // Check if near altar
         const distanceToAltar = Phaser.Math.Distance.Between(player.x, player.y, crystalAltar.x, crystalAltar.y);
         if (distanceToAltar <= 80) {
@@ -1077,63 +1125,15 @@ const Level6 = ({ onComplete }) => {
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText = sceneRef.add.text(400, 120, 'Query Executed Successfully:', {
+      const queryText = sceneRef.add.text(400, 120, 'Query Executed Successfully', {
         fontSize: '16px',
         fontFamily: 'Courier New',
         color: '#00ffff'
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText2 = sceneRef.add.text(400, 140, "SELECT name, skill FROM jungle_explorers WHERE name LIKE '%a%' AND skill IN ('magic', 'healing');", {
-        fontSize: '11px',
-        fontFamily: 'Courier New',
-        color: '#00ffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      // Show matching results
-      const resultText = sceneRef.add.text(400, 170, 'Matching Explorers Found (names with "a" AND magic/healing):', {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#ffff00'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const matchingExplorers = gameState.explorerData.filter(e => e.isMatch);
-      let resultsList = '';
-      matchingExplorers.forEach(explorer => {
-        resultsList += `${explorer.name} - ${explorer.skill}\n`;
-      });
-      
-      const explorerResults = sceneRef.add.text(400, 210, resultsList, {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#90ee90',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      // Show logic explanation
-      const logicText = sceneRef.add.text(400, 270, 'Names WITHOUT "a" were hostile enemies:', {
-        fontSize: '12px',
-        fontFamily: 'Courier New',
-        color: '#ff8888'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const hostileList = gameState.explorerData.filter(e => e.hostile).map(e => e.name).join(', ');
-      const hostileText = sceneRef.add.text(400, 290, hostileList, {
-        fontSize: '12px',
-        fontFamily: 'Courier New',
-        color: '#ff4444',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const statsText = sceneRef.add.text(400, 330, `🔮 Fragments Collected: ${gameState.fragmentsCollected}/${gameState.totalFragments}\n✨ Crystal Power: ${gameState.crystalPower}%\n🎯 Perfect Matches: ${gameState.correctExplorers}/4\n⚔️ Enemies Defeated: ${gameState.enemiesDefeated}/${gameState.totalEnemies}`, {
-        fontSize: '13px',
-        fontFamily: 'Courier New',
-        color: '#ffff00',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 420, 'The ancient memories are restored! Click to return to map', {
-        fontSize: '16px',
+        fontSize: '22px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1213,36 +1213,7 @@ const Level6 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
-
-  // Mobile control handlers
-  const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
-    }, 50);
-  };
-
-  const handleInteract = () => {
-    setMobileControls(prev => ({ ...prev, interact: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, interact: false }));
-    }, 50);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -1351,184 +1322,34 @@ const Level6 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Controls section */}
+      {/* Use the reusable MobileControls component with custom Interact button */}
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
         
         {/* Desktop Controls */}
         <div className="hidden md:block">
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
           <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
             <div>↑↓←→ Move</div>
-            <div>SPACE Crystal Magic</div>
-            <div>E Interact with Altar</div>
+            <div>SPACE : Attack </div>
+            <div>E : Interact with Altar</div>
           </div>
         </div>
 
-        {/* Mobile Controls */}
+        {/* Mobile Controls - Custom for Level6 with Interact button */}
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('up'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('up'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('up');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('up');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↑
-                </button>
-                <div></div>
-                
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('left'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('left'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('left');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('left');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('right'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('right'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('right');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('right');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
-                >
-                  →
-                </button>
-                
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('down'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('down'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('down');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('down');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleAttack(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                MAGIC
-              </button>
-              
-              <button
-                className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleInteract(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleInteract();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                ALTAR
-              </button>
-            </div>
+            {/* Use the MobileControls component but add extra interact functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
           </div>
         </div>
       </div>
 
       <style jsx>{`
-        .pixel-font {
-          font-family: 'Courier New', monospace;
-          text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-        }
         
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
-        }
       `}</style>
     </div>
   );

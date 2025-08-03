@@ -11,7 +11,15 @@ const ASSETS = {
 };
 
 // Wizard dialogue system
-const getWizardDialogue = (currentLevel, isNewUser, hasJustCompleted) => {
+const getWizardDialogue = (currentLevel, isNewUser, hasJustCompleted, isGameWon) => {
+  if (isGameWon) {
+    return {
+      message: `🎉 INCREDIBLE! You've conquered all ${levels.length} levels and become the ultimate SQL Champion! Your mastery of the database arts is legendary. Ready for another epic adventure?`,
+      type: "champion",
+      emoji: "👑"
+    };
+  }
+
   if (hasJustCompleted) {
     const completedLevel = currentLevel - 1;
     return {
@@ -89,6 +97,7 @@ const MapMainView = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showSpeechBubble, setShowSpeechBubble] = useState(true);
   const [speechBubbleAnimation, setSpeechBubbleAnimation] = useState('fadeIn');
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
   const gameState = useSelector(
     (state) =>
@@ -107,13 +116,20 @@ const MapMainView = () => {
                           gameState.lastCompletedLevel === gameState.currentLevel - 1;
 
   // Check if user is new
-  const isNewUser = !gameState.videoWatched
+  const isNewUser = !gameState.videoWatched;
+  
+  // Check if game is won
+  const isGameWon = gameState.progress.length >= levels.length;
   
   // Get current level data
   const currentLevel = levels.find(level => level.id === gameState.currentLevel);
   
   // Get wizard dialogue
-  const wizardDialogue = getWizardDialogue(gameState.currentLevel, isNewUser, hasJustCompleted);
+  const wizardDialogue = getWizardDialogue(gameState.currentLevel, isNewUser, hasJustCompleted, isGameWon);
+
+  // Calculate remaining lives (lives - skips used)
+  const remainingLives = Math.max(0, gameState.lives - gameState.skipCount);
+  const allSkipsUsed = gameState.skipCount >= gameState.lives;
 
   // Handle resize
   useEffect(() => {
@@ -183,42 +199,70 @@ const MapMainView = () => {
     window.location.reload();
   };
 
-  const isGameWon = gameState.progress.length >= levels.length;
+  // Handle reset confirmation
+  const handleResetClick = () => {
+    setShowResetConfirmation(true);
+  };
+
+  const handleConfirmReset = () => {
+    setShowResetConfirmation(false);
+    handleRestart();
+  };
+
+  const handleCancelReset = () => {
+    setShowResetConfirmation(false);
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-    {/* Background - Full Screen Coverage */}
-<div 
-  className="fixed inset-0 w-screen h-screen bg-cover bg-center bg-no-repeat"
-  style={{
-    backgroundImage: `url(/mapbg.png)`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center center',
-    backgroundColor: '#1e293b',
-  }}
-/>
+      {/* Background - Full Screen Coverage */}
+      <div 
+        className="fixed inset-0 w-screen h-screen bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url(/mapbg.png)`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundColor: '#1e293b',
+        }}
+      />
 
       <div className="absolute inset-0 bg-gradient-to-b from-blue-900/30 via-green-900/20 to-black/50" />
 
       {/* Header Stats */}
       <div className="fixed top-0 left-0 right-0 z-50 p-4">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
-          {/* Lives */}
-          <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-red-500/30">
-            <span className="text-white font-bold text-sm">Lives</span>
-            <div className="flex space-x-1">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`text-lg transition-all ${
-                    i < gameState.lives ? "text-red-400" : "text-gray-600"
-                  }`}
-                >
-                  ❤️
+          {/* Lives or Reset Button */}
+          {!allSkipsUsed ? (
+            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-red-500/30">
+              <span className="text-white font-bold text-sm">Lives</span>
+              <div className="flex space-x-1">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`text-lg transition-all ${
+                      i < remainingLives ? "text-red-400" : "text-gray-600"
+                    }`}
+                  >
+                    ❤️
+                  </div>
+                ))}
+              </div>
+              {gameState.skipCount > 0 && (
+                <div className="ml-2 text-xs text-yellow-400">
+                  ({gameState.skipCount} skips used)
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-orange-500/30">
+              <button
+                onClick={handleResetClick}
+                className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95"
+              >
+                🔄 Reset Game
+              </button>
+            </div>
+          )}
 
           {/* Level Info */}
           <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-blue-500/30">
@@ -248,6 +292,35 @@ const MapMainView = () => {
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-3xl p-8 text-center max-w-md mx-4 shadow-2xl border-2 border-orange-500/30">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-white mb-4">Reset Adventure?</h2>
+            <p className="text-white/90 mb-6 leading-relaxed">
+              Are you sure you want to start over? All progress will be lost, but legends never die! 
+              <br/><br/>
+              <span className="text-orange-400 font-bold">Try again, champion!</span>
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleCancelReset}
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmReset}
+                className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 px-6 rounded-lg transition-all"
+              >
+                🔄 Reset Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Game Area - Flex Container */}
       <div className="flex items-center justify-center min-h-screen pt-20 pb-8 px-4">
@@ -296,57 +369,111 @@ const MapMainView = () => {
               )}
 
               {/* Wizard Image */}
-<div className="relative">
-  {/* Glow effect */}
-  <div className={`absolute inset-0 w-64 h-64 md:w-80 md:h-80 rounded-full transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${
-    hasJustCompleted
-      ? "bg-gradient-to-r from-yellow-400/40 via-orange-400/40 to-red-400/40 animate-pulse"
-      : "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 animate-pulse"
-  }`} />
-  
-  <div className="relative w-64 h-64 md:w-80 md:h-80">
-    <img
-      src={ASSETS.wizard}
-      alt="Arin the SQL Wizard"
-      className="w-full h-full object-contain drop-shadow-2xl cursor-pointer transition-transform hover:scale-105"
-      onClick={() => setShowSpeechBubble(true)}
-      onError={(e) => {
-        e.target.style.display = "none";
-        e.target.nextSibling.style.display = "block";
-      }}
-    />
-    {/* Fallback */}
-    <div className="w-full h-full bg-gradient-to-br from-blue-800 to-purple-800 rounded-full border-4 border-white shadow-2xl hidden items-center justify-center cursor-pointer"
-         onClick={() => setShowSpeechBubble(true)}>
-      <div className="text-8xl">🧙‍♂️</div>
-    </div>
-  </div>
+              <div className="relative">
+                {/* Glow effect */}
+                <div className={`absolute inset-0 w-64 h-64 md:w-80 md:h-80 rounded-full transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${
+                  isGameWon
+                    ? "bg-gradient-to-r from-yellow-400/60 via-orange-400/60 to-purple-500/60 animate-pulse"
+                    : hasJustCompleted
+                    ? "bg-gradient-to-r from-yellow-400/40 via-orange-400/40 to-red-400/40 animate-pulse"
+                    : "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 animate-pulse"
+                }`} />
+                
+                <div className="relative w-64 h-64 md:w-80 md:h-80">
+                  <img
+                    src={ASSETS.wizard}
+                    alt="Arin the SQL Wizard"
+                    className="w-full h-full object-contain drop-shadow-2xl cursor-pointer transition-transform hover:scale-105"
+                    onClick={() => setShowSpeechBubble(true)}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.nextSibling.style.display = "block";
+                    }}
+                  />
+                  {/* Fallback */}
+                  <div className="w-full h-full bg-gradient-to-br from-blue-800 to-purple-800 rounded-full border-4 border-white shadow-2xl hidden items-center justify-center cursor-pointer"
+                       onClick={() => setShowSpeechBubble(true)}>
+                    <div className="text-8xl">🧙‍♂️</div>
+                  </div>
+                </div>
 
-  {/* Stage Image - Fixed positioning */}
-  <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 z-0">
-    <img
-      src="/stage.png"
-      alt="Stage"
-      className="w-32 h-16 md:w-40 md:h-20 object-contain opacity-80"
-    />
-  </div>
+                {/* Stage Image - Fixed positioning */}
+                <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 z-0">
+                  <img
+                    src="/stage.png"
+                    alt="Stage"
+                    className="w-32 h-16 md:w-40 md:h-20 object-contain opacity-80"
+                  />
+                </div>
 
-  {/* Click to interact hint */}
-  {!showSpeechBubble && (
-    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 z-10">
-      <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm animate-bounce">
-        Click to interact 💬
-      </div>
-    </div>
-  )}
-</div>
-
-        
+                {/* Click to interact hint */}
+                {!showSpeechBubble && (
+                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 z-10">
+                    <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm animate-bounce">
+                      Click to interact 💬
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Right Side - Level Information Panel */}
+            {/* Right Side - Level Information Panel or Champion Card */}
             <div className="flex-1 w-full max-w-lg">
-              {currentLevel && (
+              {isGameWon ? (
+                <div className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-purple-600/20 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-yellow-500/50 shadow-2xl">
+                  
+                  {/* Champion Header */}
+                  <div className="text-center mb-6">
+                    <div className="text-6xl mb-4">🏆</div>
+                    <h3 className="text-3xl font-bold text-yellow-400 mb-2">
+                      SQL QUEST CHAMPION!
+                    </h3>
+                    <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                      LEGENDARY STATUS ACHIEVED
+                    </div>
+                  </div>
+
+                  {/* Achievement Stats */}
+                  <div className="bg-black/50 rounded-xl p-4 mb-6 border border-yellow-500/30">
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-400">{levels.length}</div>
+                        <div className="text-xs text-white/80">Levels Conquered</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-purple-400">100%</div>
+                        <div className="text-xs text-white/80">Completion Rate</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Champion Message */}
+                  <div className="text-center mb-6">
+                    <p className="text-white/90 text-sm md:text-base leading-relaxed">
+                      🎉 You've mastered the ancient art of SQL! From basic queries to complex database magic, you've proven yourself a true champion. Want to relive the adventure?
+                    </p>
+                  </div>
+
+                  {/* Play Again Button */}
+                  <button
+                    onClick={handleRestart}
+                    className="w-full bg-gradient-to-r from-yellow-600 via-orange-600 to-purple-600 hover:from-yellow-500 hover:via-orange-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg"
+                  >
+                    <span className="mr-3">🌟</span>
+                    Play Again, Champion!
+                    <span className="ml-3">🌟</span>
+                  </button>
+
+                  {/* Champion Badge */}
+                  <div className="mt-4 text-center">
+                    <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full px-4 py-2">
+                      <span className="text-yellow-400">👑</span>
+                      <span className="text-xs text-yellow-300 font-semibold">SQL QUEST LEGEND</span>
+                      <span className="text-yellow-400">👑</span>
+                    </div>
+                  </div>
+                </div>
+              ) : currentLevel && (
                 <div className="bg-black/80 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
                   
                   {/* Level Header */}
@@ -390,8 +517,6 @@ const MapMainView = () => {
                     </p>
                   </div>
 
-
-
                   {/* Start Level Button */}
                   <button
                     onClick={handleStartLevel}
@@ -414,25 +539,6 @@ const MapMainView = () => {
           </div>
         </div>
       </div>
-
-      {/* Game Won Celebration */}
-      {isGameWon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-3xl p-8 text-center max-w-md mx-4 shadow-2xl">
-            <div className="text-6xl mb-4">🏆</div>
-            <h1 className="text-3xl font-bold text-white mb-4">QUEST COMPLETED!</h1>
-            <p className="text-white/90 mb-6">
-              You've mastered all {levels.length} SQL challenges! The realm is free!
-            </p>
-            <button
-              onClick={handleRestart}
-              className="bg-white text-orange-600 font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-all"
-            >
-              🌟 Start New Adventure
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* CSS Animations */}
       <style jsx>{`

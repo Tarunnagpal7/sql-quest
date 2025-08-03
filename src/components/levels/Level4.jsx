@@ -1,12 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiWoodBeam, GiTreasureMap, GiSailboat } from "react-icons/gi";
 import { FaHammer } from "react-icons/fa";
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level4 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+    build: false // Added build control
+  });
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -15,7 +24,7 @@ const Level4 = ({ onComplete }) => {
     totalExplorers: 0,
     raftProgress: 0,
     raftMaterials: 0,
-    totalMaterials: 8, // Reduced from 15
+    totalMaterials: 8,
     showQueryInput: false,
     allExplorersFound: false,
     stormIntensity: 0
@@ -26,7 +35,7 @@ const Level4 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -82,14 +91,14 @@ const Level4 = ({ onComplete }) => {
       attackCooldown: 400,
       buildCooldown: 800,
       explorersFound: 0,
-      totalExplorers: 6, // Reduced
+      totalExplorers: 6,
       raftProgress: 0,
       raftMaterials: 0,
-      totalMaterials: 8, // Reduced
+      totalMaterials: 8,
       allExplorersFound: false,
       queryComplete: false,
       stormIntensity: 0,
-      timeLimit: 180000, // Increased to 3 minutes
+      timeLimit: 180000,
       timeRemaining: 180000,
       explorersData: [],
       buildingZone: { x: 650, y: 350, radius: 70 }
@@ -105,7 +114,7 @@ const Level4 = ({ onComplete }) => {
       
       // Wizard robe (main body)
       playerGraphics.fillStyle(0x1e3a8a, 1);
-      playerGraphics.fillCircle(20, 30, 16); // Larger and more centered
+      playerGraphics.fillCircle(20, 30, 16);
       playerGraphics.fillRect(4, 18, 32, 24);
       
       // Wizard hood
@@ -169,7 +178,7 @@ const Level4 = ({ onComplete }) => {
         // Clear artifact indicator
         if (type === 'artifact_holder') {
           explorerGraphics.fillStyle(color, 0.4);
-          explorerGraphics.fillCircle(20, 25, 30); // Larger glow
+          explorerGraphics.fillCircle(20, 25, 30);
           
           // Show artifact in hands - more visible
           explorerGraphics.fillStyle(0xffd700, 1);
@@ -188,8 +197,8 @@ const Level4 = ({ onComplete }) => {
         
         // Explorer equipment
         explorerGraphics.fillStyle(0x666666, 1);
-        explorerGraphics.fillRect(8, 22, 4, 10); // Backpack
-        explorerGraphics.fillRect(28, 27, 10, 3); // Tool
+        explorerGraphics.fillRect(8, 22, 4, 10);
+        explorerGraphics.fillRect(28, 27, 10, 3);
         
         explorerGraphics.generateTexture(`explorer_${type}`, 40, 45);
         explorerGraphics.destroy();
@@ -385,7 +394,7 @@ const Level4 = ({ onComplete }) => {
       
       wallPositions.forEach(pos => {
         const wall = walls.create(pos[0], pos[1], 'jungle_wall');
-        wall.body.setSize(35, 35); // Smaller collision box
+        wall.body.setSize(35, 35);
       });
     }
     
@@ -446,16 +455,16 @@ const Level4 = ({ onComplete }) => {
       enemyPositions.forEach((pos, index) => {
         const enemy = enemies.create(pos.x, pos.y, pos.type);
         enemy.setCollideWorldBounds(true).body.setSize(30, 40).setOffset(5, 5);
-        enemy.health = 60; // Reduced from 100
+        enemy.health = 60;
         enemy.maxHealth = 60;
-        enemy.speed = 50; // Reduced from 80
-        enemy.attackDamage = 15; // Reduced from 25
+        enemy.speed = 50;
+        enemy.attackDamage = 15;
         enemy.patrolDistance = 80;
         enemy.startX = pos.x;
         enemy.startY = pos.y;
         enemy.direction = 1;
         enemy.monsterType = pos.type;
-        enemy.aggroRange = 80; // Reduced from 100
+        enemy.aggroRange = 80;
         
         // Gentle animations
         sceneRef.tweens.add({
@@ -570,25 +579,26 @@ const Level4 = ({ onComplete }) => {
       if (gameState.isLevelComplete) return;
       
       player.setVelocity(0);
-      const speed = 200; // Slightly faster movement
+      const speed = 200;
       
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
         attack.call(this);
       }
       
-      if ((Phaser.Input.Keyboard.JustDown(buildKey) || mobileControls.build) && gameState.canBuild) {
+      if ((Phaser.Input.Keyboard.JustDown(buildKey) || mobileControlsRef.current.build) && gameState.canBuild) {
         buildRaft.call(this);
       }
 
@@ -646,7 +656,7 @@ const Level4 = ({ onComplete }) => {
     function attack() {
       gameState.canAttack = false;
       
-      const attackRange = 100; // Increased range
+      const attackRange = 100;
       
       // Magical attack effects
       const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x8b5cf6, 0.4);
@@ -675,7 +685,7 @@ const Level4 = ({ onComplete }) => {
         
         const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
         if (distance <= attackRange) {
-          enemy.health -= 80; // More damage
+          enemy.health -= 80;
           
           const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
           enemy.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
@@ -727,7 +737,7 @@ const Level4 = ({ onComplete }) => {
         return;
       }
       
-      if (gameState.explorersFound < 3) { // Only need 3 artifact holders
+      if (gameState.explorersFound < 3) {
         showMessage(`You need ${3 - gameState.explorersFound} more artifact holders to help!`, 2000);
         return;
       }
@@ -735,7 +745,7 @@ const Level4 = ({ onComplete }) => {
       gameState.canBuild = false;
       
       // Build raft progress
-      gameState.raftProgress += 50; // Faster building
+      gameState.raftProgress += 50;
       
       if (gameState.raftProgress >= 100) {
         showLevelComplete();
@@ -782,7 +792,7 @@ const Level4 = ({ onComplete }) => {
         
       } else {
         // Wrong explorer (no artifact)
-        gameState.health -= 10; // Less damage
+        gameState.health -= 10;
         
         explorer.setTint(0xff0000);
         player.setTint(0xff0000);
@@ -866,7 +876,7 @@ const Level4 = ({ onComplete }) => {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 350, 'You escaped! Click to return to map', {
-        fontSize: '18px',
+        fontSize: '32px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -939,7 +949,7 @@ const Level4 = ({ onComplete }) => {
         health: Math.max(0, gameState.health),
         isQueryComplete: gameState.isLevelComplete,
         explorersFound: gameState.explorersFound,
-        totalExplorers: 3, // Only artifact holders count
+        totalExplorers: 3,
         raftProgress: gameState.raftProgress,
         raftMaterials: gameState.raftMaterials,
         stormIntensity: Math.round(gameState.stormIntensity * 100)
@@ -962,36 +972,7 @@ const Level4 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
-
-  // Mobile control handlers
-  const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
-    }, 50);
-  };
-
-  const handleBuild = () => {
-    setMobileControls(prev => ({ ...prev, build: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, build: false }));
-    }, 50);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -1086,11 +1067,11 @@ const Level4 = ({ onComplete }) => {
           )}
         </div>
         <div className="text-bold text-slate-500 mt-2">
-          Collect all artifacts , and list from  jungle_explorers where artifact_found TRUE
+          Collect all artifacts, and list from jungle_explorers where artifact_found TRUE
         </div>
       </div>
 
-      {/* Controls section */}
+      {/* Use the reusable MobileControls component with custom buttons */}
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
         <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
         
@@ -1098,160 +1079,37 @@ const Level4 = ({ onComplete }) => {
         <div className="hidden md:block">
           <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
             <div>↑↓←→ Move</div>
-            <div>SPACE Magic Attack</div>
-            <div>B Build Raft</div>
+            <div>SPACE : Attack</div>
+            <div>B : Build Raft</div>
           </div>
         </div>
 
-        {/* Mobile Controls */}
+        {/* Mobile Controls - Custom for Level4 with Build button */}
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('up'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('up'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('up');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('up');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↑
-                </button>
-                <div></div>
-                
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('left'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('left'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('left');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('left');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('right'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('right'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('right');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('right');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
-                >
-                  →
-                </button>
-                
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('down'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('down'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('down');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('down');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleAttack(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                MAGIC
-              </button>
-              
-              <button
-                className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => { 
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  handleBuild(); 
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleBuild();
-                }}
-                style={{ touchAction: 'none' }}
-              >
-                BUILD
-              </button>
-            </div>
+            {/* Use the MobileControls component but add extra build functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+            {/* Extra Build Button for Level4 - positioned separately */}
+            <button
+              className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                mobileControlsRef.current.build = true;
+                setMobileControls(prev => ({ ...prev, build: true }));
+                setTimeout(() => {
+                  mobileControlsRef.current.build = false;
+                  setMobileControls(prev => ({ ...prev, build: false }));
+                }, 50);
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              BUILD
+            </button>
           </div>
         </div>
       </div>
@@ -1260,13 +1118,6 @@ const Level4 = ({ onComplete }) => {
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-        }
-        
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

@@ -7,6 +7,7 @@ import { FaPlay, FaBolt, FaShieldAlt } from "react-icons/fa";
 const Level9 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -18,7 +19,7 @@ const Level9 = ({ onComplete }) => {
     battleStarted: false,
     battleFinished: false,
     battlePaused: false,
-    currentTurn: 'player', // 'player' or 'opponent'
+    currentTurn: 'player',
     showSpellInput: false,
     spellType: null,
     battleTime: 0,
@@ -26,12 +27,24 @@ const Level9 = ({ onComplete }) => {
     damage: 0,
     shield: 0,
     summonedCreature: null,
-    gamePhase: 'waiting' // 'waiting', 'battle', 'casting', 'finished'
+    gamePhase: 'waiting'
   });
 
   const [sqlQuery, setSqlQuery] = useState('');
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
+
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Battle spell definitions with keywords
   const spellTypes = {
@@ -154,7 +167,7 @@ const Level9 = ({ onComplete }) => {
       opponentShield: 0,
       summonedCreature: null,
       opponentCreature: null,
-      turnTimer: 15, // 15 seconds per turn
+      turnTimer: 15,
       currentTurnTime: 15,
       autoTurnTimer: null,
       battleData: {
@@ -193,95 +206,81 @@ const Level9 = ({ onComplete }) => {
       sceneRef = this;
       sceneRef.gameState = gameState;
       
-      // --- Create Battle Arena ---
+      // Create Battle Arena
       const arenaGraphics = this.add.graphics();
       
-      // Mystical arena floor
       arenaGraphics.fillStyle(0x2a0845, 1);
       arenaGraphics.fillRect(0, 0, 800, 500);
       
-      // Magical circles
       arenaGraphics.lineStyle(3, 0x9c27b0, 0.8);
-      arenaGraphics.strokeCircle(200, 400, 80); // Player circle
-      arenaGraphics.strokeCircle(600, 100, 80); // Opponent circle
+      arenaGraphics.strokeCircle(200, 400, 80);
+      arenaGraphics.strokeCircle(600, 100, 80);
       
-      // Arena decorations
       arenaGraphics.fillStyle(0x512da8, 0.5);
-      arenaGraphics.fillRect(0, 0, 800, 50);   // Top border
-      arenaGraphics.fillRect(0, 450, 800, 50); // Bottom border
-      arenaGraphics.fillRect(0, 0, 50, 500);   // Left border
-      arenaGraphics.fillRect(750, 0, 50, 500); // Right border
+      arenaGraphics.fillRect(0, 0, 800, 50);
+      arenaGraphics.fillRect(0, 450, 800, 50);
+      arenaGraphics.fillRect(0, 0, 50, 500);
+      arenaGraphics.fillRect(750, 0, 50, 500);
       
       arenaGraphics.generateTexture('battle_arena', 800, 500);
       arenaGraphics.destroy();
       
-      // --- Create Player Wizard ---
+      // Create Player Wizard
       const playerGraphics = this.add.graphics();
       
-      // Player wizard (blue theme)
       playerGraphics.fillStyle(0x1976d2, 1);
       playerGraphics.fillCircle(25, 35, 20);
       playerGraphics.fillRect(8, 20, 34, 30);
       
-      // Wizard hat
       playerGraphics.fillStyle(0x0d47a1, 1);
       playerGraphics.fillTriangle(25, 5, 15, 25, 35, 25);
       
-      // Face
       playerGraphics.fillStyle(0xfdbcb4, 1);
       playerGraphics.fillCircle(25, 25, 10);
       
-      // Eyes
       playerGraphics.fillStyle(0x000000, 1);
       playerGraphics.fillCircle(22, 23, 2);
       playerGraphics.fillCircle(28, 23, 2);
       
-      // Staff
       playerGraphics.lineStyle(4, 0x8d6e63);
       playerGraphics.beginPath();
       playerGraphics.moveTo(40, 50);
       playerGraphics.lineTo(45, 15);
       playerGraphics.strokePath();
       
-      // Staff crystal
       playerGraphics.fillStyle(0x03a9f4, 0.8);
       playerGraphics.fillCircle(45, 12, 6);
       
       playerGraphics.generateTexture('player_wizard', 55, 60);
       playerGraphics.destroy();
       
-      // --- Create Opponent Wizard ---
+      // Create Opponent Wizard
       const opponentGraphics = this.add.graphics();
       
-      // Opponent wizard (red theme)
       opponentGraphics.fillStyle(0xd32f2f, 1);
       opponentGraphics.fillCircle(25, 35, 20);
       opponentGraphics.fillRect(8, 20, 34, 30);
       
-      // Dark wizard hood
       opponentGraphics.fillStyle(0xb71c1c, 1);
       opponentGraphics.fillTriangle(25, 5, 15, 25, 35, 25);
       
-      // Glowing red eyes
       opponentGraphics.fillStyle(0xff1744, 1);
       opponentGraphics.fillCircle(22, 23, 3);
       opponentGraphics.fillCircle(28, 23, 3);
       
-      // Dark staff
       opponentGraphics.lineStyle(4, 0x424242);
       opponentGraphics.beginPath();
       opponentGraphics.moveTo(10, 50);
       opponentGraphics.lineTo(5, 15);
       opponentGraphics.strokePath();
       
-      // Dark crystal
       opponentGraphics.fillStyle(0xe91e63, 0.8);
       opponentGraphics.fillCircle(5, 12, 6);
       
       opponentGraphics.generateTexture('opponent_wizard', 55, 60);
       opponentGraphics.destroy();
       
-      // --- Create Spell Effects ---
+      // Create Spell Effects
       const spellEffectsTypes = ['fireball', 'shield', 'dragon', 'heal'];
       const spellColors = [0xff5722, 0x2196f3, 0x4caf50, 0x8bc34a];
       
@@ -290,31 +289,24 @@ const Level9 = ({ onComplete }) => {
         const color = spellColors[index];
         
         if (type === 'fireball') {
-          // Fireball effect
           effectGraphics.fillStyle(color, 0.9);
           effectGraphics.fillCircle(30, 30, 25);
           effectGraphics.fillStyle(0xffa726, 0.7);
           effectGraphics.fillCircle(30, 30, 18);
           effectGraphics.fillStyle(0xffeb3b, 0.5);
           effectGraphics.fillCircle(30, 30, 12);
-          
         } else if (type === 'shield') {
-          // Shield effect
           effectGraphics.fillStyle(color, 0.6);
           effectGraphics.fillCircle(30, 30, 35);
           effectGraphics.lineStyle(4, 0x00bcd4, 0.8);
           effectGraphics.strokeCircle(30, 30, 30);
           effectGraphics.strokeCircle(30, 30, 25);
-          
         } else if (type === 'dragon') {
-          // Dragon/creature effect
           effectGraphics.fillStyle(color, 0.8);
           effectGraphics.fillEllipse(30, 35, 40, 25);
           effectGraphics.fillCircle(40, 25, 12);
           effectGraphics.fillTriangle(45, 20, 50, 15, 50, 25);
-          
         } else if (type === 'heal') {
-          // Healing effect
           effectGraphics.fillStyle(color, 0.7);
           effectGraphics.fillCircle(30, 30, 30);
           effectGraphics.fillStyle(0x4caf50, 1);
@@ -326,14 +318,12 @@ const Level9 = ({ onComplete }) => {
         effectGraphics.destroy();
       });
       
-      // --- Create UI Elements ---
+      // Create UI Elements
       const uiGraphics = this.add.graphics();
       
-      // Health bar background
       uiGraphics.fillStyle(0x424242, 1);
       uiGraphics.fillRect(0, 0, 200, 20);
       
-      // Mana bar background
       uiGraphics.fillStyle(0x1a237e, 1);
       uiGraphics.fillRect(0, 25, 200, 15);
       
@@ -342,20 +332,16 @@ const Level9 = ({ onComplete }) => {
     }
 
     function create() {
-      // Create battle arena
       this.add.image(400, 250, 'battle_arena');
       
-      // Add mystical atmosphere
       createMysticalAtmosphere.call(this);
       
       spellEffects = this.physics.add.group();
       
-      // Create player wizard
       player = this.physics.add.sprite(200, 400, 'player_wizard');
       player.setCollideWorldBounds(true);
       player.setScale(1.2);
       
-      // Create opponent wizard
       opponent = this.physics.add.sprite(600, 100, 'opponent_wizard');
       opponent.setCollideWorldBounds(true);
       opponent.setScale(1.2);
@@ -366,7 +352,6 @@ const Level9 = ({ onComplete }) => {
       threeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
       fourKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR);
       
-      // Add methods to scene
       this.startBattle = startBattle;
       this.executeSpell = executeSpell;
       this.showSpellInput = showSpellInput;
@@ -390,7 +375,6 @@ const Level9 = ({ onComplete }) => {
       gameState.summonedCreature = null;
       gameState.currentTurnTime = 15;
       
-      // Clear any existing timers
       if (gameState.autoTurnTimer) {
         sceneRef.time.removeEvent(gameState.autoTurnTimer);
         gameState.autoTurnTimer = null;
@@ -405,7 +389,6 @@ const Level9 = ({ onComplete }) => {
     }
     
     function createMysticalAtmosphere() {
-      // Create floating magical particles
       for (let i = 0; i < 25; i++) {
         const particle = sceneRef.add.circle(
           Math.random() * 800,
@@ -426,7 +409,6 @@ const Level9 = ({ onComplete }) => {
         });
       }
       
-      // Create mystical aura around arena
       const aura1 = sceneRef.add.circle(200, 400, 100, 0x2196f3, 0.1);
       const aura2 = sceneRef.add.circle(600, 100, 100, 0xf44336, 0.1);
       
@@ -442,7 +424,6 @@ const Level9 = ({ onComplete }) => {
     }
     
     function createBattleUI() {
-      // Player health bar
       const playerHealthBg = sceneRef.add.image(120, 450, 'ui_bars');
       playerHealthBg.setScale(1, 0.4);
       sceneRef.playerHealthBg = playerHealthBg;
@@ -458,7 +439,6 @@ const Level9 = ({ onComplete }) => {
       });
       sceneRef.playerHealthText = playerHealthText;
       
-      // Player mana bar
       const playerManaBar = sceneRef.add.rectangle(120, 465, 200, 10, 0x2196f3);
       sceneRef.playerManaBar = playerManaBar;
       
@@ -469,7 +449,6 @@ const Level9 = ({ onComplete }) => {
       });
       sceneRef.playerManaText = playerManaText;
       
-      // Opponent health bar
       const opponentHealthBg = sceneRef.add.image(680, 50, 'ui_bars');
       opponentHealthBg.setScale(1, 0.4);
       sceneRef.opponentHealthBg = opponentHealthBg;
@@ -485,7 +464,6 @@ const Level9 = ({ onComplete }) => {
       });
       sceneRef.opponentHealthText = opponentHealthText;
       
-      // Turn indicator
       const turnIndicator = sceneRef.add.text(400, 30, '', {
         fontSize: '18px',
         fontFamily: 'Courier New',
@@ -496,7 +474,6 @@ const Level9 = ({ onComplete }) => {
       }).setOrigin(0.5);
       sceneRef.turnIndicator = turnIndicator;
       
-      // Spell instructions
       const spellInstructions = sceneRef.add.text(20, 20, '', {
         fontSize: '12px',
         fontFamily: 'Courier New',
@@ -567,7 +544,6 @@ const Level9 = ({ onComplete }) => {
       gameState.currentTurn = 'player';
       gameState.currentTurnTime = gameState.turnTimer;
       
-      // Start battle timer
       sceneRef.time.addEvent({
         delay: 1000,
         callback: () => {
@@ -576,12 +552,9 @@ const Level9 = ({ onComplete }) => {
             gameState.currentTurnTime--;
             
             if (gameState.currentTurnTime <= 0) {
-              // Auto-switch turns
               if (gameState.currentTurn === 'player') {
-                // Player's turn expired, opponent gets auto turn
                 opponentTurn();
               } else {
-                // Opponent turn finished, back to player
                 gameState.currentTurn = 'player';
                 gameState.currentTurnTime = gameState.turnTimer;
               }
@@ -594,7 +567,7 @@ const Level9 = ({ onComplete }) => {
         callbackScope: sceneRef,
         loop: true
       });
-      
+
       showMessage('⚔️ BATTLE STARTED! Cast your spells using number keys!', 3000);
       updateReactUI();
     }
@@ -602,7 +575,6 @@ const Level9 = ({ onComplete }) => {
     function update() {
       if (!gameState.battleStarted || gameState.battleFinished) return;
       
-      // Spell casting hotkeys (only during player turn)
       if (gameState.currentTurn === 'player' && !gameState.battlePaused) {
         if (Phaser.Input.Keyboard.JustDown(oneKey) && gameState.mana >= 25) {
           showSpellInput('attack');
@@ -618,16 +590,12 @@ const Level9 = ({ onComplete }) => {
         }
       }
       
-      // Update creature attacks
       updateCreatureAttacks();
-      
       updateBattleUI();
     }
     
     function updateCreatureAttacks() {
-      // Player creature attacks opponent
       if (gameState.summonedCreature && gameState.currentTurn === 'opponent') {
-        // Creature attacks during opponent turn
         const damage = 15;
         const actualDamage = Math.max(0, damage - gameState.opponentShield);
         gameState.opponentHealth = Math.max(0, gameState.opponentHealth - actualDamage);
@@ -639,7 +607,6 @@ const Level9 = ({ onComplete }) => {
         }
       }
       
-      // Check for battle end
       if (gameState.opponentHealth <= 0) {
         endBattle('victory');
       } else if (gameState.health <= 0) {
@@ -661,13 +628,11 @@ const Level9 = ({ onComplete }) => {
       gameState.battlePaused = false;
       const spell = spellTypes[type];
       
-      // Consume mana
       gameState.mana = Math.max(0, gameState.mana - spell.manaCost);
       gameState.spellsUsed++;
       
       if (type === 'attack') {
-        // Attack spell
-        const damage = 30 + Math.floor(Math.random() * 21); // 30-50 damage
+        const damage = 30 + Math.floor(Math.random() * 21);
         const actualDamage = Math.max(0, damage - gameState.opponentShield);
         gameState.opponentHealth = Math.max(0, gameState.opponentHealth - actualDamage);
         gameState.opponentShield = Math.max(0, gameState.opponentShield - damage);
@@ -677,8 +642,7 @@ const Level9 = ({ onComplete }) => {
         showMessage(`🔥 Fireball deals ${actualDamage} damage!`, 2000);
         
       } else if (type === 'defense') {
-        // Defense spell
-        const shieldStrength = 40 + Math.floor(Math.random() * 21); // 40-60 shield
+        const shieldStrength = 40 + Math.floor(Math.random() * 21);
         gameState.playerShield += shieldStrength;
         
         createSpellEffect(200, 400, 'shield');
@@ -686,7 +650,6 @@ const Level9 = ({ onComplete }) => {
         showMessage(`🛡️ Shield absorbs ${shieldStrength} damage!`, 2000);
         
       } else if (type === 'summon') {
-        // Summon spell
         gameState.summonedCreature = { name: 'Fire Dragon', attack: 15 };
         
         createSpellEffect(300, 300, 'dragon');
@@ -694,8 +657,7 @@ const Level9 = ({ onComplete }) => {
         showMessage('🐉 Fire Dragon summoned! Deals 15 damage per turn!', 2000);
         
       } else if (type === 'heal') {
-        // Heal spell
-        const healing = 30 + Math.floor(Math.random() * 16); // 30-45 healing
+        const healing = 30 + Math.floor(Math.random() * 16);
         gameState.health = Math.min(gameState.maxHealth, gameState.health + healing);
         
         createSpellEffect(200, 400, 'heal');
@@ -703,11 +665,9 @@ const Level9 = ({ onComplete }) => {
         showMessage(`💚 Restored ${healing} health!`, 2000);
       }
       
-      // End player turn
       gameState.currentTurn = 'opponent';
       gameState.currentTurnTime = gameState.turnTimer;
       
-      // Schedule opponent turn
       sceneRef.time.delayedCall(2000, () => {
         opponentTurn();
       });
@@ -718,12 +678,11 @@ const Level9 = ({ onComplete }) => {
     function opponentTurn() {
       if (gameState.battleFinished) return;
       
-      // Simple AI: opponent casts random spells
       const availableSpells = ['attack', 'defense', 'heal'];
       const randomSpell = availableSpells[Math.floor(Math.random() * availableSpells.length)];
       
       if (randomSpell === 'attack') {
-        const damage = 25 + Math.floor(Math.random() * 16); // 25-40 damage
+        const damage = 25 + Math.floor(Math.random() * 16);
         const actualDamage = Math.max(0, damage - gameState.playerShield);
         gameState.health = Math.max(0, gameState.health - actualDamage);
         gameState.playerShield = Math.max(0, gameState.playerShield - damage);
@@ -733,7 +692,7 @@ const Level9 = ({ onComplete }) => {
         showMessage(`🔴 Opponent attacks for ${actualDamage} damage!`, 2000);
         
       } else if (randomSpell === 'defense') {
-        const shield = 30 + Math.floor(Math.random() * 21); // 30-50 shield
+        const shield = 30 + Math.floor(Math.random() * 21);
         gameState.opponentShield += shield;
         
         createSpellEffect(600, 100, 'shield');
@@ -741,7 +700,7 @@ const Level9 = ({ onComplete }) => {
         showMessage(`🔴 Opponent casts shield (${shield})!`, 2000);
         
       } else if (randomSpell === 'heal') {
-        const healing = 20 + Math.floor(Math.random() * 16); // 20-35 healing
+        const healing = 20 + Math.floor(Math.random() * 16);
         gameState.opponentHealth = Math.min(gameState.opponentMaxHealth, gameState.opponentHealth + healing);
         
         createSpellEffect(600, 100, 'heal');
@@ -749,13 +708,11 @@ const Level9 = ({ onComplete }) => {
         showMessage(`🔴 Opponent heals ${healing} health!`, 2000);
       }
       
-      // Return to player turn
       sceneRef.time.delayedCall(2500, () => {
         if (!gameState.battleFinished) {
           gameState.currentTurn = 'player';
           gameState.currentTurnTime = gameState.turnTimer;
           
-          // Restore some mana each turn
           gameState.mana = Math.min(gameState.maxMana, gameState.mana + 10);
         }
       });
@@ -863,7 +820,7 @@ const Level9 = ({ onComplete }) => {
       
       if (result === 'victory') {
         const instructionText = sceneRef.add.text(400, 420, 'You mastered SQL Battle Magic! Click to return to map', {
-          fontSize: '16px',
+          fontSize: '22px',
           fontFamily: 'Courier New',
           color: '#00ff00'
         }).setOrigin(0.5).setDepth(1001);
@@ -937,7 +894,10 @@ const Level9 = ({ onComplete }) => {
       scene: { preload, create, update },
       scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: gameContainerRef.current,
+        expandParent: false,
+        autoRound: true
       }
     };
 
@@ -947,49 +907,53 @@ const Level9 = ({ onComplete }) => {
   }, [onComplete]);
 
   return (
-    <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Battle HUD */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
-        <div className="flex items-center gap-2">
-          <GiMagicSwirl size={20} color="#2196f3" />
-          <span>Your Wizard</span>
+    <div className="w-full flex flex-col items-center gap-2 sm:gap-4 text-white px-2 sm:px-4">
+      {/* Battle HUD - Responsive layout */}
+      <div className={`flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-400 mb-2 ${isMobile ? 'flex-wrap justify-center' : ''}`}>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <GiMagicSwirl size={isMobile ? 16 : 20} color="#2196f3" />
+          <span className="whitespace-nowrap">Your Wizard</span>
         </div>
-        <div className="flex items-center gap-2">
-          <FaBolt size={18} color="#ffff00" />
-          <span>Mana: {uiState.mana}/100</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <FaBolt size={isMobile ? 14 : 18} color="#ffff00" />
+          <span className="whitespace-nowrap">Mana: {uiState.mana}/100</span>
         </div>
-        <div className="flex items-center gap-2">
-          <FaShieldAlt size={18} color="#00ff00" />
-          <span>Shield: {uiState.shield}</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <FaShieldAlt size={isMobile ? 14 : 18} color="#00ff00" />
+          <span className="whitespace-nowrap">Shield: {uiState.shield}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <GiSwordman size={20} color="#ff6666" />
-          <span>Turn: {uiState.currentTurn === 'player' ? 'YOU' : 'OPPONENT'}</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <GiSwordman size={isMobile ? 16 : 20} color="#ff6666" />
+          <span className="whitespace-nowrap">Turn: {uiState.currentTurn === 'player' ? 'YOU' : 'OPPONENT'}</span>
         </div>
       </div>
 
-      {/* Game container */}
-      <div className="w-full max-w-4xl">
+      {/* Game container - Responsive sizing */}
+      <div className="w-full max-w-6xl">
         <div 
           ref={gameContainerRef} 
-          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
-          style={{ maxWidth: '800px' }}
+          className="w-full rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
+          style={{ 
+            aspectRatio: '8/5',
+            maxHeight: isMobile ? '50vh' : '70vh',
+            minHeight: isMobile ? '300px' : '400px'
+          }}
         />
       </div>
       
-      {/* Battle controls */}
-      <div className="w-full max-w-3xl flex justify-center gap-4 mb-4">
+      {/* Battle controls - Responsive button layout */}
+      <div className="w-full max-w-4xl flex justify-center gap-2 mb-2 sm:mb-4 px-2">
         {!uiState.battleStarted && (
           <button
             onClick={startBattle}
-            className="bg-purple-600 hover:bg-purple-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors flex items-center gap-2"
+            className={`bg-purple-600 hover:bg-purple-500 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-lg font-bold ${isMobile ? 'text-base' : 'text-lg'} transition-colors flex items-center gap-2`}
           >
-            <FaPlay /> START BATTLE
+            <FaPlay size={isMobile ? 14 : 16} /> START BATTLE
           </button>
         )}
         
         {uiState.battleStarted && !uiState.battleFinished && uiState.currentTurn === 'player' && (
-          <div className="flex gap-2">
+          <div className={`flex gap-1 sm:gap-2 ${isMobile ? 'flex-wrap justify-center' : ''}`}>
             {uiState.mana >= 25 && (
               <button
                 onClick={() => {
@@ -997,7 +961,7 @@ const Level9 = ({ onComplete }) => {
                     gameInstance.current.scene.scenes[0].showSpellInput('attack');
                   }
                 }}
-                className="bg-red-600 hover:bg-red-500 text-white py-2 px-4 rounded font-bold text-sm transition-colors"
+                className={`bg-red-600 hover:bg-red-500 text-white py-1 sm:py-2 px-2 sm:px-4 rounded font-bold ${isMobile ? 'text-xs' : 'text-sm'} transition-colors whitespace-nowrap`}
               >
                 1️⃣ ATTACK 🔥
               </button>
@@ -1010,7 +974,7 @@ const Level9 = ({ onComplete }) => {
                     gameInstance.current.scene.scenes[0].showSpellInput('defense');
                   }
                 }}
-                className="bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded font-bold text-sm transition-colors"
+                className={`bg-blue-600 hover:bg-blue-500 text-white py-1 sm:py-2 px-2 sm:px-4 rounded font-bold ${isMobile ? 'text-xs' : 'text-sm'} transition-colors whitespace-nowrap`}
               >
                 2️⃣ DEFENSE 🛡️
               </button>
@@ -1023,7 +987,7 @@ const Level9 = ({ onComplete }) => {
                     gameInstance.current.scene.scenes[0].showSpellInput('summon');
                   }
                 }}
-                className="bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded font-bold text-sm transition-colors"
+                className={`bg-green-600 hover:bg-green-500 text-white py-1 sm:py-2 px-2 sm:px-4 rounded font-bold ${isMobile ? 'text-xs' : 'text-sm'} transition-colors whitespace-nowrap`}
               >
                 3️⃣ SUMMON 🐉
               </button>
@@ -1036,7 +1000,7 @@ const Level9 = ({ onComplete }) => {
                     gameInstance.current.scene.scenes[0].showSpellInput('heal');
                   }
                 }}
-                className="bg-yellow-600 hover:bg-yellow-500 text-white py-2 px-4 rounded font-bold text-sm transition-colors"
+                className={`bg-yellow-600 hover:bg-yellow-500 text-white py-1 sm:py-2 px-2 sm:px-4 rounded font-bold ${isMobile ? 'text-xs' : 'text-sm'} transition-colors whitespace-nowrap`}
               >
                 4️⃣ HEAL 💚
               </button>
@@ -1045,52 +1009,50 @@ const Level9 = ({ onComplete }) => {
         )}
       </div>
       
-      {/* Battle stats */}
-      <div className="w-full max-w-3xl grid grid-cols-2 gap-4 pixel-font text-sm">
+      {/* Battle stats - Responsive grid */}
+      <div className={`w-full max-w-4xl grid ${isMobile ? 'grid-cols-1 gap-1' : 'grid-cols-2 gap-4'} pixel-font text-xs sm:text-sm px-2`}>
         <div>Health: <span className="text-green-400">{uiState.health}/{uiState.maxHealth}</span></div>
         <div>Opponent: <span className="text-red-400">{uiState.opponentHealth}/{uiState.opponentMaxHealth}</span></div>
         <div>Battle Time: <span className="text-blue-400">{Math.floor(uiState.battleTime / 60)}:{(uiState.battleTime % 60).toString().padStart(2, '0')}</span></div>
         <div>Spells Cast: <span className="text-purple-400">{uiState.spellsUsed}</span></div>
       </div>
 
-      {/* SQL Spell Modal with Keywords */}
+      {/* SQL Spell Modal - Responsive modal */}
       {uiState.showSpellInput && uiState.spellType && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="pixel-font text-xl text-purple-400 mb-4 text-center">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className={`bg-slate-800 p-3 sm:p-6 rounded-lg border border-slate-600 w-full mx-2 sm:mx-4 ${isMobile ? 'max-h-[95vh]' : 'max-w-2xl max-h-[90vh]'} overflow-y-auto`}>
+            <h3 className={`pixel-font ${isMobile ? 'text-lg' : 'text-xl'} text-purple-400 mb-3 sm:mb-4 text-center`}>
               ⚔️ CAST SPELL: {spellTypes[uiState.spellType].icon} {uiState.spellType.toUpperCase()} ⚔️
             </h3>
             
-            <div className="text-center mb-4">
-              <span className="text-yellow-400 font-bold">⏸️ BATTLE PAUSED FOR SPELLCASTING ⏸️</span>
+            <div className="text-center mb-3 sm:mb-4">
+              <span className={`text-yellow-400 font-bold ${isMobile ? 'text-sm' : ''}`}>⏸️ BATTLE PAUSED FOR SPELLCASTING ⏸️</span>
             </div>
             
-            <p className="text-slate-300 mb-4 text-sm text-center">
+            <p className={`text-slate-300 mb-3 sm:mb-4 ${isMobile ? 'text-xs' : 'text-sm'} text-center`}>
               {spellTypes[uiState.spellType].description}
             </p>
             
-            {/* Enhanced hint section with keywords */}
-            <div className="bg-black p-4 rounded border mb-4 space-y-2">
-              <p className="text-green-400 text-xs font-mono">
+            {/* Enhanced hint section with keywords - Responsive */}
+            <div className={`bg-black p-2 sm:p-4 rounded border mb-3 sm:mb-4 space-y-1 sm:space-y-2`}>
+              <p className={`text-green-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
                 <strong>Effect:</strong> {spellTypes[uiState.spellType].effect}
               </p>
-              <p className="text-cyan-400 text-xs font-mono">
+              <p className={`text-cyan-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
                 <strong>Mana Cost:</strong> {spellTypes[uiState.spellType].manaCost}
               </p>
-              <p className="text-yellow-400 text-xs font-mono">
+              <p className={`text-yellow-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
                 <strong>Goal:</strong> {spellTypes[uiState.spellType].example}
               </p>
-              
-              {/* NEW: Keywords section */}
-              <p className="text-pink-400 text-xs font-mono">
+              <p className={`text-pink-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
                 <strong>Expected Keywords:</strong> {spellTypes[uiState.spellType].keywords}
               </p>
             </div>
             
-            {/* SQL Schema reference */}
-            <div className="bg-slate-700 p-3 rounded border mb-4 max-h-32 overflow-y-auto">
-              <p className="text-blue-400 text-xs font-mono mb-2"><strong>Database Schema:</strong></p>
-              <div className="text-xs font-mono text-slate-300">
+            {/* SQL Schema reference - Responsive */}
+            <div className={`bg-slate-700 p-2 sm:p-3 rounded border mb-3 sm:mb-4 ${isMobile ? 'max-h-24' : 'max-h-32'} overflow-y-auto`}>
+              <p className={`text-blue-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono mb-1 sm:mb-2`}><strong>Database Schema:</strong></p>
+              <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-mono text-slate-300`}>
                 {uiState.spellType === 'attack' && (
                   <div>
                     <span className="text-red-400">spells:</span> id, name, <span className="text-yellow-300">element</span>, <span className="text-green-300">power</span>, <span className="text-orange-300">damage</span>, mana_cost
@@ -1117,32 +1079,34 @@ const Level9 = ({ onComplete }) => {
                   <div>
                     <span className="text-green-400">potions:</span> id, <span className="text-orange-300">healing_power</span>, <span className="text-yellow-300">type</span>, <span className="text-cyan-300">rarity</span>
                     <br/>
-                    <span className="text-gray-400">Keywords: SELECT, FROM, WHERE, AND, type='health', rarity more than and equal 'rare'</span>
+                    <span className="text-gray-400">Keywords: SELECT, FROM, WHERE, AND, type='health', rarity greater than equal to  'rare'</span>
                   </div>
                 )}
               </div>
             </div>
             
+            {/* Responsive textarea */}
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
               placeholder={`Enter your SQL spell here...\nExample: ${spellTypes[uiState.spellType].hint}`}
-              className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
-              rows={4}
+              className={`w-full p-2 sm:p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
+              rows={isMobile ? 3 : 4}
               onKeyDown={(e) => e.stopPropagation()}
               style={{ outline: 'none' }}
             />
             
             {queryError && (
-              <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-sm">
+              <div className={`mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                 {queryError}
               </div>
             )}
             
-            <div className="flex gap-2 mt-4">
+            {/* Responsive buttons */}
+            <div className={`flex gap-2 mt-3 sm:mt-4 ${isMobile ? 'flex-col' : ''}`}>
               <button
                 onClick={handleSpellCast}
-                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
+                className={`flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors ${isMobile ? 'text-sm' : ''}`}
               >
                 ⚡ CAST SPELL
               </button>
@@ -1155,7 +1119,7 @@ const Level9 = ({ onComplete }) => {
                     gameInstance.current.scene.scenes[0].gameState.battlePaused = false;
                   }
                 }}
-                className="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded font-bold transition-colors"
+                className={`bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded font-bold transition-colors ${isMobile ? 'text-sm' : ''}`}
               >
                 Cancel
               </button>
@@ -1164,10 +1128,10 @@ const Level9 = ({ onComplete }) => {
         </div>
       )}
 
-      {/* Instructions */}
-      <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">⚔️ SQL Battle Arena - Mystical Wizard Combat:</div>
-        <div className="font-mono text-lg">
+      {/* Instructions - Responsive text */}
+      <div className={`w-full max-w-4xl p-2 sm:p-4 bg-black/50 rounded-lg border border-slate-700 text-center ${isMobile ? 'text-xs' : ''}`}>
+        <div className={`pixel-font text-slate-300 mb-1 sm:mb-2 ${isMobile ? 'text-sm' : ''}`}>⚔️ SQL Battle Arena - Mystical Wizard Combat:</div>
+        <div className={`font-mono ${isMobile ? 'text-sm' : 'text-lg'}`}>
           {!uiState.battleStarted ? (
             <span className="text-purple-400 font-bold bg-purple-900/50 px-2 py-1 rounded">
               🧙 Click START BATTLE to enter the mystical arena!
@@ -1190,7 +1154,7 @@ const Level9 = ({ onComplete }) => {
             </span>
           )}
         </div>
-        <div className="text-xs text-slate-500 mt-2">
+        <div className={`text-slate-500 mt-1 sm:mt-2 ${isMobile ? 'text-xs' : 'text-xs'}`}>
           Master SQL queries to cast powerful spells and defeat your magical opponent!
         </div>
       </div>
@@ -1206,6 +1170,12 @@ const Level9 = ({ onComplete }) => {
           -webkit-user-select: none;
           -webkit-touch-callout: none;
           -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (max-width: 768px) {
+          .pixel-font {
+            text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.8);
+          }
         }
       `}</style>
     </div>

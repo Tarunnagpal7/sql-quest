@@ -1,12 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { AiFillBug } from "react-icons/ai";
 import { GiAncientRuins, GiTreasureMap, GiCrystalBall } from "react-icons/gi";
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level3 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+  });
   
   const [uiState, setUiState] = useState({
     health: 100,
@@ -25,7 +33,7 @@ const Level3 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state
+  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
@@ -44,28 +52,26 @@ const Level3 = ({ onComplete }) => {
     'select * from artifacts where found_by != null;'
   ];
 
-  
   const handleQuerySubmit = () => {
-  const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
-  const isCorrect = correctQueries.some(query => 
-    normalizedQuery === query.toLowerCase().replace(/\s+/g, ' ')
-  );
+    const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
+    const isCorrect = correctQueries.some(query => 
+      normalizedQuery === query.toLowerCase().replace(/\s+/g, ' ')
+    );
 
-  if (isCorrect) {
-    setQuerySuccess(true);
-    setQueryError('');
-    setUiState(prev => ({ ...prev, showQueryInput: false, templeDoorsOpen: true }));
-    
-    // Signal to game that doors should open
-    if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-      gameInstance.current.scene.scenes[0].openTempleDoors();
+    if (isCorrect) {
+      setQuerySuccess(true);
+      setQueryError('');
+      setUiState(prev => ({ ...prev, showQueryInput: false, templeDoorsOpen: true }));
+      
+      // Signal to game that doors should open
+      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
+        gameInstance.current.scene.scenes[0].openTempleDoors();
+      }
+    } else {
+      setQueryError('Query failed! Try finding all artifacts where found_by is not null.');
+      setTimeout(() => setQueryError(''), 3000);
     }
-  } else {
-    setQueryError('Query failed! Try finding all artifacts where found_by is not null.');
-    setTimeout(() => setQueryError(''), 3000);
-  }
-};
-
+  };
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
@@ -274,7 +280,7 @@ const Level3 = ({ onComplete }) => {
           artifactGraphics.fillStyle(0xffff00, 1);
           artifactGraphics.fillCircle(14, 10, 1);
           artifactGraphics.fillCircle(18, 10, 1);
-          
+
         } else if (type === 'crystal_orb') {
           // Crystal orb
           artifactGraphics.fillStyle(color, 0.8);
@@ -629,19 +635,20 @@ const Level3 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 180;
       
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
 
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) && gameState.canAttack) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
         attack.call(this);
       }
 
@@ -919,7 +926,7 @@ const Level3 = ({ onComplete }) => {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 420, 'Click to return to map', {
-        fontSize: '16px',
+        fontSize: '32px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1023,29 +1030,7 @@ const Level3 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
-
-  // Mobile control handlers
-  const handleMobileControlStart = (direction) => {
-    setMobileControls(prev => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    setMobileControls(prev => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  };
-
-  const handleAttack = () => {
-    setMobileControls(prev => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      setMobileControls(prev => ({ ...prev, attack: false }));
-    }, 50);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -1085,228 +1070,78 @@ const Level3 = ({ onComplete }) => {
         </span></div>
       </div>
 
-{/* SQL Query Input Modal */}
-{uiState.showQueryInput && (
-  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-    <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
-      <h3 className="pixel-font text-xl text-yellow-400 mb-4 text-center">🏛️ Open the Temple Doors 🏛️</h3>
-      <p className="text-slate-300 mb-4 text-sm text-center">
-        Write the SQL query to open the temple doors:
-      </p>
-      
-      <textarea
-        value={sqlQuery}
-        onChange={(e) => setSqlQuery(e.target.value)}
-        placeholder="Enter your SQL query here..."
-        className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
-        rows={3}
-        onKeyDown={(e) => {
-          // Allow all keys including space
-          e.stopPropagation();
-        }}
-        style={{ outline: 'none' }}
-      />
-      
-      {queryError && (
-        <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-sm">
-          {queryError}
+      {/* SQL Query Input Modal */}
+      {uiState.showQueryInput && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
+            <h3 className="pixel-font text-xl text-yellow-400 mb-4 text-center">🏛️ Open the Temple Doors 🏛️</h3>
+            <p className="text-slate-300 mb-4 text-sm text-center">
+              Write the SQL query to open the temple doors:
+            </p>
+            
+            <textarea
+              value={sqlQuery}
+              onChange={(e) => setSqlQuery(e.target.value)}
+              placeholder="Enter your SQL query here..."
+              className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
+              rows={3}
+              onKeyDown={(e) => {
+                // Allow all keys including space
+                e.stopPropagation();
+              }}
+              style={{ outline: 'none' }}
+            />
+            
+            {queryError && (
+              <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-sm">
+                {queryError}
+              </div>
+            )}
+            
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleQuerySubmit}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
+              >
+                Execute Query
+              </button>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className="flex gap-2 mt-4">
-        <button
-          onClick={handleQuerySubmit}
-          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
-        >
-          Execute Query
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-  <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
-  <div className="font-mono text-lg">
-    {uiState.isQueryComplete ? (
-      <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-        Query Completed Successfully!
-      </span>
-    ) : uiState.allEnemiesKilled ? (
-      <span className="text-yellow-400 font-bold bg-yellow-900/50 px-2 py-1 rounded animate-pulse">
-        Write your SQL query to open the temple doors
-      </span>
-    ) : (
-      <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">
-        Defeat all enemies first!
-      </span>
-    )}
-  </div>
-  <div className="text-bold text-slate-500 mt-2">
-    Find all artifacts where found_by is not null to complete the quest
-  </div>
-</div>
-
-
-      {/* Controls section */}
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-        
-        {/* Desktop Controls */}
-        <div className="hidden md:block">
-          <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE :  Magic Attack</div>
-          </div>
+        <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
+        <div className="font-mono text-lg">
+          {uiState.isQueryComplete ? (
+            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
+              Query Completed Successfully!
+            </span>
+          ) : uiState.allEnemiesKilled ? (
+            <span className="text-yellow-400 font-bold bg-yellow-900/50 px-2 py-1 rounded animate-pulse">
+              Write your SQL query and then collect artifacts to open the temple doors.
+            </span>
+          ) : (
+            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">
+              Defeat all enemies first!
+            </span>
+          )}
         </div>
-
-        {/* Mobile Controls */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('up'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('up'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('up');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('up');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('up')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↑
-                </button>
-                <div></div>
-                
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('left'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('left'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('left');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('left');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('left')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('right'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('right'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('right');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('right');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('right')}
-                  style={{ touchAction: 'none' }}
-                >
-                  →
-                </button>
-                
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlStart('down'); 
-                  }}
-                  onTouchEnd={(e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    handleMobileControlEnd('down'); 
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleMobileControlStart('down');
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    handleMobileControlEnd('down');
-                  }}
-                  onMouseLeave={() => handleMobileControlEnd('down')}
-                  style={{ touchAction: 'none' }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <button
-              className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-              onTouchStart={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                handleAttack(); 
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleAttack();
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              MAGIC
-            </button>
-          </div>
+        <div className="text-bold text-slate-500 mt-2">
+          Find all artifacts where found_by is not null to complete the quest
         </div>
       </div>
+
+      {/* Use the reusable MobileControls component */}
+      <MobileControls 
+        mobileControlsRef={mobileControlsRef}
+        setMobileControls={setMobileControls}
+      />
 
       <style jsx>{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-        }
-        
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>
