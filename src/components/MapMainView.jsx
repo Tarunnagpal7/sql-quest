@@ -11,7 +11,20 @@ const ASSETS = {
 };
 
 // Wizard dialogue system
-const getWizardDialogue = (currentLevel, isNewUser, hasJustCompleted) => {
+const getWizardDialogue = (
+  currentLevel,
+  isNewUser,
+  hasJustCompleted,
+  isGameWon
+) => {
+  if (isGameWon) {
+    return {
+      message: `🎉 INCREDIBLE! You've conquered all ${levels.length} levels and become the ultimate SQL Champion! Your mastery of the database arts is legendary. Ready for another epic adventure?`,
+      type: "champion",
+      emoji: "👑",
+    };
+  }
+
   if (hasJustCompleted) {
     const completedLevel = currentLevel - 1;
     return {
@@ -100,6 +113,7 @@ const MapMainView = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showSpeechBubble, setShowSpeechBubble] = useState(true);
   const [speechBubbleAnimation, setSpeechBubbleAnimation] = useState("fadeIn");
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
   const gameState = useSelector(
     (state) =>
@@ -121,6 +135,9 @@ const MapMainView = () => {
   // Check if user is new
   const isNewUser = !gameState.videoWatched;
 
+  // Check if game is won
+  const isGameWon = gameState.progress.length >= levels.length;
+
   // Get current level data
   const currentLevel = levels.find(
     (level) => level.id === gameState.currentLevel
@@ -130,8 +147,13 @@ const MapMainView = () => {
   const wizardDialogue = getWizardDialogue(
     gameState.currentLevel,
     isNewUser,
-    hasJustCompleted
+    hasJustCompleted,
+    isGameWon
   );
+
+  // Calculate remaining lives (lives - skips used)
+  const remainingLives = Math.max(0, gameState.lives - gameState.skipCount);
+  const allSkipsUsed = gameState.skipCount >= gameState.lives;
 
   // Handle resize
   useEffect(() => {
@@ -209,7 +231,19 @@ const MapMainView = () => {
     window.location.reload();
   };
 
-  const isGameWon = gameState.progress.length >= levels.length;
+  // Handle reset confirmation
+  const handleResetClick = () => {
+    setShowResetConfirmation(true);
+  };
+
+  const handleConfirmReset = () => {
+    setShowResetConfirmation(false);
+    handleRestart();
+  };
+
+  const handleCancelReset = () => {
+    setShowResetConfirmation(false);
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -229,22 +263,38 @@ const MapMainView = () => {
       {/* Header Stats */}
       <div className="fixed top-0 left-0 right-0 z-50 p-4">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
-          {/* Lives */}
-          <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-red-500/30">
-            <span className="text-white font-bold text-sm">Lives</span>
-            <div className="flex space-x-1">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`text-lg transition-all ${
-                    i < gameState.lives ? "text-red-400" : "text-gray-600"
-                  }`}
-                >
-                  ❤️
+          {/* Lives or Reset Button */}
+          {!allSkipsUsed ? (
+            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-red-500/30">
+              <span className="text-white font-bold text-sm">Lives</span>
+              <div className="flex space-x-1">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`text-lg transition-all ${
+                      i < remainingLives ? "text-red-400" : "text-gray-600"
+                    }`}
+                  >
+                    ❤️
+                  </div>
+                ))}
+              </div>
+              {gameState.skipCount > 0 && (
+                <div className="ml-2 text-xs text-yellow-400">
+                  ({gameState.skipCount} skips used)
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-orange-500/30">
+              <button
+                onClick={handleResetClick}
+                className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95"
+              >
+                🔄 Reset Game
+              </button>
+            </div>
+          )}
 
           {/* Level Info */}
           <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-blue-500/30">
@@ -281,6 +331,41 @@ const MapMainView = () => {
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-3xl p-8 text-center max-w-md mx-4 shadow-2xl border-2 border-orange-500/30">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-white mb-4">
+              Reset Adventure?
+            </h2>
+            <p className="text-white/90 mb-6 leading-relaxed">
+              Are you sure you want to start over? All progress will be lost,
+              but legends never die!
+              <br />
+              <br />
+              <span className="text-orange-400 font-bold">
+                Try again, champion!
+              </span>
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleCancelReset}
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmReset}
+                className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 px-6 rounded-lg transition-all"
+              >
+                🔄 Reset Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Game Area - Flex Container */}
       <div className="flex items-center justify-center min-h-screen pt-20 pb-8 px-4">
@@ -331,7 +416,9 @@ const MapMainView = () => {
                 {/* Glow effect */}
                 <div
                   className={`absolute inset-0 w-64 h-64 md:w-80 md:h-80 rounded-full transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${
-                    hasJustCompleted
+                    isGameWon
+                      ? "bg-gradient-to-r from-yellow-400/60 via-orange-400/60 to-purple-500/60 animate-pulse"
+                      : hasJustCompleted
                       ? "bg-gradient-to-r from-yellow-400/40 via-orange-400/40 to-red-400/40 animate-pulse"
                       : "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 animate-pulse"
                   }`}
@@ -377,82 +464,149 @@ const MapMainView = () => {
               </div>
             </div>
 
-            {/* Right Side - Level Information Panel */}
+            {/* Right Side - Level Information Panel or Champion Card */}
             <div className="flex-1 w-full max-w-lg">
-              {currentLevel && (
-                <div className="bg-black/80 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
-                  {/* Level Header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-3xl font-bold text-white mb-2">
-                        Level {currentLevel.id}
-                      </h3>
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-bold text-white shadow-lg ${
-                          currentLevel.type === "basic"
-                            ? "bg-green-600"
-                            : currentLevel.type === "intermediate"
-                            ? "bg-blue-600"
-                            : currentLevel.type === "advanced"
-                            ? "bg-purple-600"
-                            : currentLevel.type === "expert"
-                            ? "bg-red-600"
-                            : "bg-yellow-600"
-                        }`}
-                      >
-                        {currentLevel.type.charAt(0).toUpperCase() +
-                          currentLevel.type.slice(1)}
-                      </span>
-                    </div>
-                    <div className="text-4xl">
-                      {currentLevel.type === "basic"
-                        ? "🌱"
-                        : currentLevel.type === "intermediate"
-                        ? "⚔️"
-                        : currentLevel.type === "advanced"
-                        ? "🔥"
-                        : currentLevel.type === "expert"
-                        ? "💀"
-                        : "👑"}
+              {isGameWon ? (
+                <div className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-purple-600/20 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-yellow-500/50 shadow-2xl">
+                  {/* Champion Header */}
+                  <div className="text-center mb-6">
+                    <div className="text-6xl mb-4">🏆</div>
+                    <h3 className="text-3xl font-bold text-yellow-400 mb-2">
+                      SQL QUEST CHAMPION!
+                    </h3>
+                    <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                      LEGENDARY STATUS ACHIEVED
                     </div>
                   </div>
 
-                  {/* Level Title */}
-                  <h4 className="text-xl md:text-2xl font-bold text-cyan-300 mb-4">
-                    {currentLevel.title}
-                  </h4>
-
-                  {/* Level Description/Riddle */}
-                  <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-600/30">
-                    <div className="flex items-start space-x-2 mb-2">
-                      <span className="text-yellow-400 text-lg">📜</span>
-                      <span className="text-yellow-300 font-semibold text-sm">
-                        Quest Description:
-                      </span>
+                  {/* Achievement Stats */}
+                  <div className="bg-black/50 rounded-xl p-4 mb-6 border border-yellow-500/30">
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-400">
+                          {levels.length}
+                        </div>
+                        <div className="text-xs text-white/80">
+                          Levels Conquered
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-purple-400">
+                          100%
+                        </div>
+                        <div className="text-xs text-white/80">
+                          Completion Rate
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-gray-200 text-sm md:text-base leading-relaxed">
-                      {currentLevel.riddle}
+                  </div>
+
+                  {/* Champion Message */}
+                  <div className="text-center mb-6">
+                    <p className="text-white/90 text-sm md:text-base leading-relaxed">
+                      🎉 You've mastered the ancient art of SQL! From basic
+                      queries to complex database magic, you've proven yourself
+                      a true champion. Want to relive the adventure?
                     </p>
                   </div>
 
-                  {/* Start Level Button */}
+                  {/* Play Again Button */}
                   <button
-                    onClick={handleStartLevel}
-                    className="w-full bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 hover:from-cyan-500 hover:via-blue-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg"
+                    onClick={handleRestart}
+                    className="w-full bg-gradient-to-r from-yellow-600 via-orange-600 to-purple-600 hover:from-yellow-500 hover:via-orange-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg"
                   >
-                    <span className="mr-3">⚔️</span>
-                    Start Level {currentLevel.id}
-                    <span className="ml-3">🗡️</span>
+                    <span className="mr-3">🌟</span>
+                    Play Again, Champion!
+                    <span className="ml-3">🌟</span>
                   </button>
 
-                  <div className="text-center mt-0.5">
-                    <span className="pixel-font text-blue-300/90 text-xs font-bold">
-                      <span className="inline-block animate-pulse">⚔️</span>{" "}
-                      {gameState.progress.length}/{levels.length}{" "}
-                      <span className="inline-block animate-pulse">🏆</span>
-                    </span>
+                  {/* Champion Badge */}
+                  <div className="mt-4 text-center">
+                    <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full px-4 py-2">
+                      <span className="text-yellow-400">👑</span>
+                      <span className="text-xs text-yellow-300 font-semibold">
+                        SQL QUEST LEGEND
+                      </span>
+                      <span className="text-yellow-400">👑</span>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                currentLevel && (
+                  <div className="bg-black/80 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
+                    {/* Level Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-3xl font-bold text-white mb-2">
+                          Level {currentLevel.id}
+                        </h3>
+                        <span
+                          className={`px-4 py-2 rounded-full text-sm font-bold text-white shadow-lg ${
+                            currentLevel.type === "basic"
+                              ? "bg-green-600"
+                              : currentLevel.type === "intermediate"
+                              ? "bg-blue-600"
+                              : currentLevel.type === "advanced"
+                              ? "bg-purple-600"
+                              : currentLevel.type === "expert"
+                              ? "bg-red-600"
+                              : "bg-yellow-600"
+                          }`}
+                        >
+                          {currentLevel.type.charAt(0).toUpperCase() +
+                            currentLevel.type.slice(1)}
+                        </span>
+                      </div>
+                      <div className="text-4xl">
+                        {currentLevel.type === "basic"
+                          ? "🌱"
+                          : currentLevel.type === "intermediate"
+                          ? "⚔️"
+                          : currentLevel.type === "advanced"
+                          ? "🔥"
+                          : currentLevel.type === "expert"
+                          ? "💀"
+                          : "👑"}
+                      </div>
+                    </div>
+
+                    {/* Level Title */}
+                    <h4 className="text-xl md:text-2xl font-bold text-cyan-300 mb-4">
+                      {currentLevel.title}
+                    </h4>
+
+                    {/* Level Description/Riddle */}
+                    <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-600/30">
+                      <div className="flex items-start space-x-2 mb-2">
+                        <span className="text-yellow-400 text-lg">📜</span>
+                        <span className="text-yellow-300 font-semibold text-sm">
+                          Quest Description:
+                        </span>
+                      </div>
+                      <p className="text-gray-200 text-sm md:text-base leading-relaxed">
+                        {currentLevel.riddle}
+                      </p>
+                    </div>
+
+                    {/* Start Level Button */}
+                    <button
+                      onClick={handleStartLevel}
+                      className="w-full bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 hover:from-cyan-500 hover:via-blue-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg"
+                    >
+                      <span className="mr-3">⚔️</span>
+                      Start Level {currentLevel.id}
+                      <span className="ml-3">🗡️</span>
+                    </button>
+
+                    <div className="text-center mt-0.5">
+                      <span className="pixel-font text-blue-300/90 text-xs font-bold">
+                        <span className="inline-block animate-pulse">⚔️</span>{" "}
+                        {gameState.progress.length}/{levels.length}{" "}
+                        <span className="inline-block animate-pulse">🏆</span>
+                      </span>
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
@@ -471,64 +625,6 @@ const MapMainView = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ✅ NEW: Level completion celebration overlay */}
-      {typeof renderCompletionCelebration === "function" &&
-        renderCompletionCelebration()}
-
-      {/* Main Map Content */}
-      <div className="pt-24 sm:pt-28 lg:pt-36 pb-4 sm:pb-8">
-        <div
-          className="relative w-full mx-auto container"
-          style={{
-            height:
-              window.innerWidth < 480
-                ? "120vh"
-                : window.innerWidth < 768
-                ? "125vh"
-                : window.innerWidth < 1024
-                ? "135vh"
-                : "150vh",
-            maxWidth: "100vw",
-          }}
-        >
-          {typeof renderMagicalParticles === "function" &&
-            renderMagicalParticles()}
-          {typeof renderPathTrail === "function" && renderPathTrail()}
-          {typeof updatedLevels !== "undefined" &&
-            Array.isArray(updatedLevels) &&
-            updatedLevels.map(renderLevel)}
-          {typeof renderCharacter === "function" && renderCharacter()}
-        </div>
-      </div>
-
-      {/* ✅ ENHANCED: Bottom UI with better win state */}
-      <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-xs sm:max-w-md">
-        {isGameWon && (
-          <div className="bg-gradient-to-r from-amber-500/90 via-yellow-400/90 to-amber-500/90 backdrop-blur-xl rounded-3xl px-4 sm:px-12 py-4 sm:py-6 border-2 border-yellow-300/50 shadow-2xl shadow-yellow-400/40">
-            <div className="pixel-font text-white text-center">
-              <div className="text-lg sm:text-2xl lg:text-3xl font-bold drop-shadow-lg animate-pulse mb-2 sm:mb-3">
-                🏆👑 LEGENDARY SQL MASTER! 👑🏆
-              </div>
-              <p className="text-xs sm:text-sm opacity-90 mb-3 leading-relaxed">
-                You conquered all {levels.length} mystical challenges! The realm
-                bows to your SQL mastery!
-              </p>
-              <div className="text-xs text-yellow-900 mb-4 space-y-1">
-                <div>🎯 Total Quests: {levels.length}</div>
-                <div>⚡ Completion Rate: 100%</div>
-                <div>🏅 Rank: SQL Legend</div>
-              </div>
-              <button
-                onClick={handleRestart}
-                className="pixel-font text-yellow-900 font-bold bg-gradient-to-r from-yellow-300 to-amber-400 hover:from-yellow-200 hover:to-amber-300 px-4 sm:px-8 py-2 sm:py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 hover:shadow-yellow-300/60 w-full"
-              >
-                🌟 Start New Legend
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* CSS Animations */}

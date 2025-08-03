@@ -1,12 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiJungle, GiKey, GiTreasureMap } from "react-icons/gi";
 import { FaPlay, FaLock, FaUnlock } from "react-icons/fa";
+import MobileControls from '../MobileControls'; // Import the component
 
 const Level10 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+    interact: false // Added interact control
+  });
   
   const [uiState, setUiState] = useState({
     gameStarted: false,
@@ -21,6 +30,55 @@ const Level10 = ({ onComplete }) => {
   const [sqlQuery, setSqlQuery] = useState('');
   const [queryError, setQueryError] = useState('');
 
+  // Mobile controls state (for UI updates only)
+  const [mobileControls, setMobileControls] = useState({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+    interact: false
+  });
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  const handleInteract = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.interact = true;
+    setMobileControls((prev) => ({ ...prev, interact: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.interact = false;
+      setMobileControls((prev) => ({ ...prev, interact: false }));
+    }, 50);
+  }, []);
+
   // Stage-specific queries with UPDATE for stage 1
   const stageQueries = {
     1: {
@@ -30,7 +88,7 @@ const Level10 = ({ onComplete }) => {
         "UPDATE royal_treasure SET door = 'opened' WHERE treasure_type = 'gold';",
         "update royal_treasure set door = 'opened' where treasure_type = 'gold'"
       ],
-      description: "Open the jungle temple door by updating the treasure chamber",
+      description: "Open the jungle temple door by updating the royal treasure where I found gold",
       keywords: "UPDATE, royal_treasure, SET, door, WHERE, treasure_type",
       result: "Door Opened"
     },
@@ -285,20 +343,21 @@ const Level10 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 150;
       
-      if (cursors.left.isDown) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
       }
       
       // Stage-specific interactions
-      if (Phaser.Input.Keyboard.JustDown(spaceKey)) {
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.interact)) {
         if (gameState.currentStage === 1 && !gameState.doorOpened) {
           showStageQuery(1);
         } else if (gameState.currentStage === 2 && gameState.doorOpened && !gameState.treasureFound) {
@@ -364,13 +423,13 @@ const Level10 = ({ onComplete }) => {
     
     function approachDoor(player, door) {
       if (!gameState.doorOpened) {
-        showMessage('🚪 Press SPACE to use UPDATE query and open the temple door!', 1500);
+        showMessage('🚪 Press SPACE or INTERACT to use UPDATE query and open the temple door!', 1500);
       }
     }
     
     function approachTreasure(player, chest) {
       if (gameState.doorOpened && !gameState.treasureFound) {
-        showMessage('💰 Press SPACE to use SELECT query and count the treasure!', 1500);
+        showMessage('💰 Press SPACE or INTERACT to use SELECT query and count the treasure!', 1500);
       }
     }
     
@@ -452,7 +511,7 @@ const Level10 = ({ onComplete }) => {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 440, 'You are now a SQL Master! Click to return to map', {
-        fontSize: '14px',
+        fontSize: '22px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -499,7 +558,7 @@ const Level10 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]);
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -593,7 +652,7 @@ const Level10 = ({ onComplete }) => {
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder={uiState.currentStage === 1 ? "UPDATE royal_treasure SET door = 'opened'..." : "SELECT gold_amount FROM royal_treasure..."}
+              placeholder={uiState.currentStage === 1 ? "UPDATE royal_treasure ..." : "SELECT gold_amount .."}
               className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
               rows={4}
               onKeyDown={(e) => e.stopPropagation()}
@@ -656,6 +715,44 @@ const Level10 = ({ onComplete }) => {
         </div>
         <div className="text-xs text-slate-500 mt-2">
           Master UPDATE and SELECT queries to unlock the ancient jungle temple's greatest treasure!
+        </div>
+      </div>
+
+      {/* Use the reusable MobileControls component with custom Interact button */}
+      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+        
+        {/* Desktop Controls */}
+        <div className="hidden md:block">
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>JUNGLE TEMPLE CONTROLS:</strong></div>
+          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
+            <div>↑↓←→ Explore Temple</div>
+            <div>SPACE : Interact</div>
+            <div>SQL Solve Puzzles</div>
+          </div>
+        </div>
+
+        {/* Mobile Controls - Custom for Level10 with Interact button */}
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            {/* Use the MobileControls component but add extra interact functionality */}
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+            
+            {/* Extra Interact Button for Level10 - positioned separately */}
+            <button
+              className="bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                handleInteract();
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              INTERACT
+            </button>
+          </div>
         </div>
       </div>
 

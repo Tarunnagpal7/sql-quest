@@ -1,11 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Phaser from "phaser";
 import { levels } from "../../assets/data/levels";
 import { GiFishing, GiMonkey, GiSeaSerpent, GiSailboat } from "react-icons/gi";
+import MobileControls from "../MobileControls"; // Import the component
 
 const Level5 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const mobileControlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    attack: false,
+    fish: false, // Added fish control
+  });
 
   const [uiState, setUiState] = useState({
     health: 100,
@@ -26,9 +35,8 @@ const Level5 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState("");
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state
-  // Mobile controls ref
-  const mobileControlsRef = useRef({
+  // Mobile controls state (for UI updates only)
+  const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
     left: false,
@@ -74,6 +82,45 @@ const Level5 = ({ onComplete }) => {
     "SELECT * FROM jungle_explorers ORDER BY courage_level DESC LIMIT 1",
     "select * from jungle_explorers order by courage_level desc limit 1",
   ];
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  const handleFish = useCallback(() => {
+    // Update both ref and state
+    mobileControlsRef.current.fish = true;
+    setMobileControls((prev) => ({ ...prev, fish: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.fish = false;
+      setMobileControls((prev) => ({ ...prev, fish: false }));
+    }, 50);
+  }, []);
 
   const handleQuerySubmit = () => {
     const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, " ");
@@ -684,31 +731,34 @@ const Level5 = ({ onComplete }) => {
 
       const speed = 160;
 
-      if (cursors.left.isDown || mobileControls.left) {
+      // Use the ref instead of state for game logic
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
         raft.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControls.right) {
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
         raft.setVelocityX(speed);
       }
 
-      if (cursors.up.isDown || mobileControls.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-speed);
         raft.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControls.down) {
+      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
         player.setVelocityY(speed);
         raft.setVelocityY(speed);
       }
 
       if (
-        (Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) &&
+        (Phaser.Input.Keyboard.JustDown(spaceKey) ||
+          mobileControlsRef.current.attack) &&
         gameState.canAttack
       ) {
         attack.call(this);
       }
 
       if (
-        (Phaser.Input.Keyboard.JustDown(fishKey) || mobileControls.fish) &&
+        (Phaser.Input.Keyboard.JustDown(fishKey) ||
+          mobileControlsRef.current.fish) &&
         gameState.canFish
       ) {
         tryFishing.call(this);
@@ -1150,7 +1200,7 @@ const Level5 = ({ onComplete }) => {
 
       const instructionText = sceneRef.add
         .text(400, 350, "The Sacred Monkey is free! Click to return to map", {
-          fontSize: "16px",
+          fontSize: "28px",
           fontFamily: "Courier New",
           color: "#00ff00",
         })
@@ -1234,36 +1284,7 @@ const Level5 = ({ onComplete }) => {
     return () => {
       gameInstance.current?.destroy(true);
     };
-  }, [onComplete]);
-
-  // Mobile control handlers
-  const handleMobileControlStart = (direction) => {
-    mobileControlsRef.current[direction] = true;
-  };
-
-  const handleMobileControlEnd = (direction) => {
-    mobileControlsRef.current[direction] = false;
-    // Add a small delay to ensure state is properly reset
-    setTimeout(() => {
-      if (!mobileControlsRef.current[direction]) {
-        mobileControlsRef.current[direction] = false;
-      }
-    }, 50);
-  };
-
-  const handleAttack = () => {
-    mobileControlsRef.current.attack = true;
-    setTimeout(() => {
-      mobileControlsRef.current.attack = false;
-    }, 100);
-  };
-
-  const handleFish = () => {
-    mobileControlsRef.current.fish = true;
-    setTimeout(() => {
-      mobileControlsRef.current.fish = false;
-    }, 100);
-  };
+  }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -1390,134 +1411,41 @@ const Level5 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Controls section */}
+      {/* Use the reusable MobileControls component with custom Fishing button */}
       <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
-          <strong>CONTROLS:</strong>
-        </div>
-
         {/* Desktop Controls */}
         <div className="hidden md:block">
+          <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
+            <strong>CONTROLS:</strong>
+          </div>
           <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
             <div>↑↓←→ Navigate Raft</div>
-            <div>SPACE Magic Attack</div>
-            <div>F Fishing</div>
+            <div>SPACE : Attack</div>
+            <div>F : Fishing</div>
           </div>
         </div>
 
-        {/* Mobile Controls */}
+        {/* Mobile Controls - Custom for Level5 with Fish button */}
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("up")}
-                  onTouchEnd={() => handleMobileControlEnd("up")}
-                  onMouseDown={() => handleMobileControlStart("up")}
-                  onMouseUp={() => handleMobileControlEnd("up")}
-                  onMouseLeave={() => handleMobileControlEnd("up")}
-                  onTouchCancel={
-                    () => handleMobileControlEnd("up") // replace "right" with appropriate direction
-                  }
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  style={{ touchAction: "none" }}
-                >
-                  ↑
-                </button>
-                <div></div>
+            {/* Use the MobileControls component but add extra fish functionality */}
+            <MobileControls
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
 
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("left")}
-                  onTouchEnd={() => handleMobileControlEnd("left")}
-                  onMouseDown={() => handleMobileControlStart("left")}
-                  onMouseUp={() => handleMobileControlEnd("left")}
-                  onMouseLeave={() => handleMobileControlEnd("left")}
-                  onTouchCancel={
-                    () => handleMobileControlEnd("left") // replace "right" with appropriate direction
-                  }
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  style={{ touchAction: "none" }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("right")}
-                  onTouchEnd={() => handleMobileControlEnd("right")}
-                  onMouseDown={() => handleMobileControlStart("right")}
-                  onMouseUp={() => handleMobileControlEnd("right")}
-                  onMouseLeave={() => handleMobileControlEnd("right")}
-                  onTouchCancel={
-                    () => handleMobileControlEnd("right") // replace "right" with appropriate direction
-                  }
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  style={{ touchAction: "none" }}
-                >
-                  →
-                </button>
-
-                <div></div>
-                <button
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("down")}
-                  onTouchEnd={() => handleMobileControlEnd("down")}
-                  onMouseDown={() => handleMobileControlStart("down")}
-                  onMouseUp={() => handleMobileControlEnd("down")}
-                  onMouseLeave={() => handleMobileControlEnd("down")}
-                  onTouchCancel={
-                    () => handleMobileControlEnd("down") // replace "right" with appropriate direction
-                  }
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  style={{ touchAction: "none" }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAttack();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleAttack();
-                }}
-                style={{ touchAction: "none" }}
-              >
-                MAGIC
-              </button>
-
-              <button
-                className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full w-20 h-20 text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleFish();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleFish();
-                }}
-                style={{ touchAction: "none" }}
-              >
-                FISH
-              </button>
-            </div>
+            {/* Extra Fish Button for Level5 - positioned separately */}
+            <button
+              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleFish();
+              }}
+              style={{ touchAction: "none" }}
+            >
+              FISH
+            </button>
           </div>
         </div>
       </div>
@@ -1526,13 +1454,6 @@ const Level5 = ({ onComplete }) => {
         .pixel-font {
           font-family: "Courier New", monospace;
           text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
-        }
-
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

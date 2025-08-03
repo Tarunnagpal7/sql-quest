@@ -17,8 +17,8 @@ const Level2 = ({ onComplete }) => {
     courageThreshold: 80,
   });
 
-  // Mobile controls ref
-  const mobileControlsRef = useRef({
+  // Mobile controls state
+  const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
     left: false,
@@ -443,33 +443,25 @@ const Level2 = ({ onComplete }) => {
     function update() {
       if (gameState.isLevelComplete) return;
 
-      const currentMobileControls = getMobileControls(); // Add this line
-
       player.setVelocity(0);
       const speed = 180;
 
-      if (cursors.left.isDown || currentMobileControls.left) {
-        // Use currentMobileControls
+      if (cursors.left.isDown || mobileControls.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || currentMobileControls.right) {
-        // Use currentMobileControls
+      } else if (cursors.right.isDown || mobileControls.right) {
         player.setVelocityX(speed);
       }
 
-      if (cursors.up.isDown || currentMobileControls.up) {
-        // Use currentMobileControls
+      if (cursors.up.isDown || mobileControls.up) {
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || currentMobileControls.down) {
-        // Use currentMobileControls
+      } else if (cursors.down.isDown || mobileControls.down) {
         player.setVelocityY(speed);
       }
 
       if (
-        (Phaser.Input.Keyboard.JustDown(spaceKey) ||
-          currentMobileControls.attack) &&
+        (Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControls.attack) &&
         gameState.canAttack
       ) {
-        // Use currentMobileControls
         attack.call(this);
       }
 
@@ -884,17 +876,24 @@ const Level2 = ({ onComplete }) => {
 
   // Mobile control handlers (same as Level 1)
   const handleMobileControlStart = (direction) => {
-    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
   };
+
   const handleMobileControlEnd = (direction) => {
-    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
   };
 
   const handleAttack = () => {
-    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
     setTimeout(() => {
-      mobileControlsRef.current.attack = false;
-    }, 100);
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
   };
 
   return (
@@ -993,10 +992,24 @@ const Level2 = ({ onComplete }) => {
                 <div></div>
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("up")}
-                  onTouchEnd={() => handleMobileControlEnd("up")}
-                  onMouseDown={() => handleMobileControlStart("up")}
-                  onMouseUp={() => handleMobileControlEnd("up")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart("up");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd("up");
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart("up");
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd("up");
+                  }}
                   onMouseLeave={() => handleMobileControlEnd("up")}
                   style={{ touchAction: "none" }}
                 >
@@ -1006,10 +1019,24 @@ const Level2 = ({ onComplete }) => {
 
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("left")}
-                  onTouchEnd={() => handleMobileControlEnd("left")}
-                  onMouseDown={() => handleMobileControlStart("left")}
-                  onMouseUp={() => handleMobileControlEnd("left")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart("left");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd("left");
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart("left");
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd("left");
+                  }}
                   onMouseLeave={() => handleMobileControlEnd("left")}
                   style={{ touchAction: "none" }}
                 >
@@ -1018,10 +1045,24 @@ const Level2 = ({ onComplete }) => {
                 <div className="bg-slate-700 rounded"></div>
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("right")}
-                  onTouchEnd={() => handleMobileControlEnd("right")}
-                  onMouseDown={() => handleMobileControlStart("right")}
-                  onMouseUp={() => handleMobileControlEnd("right")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart("right");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd("right");
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart("right");
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd("right");
+                  }}
                   onMouseLeave={() => handleMobileControlEnd("right")}
                   style={{ touchAction: "none" }}
                 >
@@ -1031,10 +1072,24 @@ const Level2 = ({ onComplete }) => {
                 <div></div>
                 <button
                   className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  onTouchStart={() => handleMobileControlStart("down")}
-                  onTouchEnd={() => handleMobileControlEnd("down")}
-                  onMouseDown={() => handleMobileControlStart("down")}
-                  onMouseUp={() => handleMobileControlEnd("down")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlStart("down");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileControlEnd("down");
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleMobileControlStart("down");
+                  }}
+                  onMouseUp={(e) => {
+                    e.preventDefault();
+                    handleMobileControlEnd("down");
+                  }}
                   onMouseLeave={() => handleMobileControlEnd("down")}
                   style={{ touchAction: "none" }}
                 >
@@ -1046,8 +1101,15 @@ const Level2 = ({ onComplete }) => {
 
             <button
               className="bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-              onTouchStart={() => handleAttack()}
-              onMouseDown={() => handleAttack()}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAttack();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleAttack();
+              }}
               style={{ touchAction: "none" }}
             >
               MAGIC
@@ -1067,11 +1129,6 @@ const Level2 = ({ onComplete }) => {
           -webkit-user-select: none;
           -webkit-touch-callout: none;
           -webkit-tap-highlight-color: transparent;
-          pointer-events: auto;
-        }
-
-        [ref] {
-          pointer-events: none;
         }
       `}</style>
     </div>
