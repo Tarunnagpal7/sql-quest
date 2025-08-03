@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
-import { levels } from "../../assets/data/levels";
-import { CgGhostCharacter } from "react-icons/cg";
 import { AiFillBug } from "react-icons/ai";
+import MobileControls from "../MobileControls"; // Import the component
 
 const Level1 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
@@ -28,125 +27,6 @@ const Level1 = ({ onComplete }) => {
     right: false,
     attack: false,
   });
-
-  // Refs for each control button
-  const upBtnRef = useRef(null);
-  const downBtnRef = useRef(null);
-  const leftBtnRef = useRef(null);
-  const rightBtnRef = useRef(null);
-  const attackBtnRef = useRef(null);
-
-  // Function to convert React icon to image data
-  const iconToImageData = (IconComponent, color = "#ffffff", size = 32) => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = size;
-    canvas.height = size;
-
-    // Create a temporary div to render the icon
-    const tempDiv = document.createElement("div");
-    tempDiv.style.position = "absolute";
-    tempDiv.style.left = "-9999px";
-    tempDiv.innerHTML = `<div style="color: ${color}; font-size: ${size}px; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;"></div>`;
-
-    // Render icon as SVG and convert to canvas
-    const iconElement = React.createElement(IconComponent, {
-      size: size,
-      color: color,
-    });
-
-    // For simplicity, we'll create the textures programmatically
-    // This is a workaround since direct React icon rendering in Phaser is complex
-    return canvas;
-  };
-
-  // Memoized mobile control handlers
-  const handleMobileControlStart = useCallback((direction) => {
-    // Update both ref and state
-    mobileControlsRef.current[direction] = true;
-    setMobileControls((prev) => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  }, []);
-
-  const handleMobileControlEnd = useCallback((direction) => {
-    // Update both ref and state
-    mobileControlsRef.current[direction] = false;
-    setMobileControls((prev) => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  }, []);
-
-  const handleAttack = useCallback(() => {
-    // Update both ref and state
-    mobileControlsRef.current.attack = true;
-    setMobileControls((prev) => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      mobileControlsRef.current.attack = false;
-      setMobileControls((prev) => ({ ...prev, attack: false }));
-    }, 50);
-  }, []);
-
-  // Mobile controls setup effect
-  useEffect(() => {
-    const cleanupFunctions = [];
-
-    const setupButton = (ref, direction, isAttack = false) => {
-      const element = ref.current;
-      if (!element) return;
-
-      const onStart = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isAttack) {
-          handleAttack();
-        } else {
-          handleMobileControlStart(direction);
-        }
-      };
-
-      const onEnd = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!isAttack) {
-          handleMobileControlEnd(direction);
-        }
-      };
-
-      // Use only pointer events for better mobile support
-      element.addEventListener("pointerdown", onStart, { passive: false });
-      
-      if (!isAttack) {
-        element.addEventListener("pointerup", onEnd, { passive: false });
-        element.addEventListener("pointerleave", onEnd, { passive: false });
-        element.addEventListener("pointercancel", onEnd, { passive: false });
-      }
-
-      // Add to cleanup functions
-      cleanupFunctions.push(() => {
-        element.removeEventListener("pointerdown", onStart);
-        if (!isAttack) {
-          element.removeEventListener("pointerup", onEnd);
-          element.removeEventListener("pointerleave", onEnd);
-          element.removeEventListener("pointercancel", onEnd);
-        }
-      });
-    };
-
-    // Setup all buttons
-    setupButton(upBtnRef, "up");
-    setupButton(downBtnRef, "down");
-    setupButton(leftBtnRef, "left");
-    setupButton(rightBtnRef, "right");
-    setupButton(attackBtnRef, "attack", true);
-
-    // Cleanup function
-    return () => {
-      cleanupFunctions.forEach(cleanup => cleanup());
-    };
-  }, [handleMobileControlStart, handleMobileControlEnd, handleAttack]);
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
@@ -183,45 +63,45 @@ const Level1 = ({ onComplete }) => {
     function preload() {
       sceneRef = this;
 
-      // --- UPDATED: Create Wizard Character for Player ---
+      // --- Create Wizard Character for Player ---
       const playerGraphics = this.add.graphics();
 
       // Wizard robe (main body)
-      playerGraphics.fillStyle(0x1e3a8a, 1); // Dark blue robe
-      playerGraphics.fillCircle(16, 25, 14); // Body
-      playerGraphics.fillRect(2, 15, 28, 20); // Robe body
+      playerGraphics.fillStyle(0x1e3a8a, 1);
+      playerGraphics.fillCircle(16, 25, 14);
+      playerGraphics.fillRect(2, 15, 28, 20);
 
       // Wizard hood
-      playerGraphics.fillStyle(0x1e40af, 1); // Slightly lighter blue for hood
-      playerGraphics.fillCircle(16, 12, 10); // Hood
+      playerGraphics.fillStyle(0x1e40af, 1);
+      playerGraphics.fillCircle(16, 12, 10);
 
       // Hood shadow/depth
-      playerGraphics.fillStyle(0x0f172a, 1); // Very dark blue for shadow
-      playerGraphics.fillEllipse(16, 14, 18, 8); // Hood opening
+      playerGraphics.fillStyle(0x0f172a, 1);
+      playerGraphics.fillEllipse(16, 14, 18, 8);
 
       // Face (visible under hood)
-      playerGraphics.fillStyle(0xfbbf24, 1); // Golden/tan skin tone
-      playerGraphics.fillCircle(16, 16, 6); // Face
+      playerGraphics.fillStyle(0xfbbf24, 1);
+      playerGraphics.fillCircle(16, 16, 6);
 
       // Eyes
       playerGraphics.fillStyle(0x000000, 1);
-      playerGraphics.fillCircle(13, 15, 1.5); // Left eye
-      playerGraphics.fillCircle(19, 15, 1.5); // Right eye
+      playerGraphics.fillCircle(13, 15, 1.5);
+      playerGraphics.fillCircle(19, 15, 1.5);
 
       // Eye glow (magical effect)
-      playerGraphics.fillStyle(0x60a5fa, 0.7); // Blue glow
+      playerGraphics.fillStyle(0x60a5fa, 0.7);
       playerGraphics.fillCircle(13, 15, 2.5);
       playerGraphics.fillCircle(19, 15, 2.5);
 
       // Robe trim/details
-      playerGraphics.fillStyle(0xfbbf24, 1); // Gold trim
-      playerGraphics.fillRect(2, 20, 28, 2); // Horizontal trim
-      playerGraphics.fillRect(14, 15, 4, 25); // Vertical center line
+      playerGraphics.fillStyle(0xfbbf24, 1);
+      playerGraphics.fillRect(2, 20, 28, 2);
+      playerGraphics.fillRect(14, 15, 4, 25);
 
       // Magical scroll (held in left hand)
-      playerGraphics.fillStyle(0xf7fafc, 1); // Parchment white
-      playerGraphics.fillRect(8, 22, 6, 8); // Scroll
-      playerGraphics.lineStyle(1, 0x8b5cf6); // Purple text lines
+      playerGraphics.fillStyle(0xf7fafc, 1);
+      playerGraphics.fillRect(8, 22, 6, 8);
+      playerGraphics.lineStyle(1, 0x8b5cf6);
       playerGraphics.beginPath();
       playerGraphics.moveTo(9, 24);
       playerGraphics.lineTo(13, 24);
@@ -232,20 +112,20 @@ const Level1 = ({ onComplete }) => {
       playerGraphics.strokePath();
 
       // Magic staff (held in right hand)
-      playerGraphics.lineStyle(3, 0x92400e); // Brown staff
+      playerGraphics.lineStyle(3, 0x92400e);
       playerGraphics.beginPath();
       playerGraphics.moveTo(24, 35);
       playerGraphics.lineTo(26, 18);
       playerGraphics.strokePath();
 
       // Staff crystal/orb at top
-      playerGraphics.fillStyle(0x8b5cf6, 0.8); // Purple crystal
+      playerGraphics.fillStyle(0x8b5cf6, 0.8);
       playerGraphics.fillCircle(26, 16, 4);
-      playerGraphics.fillStyle(0xfbbf24, 0.6); // Golden glow
+      playerGraphics.fillStyle(0xfbbf24, 0.6);
       playerGraphics.fillCircle(26, 16, 6);
 
       // Staff decorative elements
-      playerGraphics.lineStyle(2, 0xfbbf24); // Gold details
+      playerGraphics.lineStyle(2, 0xfbbf24);
       playerGraphics.beginPath();
       playerGraphics.moveTo(24, 20);
       playerGraphics.lineTo(28, 20);
@@ -280,38 +160,31 @@ const Level1 = ({ onComplete }) => {
       playerGraphics.generateTexture("player", 32, 40);
       playerGraphics.destroy();
 
-      // --- MODIFIED: Create Bug Enemies with Different Colors ---
-      const enemyColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff]; // Red, Green, Blue, Yellow, Magenta
+      // Create Bug Enemies with Different Colors
+      const enemyColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff];
 
       enemyColors.forEach((color, index) => {
         const enemyGraphics = this.add.graphics();
-        // Bug body
         enemyGraphics.fillStyle(color, 1);
         enemyGraphics.fillEllipse(16, 20, 16, 10);
-        // Bug head
         enemyGraphics.fillCircle(16, 12, 6);
-        // Bug legs
         enemyGraphics.lineStyle(2, color);
         enemyGraphics.beginPath();
-        // Left legs
         enemyGraphics.moveTo(8, 18);
         enemyGraphics.lineTo(4, 22);
         enemyGraphics.moveTo(8, 22);
         enemyGraphics.lineTo(4, 26);
-        // Right legs
         enemyGraphics.moveTo(24, 18);
         enemyGraphics.lineTo(28, 22);
         enemyGraphics.moveTo(24, 22);
         enemyGraphics.lineTo(28, 26);
         enemyGraphics.strokePath();
-        // Bug antennae
         enemyGraphics.beginPath();
         enemyGraphics.moveTo(14, 8);
         enemyGraphics.lineTo(12, 4);
         enemyGraphics.moveTo(18, 8);
         enemyGraphics.lineTo(20, 4);
         enemyGraphics.strokePath();
-        // Bug eyes
         enemyGraphics.fillStyle(0x000000, 1);
         enemyGraphics.fillCircle(13, 12, 1.5);
         enemyGraphics.fillCircle(19, 12, 1.5);
@@ -628,7 +501,7 @@ const Level1 = ({ onComplete }) => {
       );
     }
 
-    function update() {
+     function update() {
       if (gameState.isLevelComplete) return;
 
       player.setVelocity(0);
@@ -794,7 +667,7 @@ const Level1 = ({ onComplete }) => {
 
             sceneRef.tweens.add({
               targets: magicExplosion,
-              scaleX: 3,
+              scaleX: 3,  
               scaleY: 3,
               alpha: 0,
               duration: 300,
@@ -838,7 +711,7 @@ const Level1 = ({ onComplete }) => {
 
       const instructionText = sceneRef.add
         .text(400, 320, "Click to return to map", {
-          fontSize: "16px",
+          fontSize: "32px",
           fontFamily: "Courier New",
           color: "#00ff00",
         })
@@ -920,7 +793,7 @@ const Level1 = ({ onComplete }) => {
       updateReactUI();
     }
 
-    function updateReactUI() {
+     function updateReactUI() {
       setUiState({
         health: Math.max(0, gameState.health),
         isQueryComplete: gameState.isLevelComplete,
@@ -945,10 +818,11 @@ const Level1 = ({ onComplete }) => {
     return () => {
       gameInstance.current?.destroy(true);
     };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+  }, [onComplete]);
+
 
   return (
-    <div className="w-full flex flex-col items-center gap-4 text-white">
+        <div className="w-full flex flex-col items-center gap-4 text-white">
       {/* Display the icons as reference in the UI */}
       <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
@@ -991,90 +865,16 @@ const Level1 = ({ onComplete }) => {
         </div>
       </div>
 
-      <div className="w-full max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
-          <strong>CONTROLS:</strong>
-        </div>
-
-        {/* Desktop Controls */}
-        <div className="hidden md:block">
-          <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE Attack</div>
-          </div>
-        </div>
-
-        {/* Mobile/Tablet Controls */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* D-Pad */}
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-36 h-36">
-                <div></div>
-                {/* UP */}
-                <button
-                  ref={upBtnRef}
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  style={{ touchAction: "none" }}
-                >
-                  ↑
-                </button>
-                <div></div>
-
-                {/* LEFT */}
-                <button
-                  ref={leftBtnRef}
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  style={{ touchAction: "none" }}
-                >
-                  ←
-                </button>
-                <div className="bg-slate-700 rounded"></div>
-                {/* RIGHT */}
-                <button
-                  ref={rightBtnRef}
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  style={{ touchAction: "none" }}
-                >
-                  →
-                </button>
-
-                <div></div>
-                {/* DOWN */}
-                <button
-                  ref={downBtnRef}
-                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
-                  style={{ touchAction: "none" }}
-                >
-                  ↓
-                </button>
-                <div></div>
-              </div>
-            </div>
-
-            {/* ATTACK */}
-            <button
-              ref={attackBtnRef}
-              className="bg-red-600 hover:bg-red-500 active:bg-red-400 rounded-full w-24 h-24 text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
-              style={{ touchAction: "none" }}
-            >
-              ATTACK
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Use the reusable MobileControls component */}
+      <MobileControls 
+        mobileControlsRef={mobileControlsRef}
+        setMobileControls={setMobileControls}
+      />
 
       <style jsx>{`
         .pixel-font {
           font-family: "Courier New", monospace;
           text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
-        }
-
-        button {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

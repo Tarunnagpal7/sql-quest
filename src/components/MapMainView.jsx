@@ -107,7 +107,7 @@ const MapMainView = () => {
                           gameState.lastCompletedLevel === gameState.currentLevel - 1;
 
   // Check if user is new
-  const isNewUser = gameState.currentLevel === 1 && gameState.progress.length === 0;
+  const isNewUser = !gameState.videoWatched
   
   // Get current level data
   const currentLevel = levels.find(level => level.id === gameState.currentLevel);

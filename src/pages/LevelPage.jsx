@@ -178,7 +178,7 @@ function LevelPage() {
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src="/jungle_map_bg.png"
+          src="/mapbg.png"
           alt="Background"
           className="w-full h-full object-cover opacity-80"
         />
@@ -239,7 +239,7 @@ function LevelPage() {
                 {/* Quest Header */}
                 <div className="flex items-center justify-center gap-2 mb-4">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                  <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text font-bold">
+                  <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 to-blue-300  bg-clip-text font-bold">
                     ⚡ Your Quest ⚡
                   </h2>
                   <div
