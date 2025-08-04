@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
-import { GiWoodBeam, GiTreasureMap, GiSailboat } from "react-icons/gi";
-import { FaHammer } from "react-icons/fa";
-import MobileControls from '../MobileControls'; // Import the component
+import { GiCrosshair, GiPistolGun, GiSailboat } from "react-icons/gi";
+import { FaSkull } from "react-icons/fa";
+import MobileControls from '../MobileControls';
 
 const Level4 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
@@ -14,94 +14,138 @@ const Level4 = ({ onComplete }) => {
     left: false,
     right: false,
     attack: false,
-    build: false // Added build control
   });
   
   const [uiState, setUiState] = useState({
     health: 100,
-    isQueryComplete: false,
-    explorersFound: 0,
-    totalExplorers: 0,
-    raftProgress: 0,
-    raftMaterials: 0,
-    totalMaterials: 8,
+    bullets: 7,
+    enemiesKilled: 0,
+    totalEnemies: 5,
     showQueryInput: false,
-    allExplorersFound: false,
-    stormIntensity: 0
+    gamePhase: 'shooting', // 'shooting', 'building', 'completed'
+    aimPosition: { x: 400, y: 250 },
+    isQueryComplete: false
   });
 
-  // SQL Query input state
-  const [sqlQuery, setSqlQuery] = useState('');
+  const [sqlQuery, setSqlQuery] = useState('SELECT    FROM guide_book WHERE category =    AND instructions    OR instructions   ;');
   const [queryError, setQueryError] = useState('');
-  const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state (for UI updates only)
+  // Mobile controls state
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
     left: false,
     right: false,
-    attack: false,
-    build: false
+    attack: false
   });
 
-  // Expected correct queries
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 100);
+  }, []);
+
   const correctQueries = [
-    'SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;',
-    'select * from jungle_explorers where artifact_found = true;',
-    'SELECT * FROM jungle_explorers WHERE artifact_found = TRUE',
-    'select * from jungle_explorers where artifact_found = true',
-    'SELECT * FROM jungle_explorers WHERE artifact_found=TRUE;',
-    'select * from jungle_explorers where artifact_found=true;'
+     // Without parentheses (original format)
+  "SELECT instructions FROM guide_book WHERE category = 'raft' AND instructions LIKE '%bamboo%' OR instructions LIKE '%vines%';",
+  "select instructions from guide_book where category = 'raft' and instructions like '%bamboo%' or instructions like '%vines%';",
+  
+  // With parentheses (better SQL practice)
+  "SELECT instructions FROM guide_book WHERE category = 'raft' AND (instructions LIKE '%bamboo%' OR instructions LIKE '%vines%');",
+  "select instructions from guide_book where category = 'raft' and (instructions like '%bamboo%' or instructions like '%vines%');",
+  
+  // Variations without spaces
+  "SELECT instructions FROM guide_book WHERE category='raft' AND instructions LIKE'%bamboo%' OR instructions LIKE'%vines%';",
+  "select instructions from guide_book where category='raft' and instructions like'%bamboo%' or instructions like'%vines%';"
+];
+
+const handleQuerySubmit = () => {
+  // Normalize user input - remove extra spaces and convert to lowercase
+  const normalizedInput = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
+  
+  // Check for required keywords that must be present in the query
+  const requiredKeywords = [
+    'select',
+    'instructions', 
+    'from',
+    'guide_book',
+    'where',
+    'category',
+    '=',
+    "'raft'",
+    'and',
+    'instructions',
+    'like',
+    "'%bamboo%'",
+    'or',
+    'instructions',
+    'like', 
+    "'%vines%'"
   ];
 
-  const handleQuerySubmit = () => {
-    const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
-    const isCorrect = correctQueries.some(query => 
-      normalizedQuery === query.toLowerCase().replace(/\s+/g, ' ')
-    );
+  // Verify all required keywords exist in the normalized input
+  const hasAllKeywords = requiredKeywords.every(keyword => 
+    normalizedInput.includes(keyword)
+  );
 
-    if (isCorrect) {
-      setQuerySuccess(true);
-      setQueryError('');
-      setUiState(prev => ({ ...prev, showQueryInput: false }));
-      
-      // Signal to game that query is complete
-      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        gameInstance.current.scene.scenes[0].completeQuery();
-      }
-    } else {
-      setQueryError('Query failed! Find all jungle explorers who have found artifacts.');
-      setTimeout(() => setQueryError(''), 3000);
+  if (hasAllKeywords) {
+    setQueryError('');
+    setUiState(prev => ({ 
+      ...prev, 
+      showQueryInput: false, 
+      isQueryComplete: true, 
+      gamePhase: 'completed' 
+    }));
+    
+    // Complete the level
+    if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
+      gameInstance.current.scene.scenes[0].completeLevel();
     }
-  };
+  } else {
+    setQueryError('Wrong! expected keywords : instructions , raft , like , %, bamboo , vines');
+    setTimeout(() => setQueryError(''), 5000);
+  }
+};
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
 
-    let player, enemies, explorers, materials, walls, raft;
-    let cursors, spaceKey, buildKey;
+    let player, enemies, bullets, aimCrosshair, riverPort;
+    let cursors, spaceKey;
     
     const gameState = {
       health: 100,
-      maxHealth: 100,
-      isLevelComplete: false,
-      canAttack: true,
-      canBuild: true,
-      attackCooldown: 400,
-      buildCooldown: 800,
-      explorersFound: 0,
-      totalExplorers: 6,
-      raftProgress: 0,
-      raftMaterials: 0,
-      totalMaterials: 8,
-      allExplorersFound: false,
-      queryComplete: false,
-      stormIntensity: 0,
-      timeLimit: 180000,
-      timeRemaining: 180000,
-      explorersData: [],
-      buildingZone: { x: 650, y: 350, radius: 70 }
+      bullets: 7,
+      maxBullets: 7,
+      enemiesKilled: 0,
+      totalEnemies: 5,
+      gamePhase: 'shooting',
+      aimPosition: { x: 400, y: 250 },
+      canShoot: true,
+      shootCooldown: 500,
+      invulnerable: false,
+      invulnerabilityTime: 1000,
+      isLevelComplete: false
     };
     
     let sceneRef;
@@ -109,774 +153,526 @@ const Level4 = ({ onComplete }) => {
     function preload() {
       sceneRef = this;
       
-      // --- Create Wizard Character with better spacing ---
-      const playerGraphics = this.add.graphics();
+      // Create tactical wizard (corner position)
+      const wizardGraphics = this.add.graphics();
       
-      // Wizard robe (main body)
-      playerGraphics.fillStyle(0x1e3a8a, 1);
-      playerGraphics.fillCircle(20, 30, 16);
-      playerGraphics.fillRect(4, 18, 32, 24);
+      // Wizard with gun
+      wizardGraphics.fillStyle(0x1e40af, 1); // Blue robe
+      wizardGraphics.fillCircle(15, 20, 12);
+      wizardGraphics.fillRect(3, 12, 24, 18);
       
-      // Wizard hood
-      playerGraphics.fillStyle(0x1e40af, 1);
-      playerGraphics.fillCircle(20, 15, 12);
+      // Wizard face
+      wizardGraphics.fillStyle(0xfbbf24, 1);
+      wizardGraphics.fillCircle(15, 15, 6);
       
-      // Face
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillCircle(20, 20, 8);
+      // Eyes
+      wizardGraphics.fillStyle(0x000000, 1);
+      wizardGraphics.fillCircle(12, 14, 1.5);
+      wizardGraphics.fillCircle(18, 14, 1.5);
       
-      // Eyes with glow
-      playerGraphics.fillStyle(0x60a5fa, 0.7);
-      playerGraphics.fillCircle(17, 19, 3);
-      playerGraphics.fillCircle(23, 19, 3);
-      playerGraphics.fillStyle(0x000000, 1);
-      playerGraphics.fillCircle(17, 19, 2);
-      playerGraphics.fillCircle(23, 19, 2);
+      // Gun in hands
+      wizardGraphics.fillStyle(0x666666, 1);
+      wizardGraphics.fillRect(25, 18, 12, 4); // Gun body
+      wizardGraphics.fillRect(37, 19, 4, 2); // Gun barrel
       
-      // Robe details
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillRect(4, 24, 32, 3);
-      playerGraphics.fillRect(18, 18, 4, 28);
+      // Gun details
+      wizardGraphics.fillStyle(0x333333, 1);
+      wizardGraphics.fillRect(26, 19, 2, 2); // Trigger
+      wizardGraphics.fillRect(30, 17, 4, 1); // Sight
       
-      // Magic staff
-      playerGraphics.lineStyle(4, 0x92400e);
-      playerGraphics.beginPath();
-      playerGraphics.moveTo(28, 42);
-      playerGraphics.lineTo(30, 22);
-      playerGraphics.strokePath();
-      playerGraphics.fillStyle(0x8b5cf6, 0.8);
-      playerGraphics.fillCircle(30, 20, 5);
+      wizardGraphics.generateTexture('tactical_wizard', 45, 35);
+      wizardGraphics.destroy();
       
-      playerGraphics.generateTexture('player', 40, 50);
-      playerGraphics.destroy();
-      
-      // --- Create Jungle Explorers with better graphics ---
-      const explorerTypes = ['artifact_holder', 'empty_handed'];
-      const explorerColors = [0x00ff00, 0xff6666];
-      
-      explorerTypes.forEach((type, index) => {
-        const explorerGraphics = this.add.graphics();
-        const color = explorerColors[index];
-        
-        // Explorer body - larger and clearer
-        explorerGraphics.fillStyle(0x8b4513, 1);
-        explorerGraphics.fillRect(10, 25, 20, 18);
-        
-        // Explorer head
-        explorerGraphics.fillStyle(0xfdbcb4, 1);
-        explorerGraphics.fillCircle(20, 18, 10);
-        
-        // Explorer hair
-        explorerGraphics.fillStyle(0x4a4a4a, 1);
-        explorerGraphics.fillCircle(20, 12, 11);
-        
-        // Explorer eyes
-        explorerGraphics.fillStyle(0x000000, 1);
-        explorerGraphics.fillCircle(16, 17, 2);
-        explorerGraphics.fillCircle(24, 17, 2);
-        
-        // Clear artifact indicator
-        if (type === 'artifact_holder') {
-          explorerGraphics.fillStyle(color, 0.4);
-          explorerGraphics.fillCircle(20, 25, 30);
-          
-          // Show artifact in hands - more visible
-          explorerGraphics.fillStyle(0xffd700, 1);
-          explorerGraphics.fillCircle(30, 30, 4);
-          explorerGraphics.fillStyle(0xffff00, 0.8);
-          explorerGraphics.fillCircle(30, 30, 3);
-          
-          // Sparkle effects
-          explorerGraphics.fillStyle(0xffffff, 1);
-          explorerGraphics.fillCircle(28, 27, 1);
-          explorerGraphics.fillCircle(32, 32, 1);
-        } else {
-          explorerGraphics.fillStyle(color, 0.3);
-          explorerGraphics.fillCircle(20, 25, 25);
-        }
-        
-        // Explorer equipment
-        explorerGraphics.fillStyle(0x666666, 1);
-        explorerGraphics.fillRect(8, 22, 4, 10);
-        explorerGraphics.fillRect(28, 27, 10, 3);
-        
-        explorerGraphics.generateTexture(`explorer_${type}`, 40, 45);
-        explorerGraphics.destroy();
-      });
-      
-      // --- Create Fewer, Weaker Enemies ---
-      const enemyTypes = ['storm_beast', 'wind_demon'];
-      const enemyColors = [0x4b0082, 0x00ffff];
+      // Create river port enemies
+      const enemyTypes = ['bandit', 'pirate', 'mercenary', 'guard', 'assassin'];
+      const enemyColors = [0x8b4513, 0x000080, 0x8b0000, 0x556b2f, 0x2f2f2f];
       
       enemyTypes.forEach((type, index) => {
         const enemyGraphics = this.add.graphics();
         const color = enemyColors[index];
         
-        if (type === 'storm_beast') {
-          // Storm beast - clearer graphics
-          enemyGraphics.fillStyle(color, 1);
-          enemyGraphics.fillEllipse(20, 30, 24, 20);
-          enemyGraphics.fillCircle(32, 22, 10);
-          
-          // Lightning effects
-          enemyGraphics.fillStyle(0xffff00, 0.8);
-          enemyGraphics.fillRect(15, 18, 3, 10);
-          enemyGraphics.fillRect(25, 18, 3, 10);
-          
-          // Glowing eyes
-          enemyGraphics.fillStyle(0xff0000, 1);
-          enemyGraphics.fillCircle(29, 20, 3);
-          enemyGraphics.fillCircle(35, 20, 3);
-          
-        } else if (type === 'wind_demon') {
-          // Wind demon - flying creature
-          enemyGraphics.fillStyle(color, 0.8);
-          enemyGraphics.fillRect(10, 22, 20, 24);
-          enemyGraphics.fillCircle(20, 15, 12);
-          
-          // Wings - more visible
-          enemyGraphics.fillStyle(color, 0.6);
-          enemyGraphics.fillEllipse(5, 25, 15, 10);
-          enemyGraphics.fillEllipse(35, 25, 15, 10);
-          
-          // Wind swirls
-          enemyGraphics.fillStyle(0xffffff, 0.8);
-          for (let i = 0; i < 4; i++) {
-            const x = 10 + (i * 7);
-            enemyGraphics.fillCircle(x, 30, 2);
-          }
+        // Enemy body
+        enemyGraphics.fillStyle(color, 1);
+        enemyGraphics.fillRect(8, 20, 16, 18);
+        enemyGraphics.fillCircle(16, 12, 8);
+        
+        // Enemy weapon
+        enemyGraphics.fillStyle(0x666666, 1);
+        if (type === 'bandit') {
+          enemyGraphics.fillRect(26, 18, 8, 3); // Rifle
+        } else if (type === 'pirate') {
+          enemyGraphics.fillRect(26, 19, 6, 2); // Pistol
+          enemyGraphics.fillRect(24, 15, 3, 8); // Hook hand
+        } else if (type === 'mercenary') {
+          enemyGraphics.fillRect(26, 17, 10, 4); // Machine gun
+        } else if (type === 'guard') {
+          enemyGraphics.fillRect(26, 18, 8, 3); // Rifle
+          enemyGraphics.fillRect(24, 12, 6, 3); // Helmet
+        } else if (type === 'assassin') {
+          enemyGraphics.fillRect(26, 19, 6, 2); // Silenced pistol
+          enemyGraphics.fillStyle(0x000000, 1);
+          enemyGraphics.fillRect(14, 10, 4, 4); // Mask
         }
         
-        enemyGraphics.generateTexture(type, 40, 50);
+        // Enemy eyes (red glow)
+        enemyGraphics.fillStyle(0xff0000, 1);
+        enemyGraphics.fillCircle(13, 10, 1.5);
+        enemyGraphics.fillCircle(19, 10, 1.5);
+        
+        enemyGraphics.generateTexture(type, 35, 40);
         enemyGraphics.destroy();
       });
       
-      // --- Create Raft Building Materials with better graphics ---
-      const materialTypes = ['wood_log', 'rope'];
-      const materialColors = [0x8b4513, 0xdaa520];
+      // Create crosshair
+      const crosshairGraphics = this.add.graphics();
+      crosshairGraphics.lineStyle(3, 0xff0000, 1);
+      crosshairGraphics.beginPath();
+      crosshairGraphics.moveTo(-15, 0);
+      crosshairGraphics.lineTo(-5, 0);
+      crosshairGraphics.moveTo(5, 0);
+      crosshairGraphics.lineTo(15, 0);
+      crosshairGraphics.moveTo(0, -15);
+      crosshairGraphics.lineTo(0, -5);
+      crosshairGraphics.moveTo(0, 5);
+      crosshairGraphics.lineTo(0, 15);
+      crosshairGraphics.strokePath();
       
-      materialTypes.forEach((type, index) => {
-        const materialGraphics = this.add.graphics();
-        const color = materialColors[index];
-        
-        if (type === 'wood_log') {
-          // Wood log - larger and clearer
-          materialGraphics.fillStyle(color, 1);
-          materialGraphics.fillRect(8, 15, 24, 10);
-          
-          // Wood rings
-          materialGraphics.fillStyle(0x654321, 1);
-          materialGraphics.fillCircle(10, 20, 4);
-          materialGraphics.fillCircle(30, 20, 4);
-          
-        } else if (type === 'rope') {
-          // Rope coil - more visible
-          materialGraphics.fillStyle(color, 1);
-          materialGraphics.fillCircle(20, 20, 10);
-          
-          // Rope texture
-          materialGraphics.fillStyle(0xb8860b, 1);
-          for (let i = 0; i < 4; i++) {
-            const angle = (i * Math.PI) / 2;
-            const x = 20 + Math.cos(angle) * 8;
-            const y = 20 + Math.sin(angle) * 8;
-            materialGraphics.fillCircle(x, y, 3);
-          }
-        }
-        
-        // Glowing effect for all materials
-        materialGraphics.fillStyle(color, 0.3);
-        materialGraphics.fillCircle(20, 20, 25);
-        
-        materialGraphics.generateTexture(type, 40, 40);
-        materialGraphics.destroy();
-      });
+      // Center dot
+      crosshairGraphics.fillStyle(0xff0000, 1);
+      crosshairGraphics.fillCircle(0, 0, 2);
       
-      // Create other textures
-      this.add.graphics().fillStyle(0x654321).fillRect(0, 0, 40, 40).generateTexture('jungle_wall', 40, 40);
-      this.add.graphics().fillStyle(0x228b22).fillRect(0, 0, 800, 500).generateTexture('jungle_background', 800, 500);
+      crosshairGraphics.generateTexture('crosshair', 30, 30);
+      crosshairGraphics.destroy();
       
-      // Build zone indicator - clearer
-      const buildZoneGraphics = this.add.graphics();
-      buildZoneGraphics.lineStyle(5, 0x00ff00, 0.8);
-      buildZoneGraphics.strokeCircle(70, 70, 68);
-      buildZoneGraphics.fillStyle(0x00ff00, 0.15);
-      buildZoneGraphics.fillCircle(70, 70, 68);
+      // Create bullet
+      const bulletGraphics = this.add.graphics();
+      bulletGraphics.fillStyle(0xffd700, 1);
+      bulletGraphics.fillCircle(3, 3, 3);
+      bulletGraphics.fillStyle(0xffff00, 0.8);
+      bulletGraphics.fillCircle(3, 3, 2);
+      bulletGraphics.generateTexture('bullet', 6, 6);
+      bulletGraphics.destroy();
       
-      buildZoneGraphics.generateTexture('build_zone', 140, 140);
-      buildZoneGraphics.destroy();
+      // Create river port background
+      const portGraphics = this.add.graphics();
+      
+      // Water
+      portGraphics.fillStyle(0x4682b4, 1);
+      portGraphics.fillRect(0, 0, 800, 500);
+      
+      // Wooden dock
+      portGraphics.fillStyle(0x8b4513, 1);
+      portGraphics.fillRect(0, 400, 800, 100);
+      
+      // Dock planks
+      portGraphics.fillStyle(0x654321, 1);
+      for (let i = 0; i < 20; i++) {
+        portGraphics.fillRect(0, 402 + (i * 5), 800, 2);
+      }
+      
+      // Dock posts
+      for (let i = 0; i < 8; i++) {
+        const x = 100 + (i * 100);
+        portGraphics.fillStyle(0x8b4513, 1);
+        portGraphics.fillRect(x, 350, 8, 50);
+      }
+      
+      // Raft building area
+      portGraphics.fillStyle(0x654321, 1);
+      portGraphics.fillRect(350, 420, 100, 60);
+      portGraphics.fillStyle(0xffd700, 1);
+      portGraphics.fillRect(360, 430, 80, 40);
+      
+      portGraphics.generateTexture('river_port_bg', 800, 500);
+      portGraphics.destroy();
+      
+      // Create explosion effect
+      const explosionGraphics = this.add.graphics();
+      explosionGraphics.fillStyle(0xff6b35, 1);
+      explosionGraphics.fillCircle(15, 15, 15);
+      explosionGraphics.fillStyle(0xffd23f, 1);
+      explosionGraphics.fillCircle(15, 15, 10);
+      explosionGraphics.fillStyle(0xffff00, 1);
+      explosionGraphics.fillCircle(15, 15, 5);
+      explosionGraphics.generateTexture('explosion', 30, 30);
+      explosionGraphics.destroy();
     }
 
     function create() {
-      this.add.image(400, 250, 'jungle_background');
+      // Background
+      this.add.image(400, 250, 'river_port_bg');
       
-      walls = this.physics.add.staticGroup();
+      // Physics groups
       enemies = this.physics.add.group();
-      explorers = this.physics.add.group();
-      materials = this.physics.add.group();
+      bullets = this.physics.add.group();
       
-      player = this.physics.add.sprite(100, 250, 'player');
-      player.setCollideWorldBounds(true).body.setSize(30, 40).setOffset(5, 5);
+      // Player wizard (fixed in corner)
+      player = this.physics.add.sprite(60, 420, 'tactical_wizard');
+      player.body.setImmovable(true);
+      player.body.setSize(35, 30);
       
+      // Crosshair
+      aimCrosshair = this.add.sprite(gameState.aimPosition.x, gameState.aimPosition.y, 'crosshair');
+      aimCrosshair.setDepth(100);
+      
+      // Controls
       cursors = this.input.keyboard.createCursorKeys();
       spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-      buildKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
       
-      this.physics.add.collider(player, walls);
-      this.physics.add.collider(enemies, walls);
-      this.physics.add.collider(explorers, walls);
-      this.physics.add.collider(materials, walls);
-      this.physics.add.collider(enemies, enemies);
+      // Collision detection
+      this.physics.add.overlap(bullets, enemies, bulletHitEnemy, null, this);
+      this.physics.add.overlap(player, enemies, enemyHitPlayer, null, this);
       
-      this.physics.add.overlap(player, explorers, findExplorer, null, this);
-      this.physics.add.overlap(player, materials, collectMaterial, null, this);
-      this.physics.add.overlap(player, enemies, hitByEnemy, null, this);
-      
-      // Add methods to scene
-      this.completeQuery = completeQuery;
-      this.showQueryInput = showQueryInput;
+      // Add methods
+      this.completeLevel = completeLevel;
+      this.restartLevel = restartLevel;
       
       createLevel.call(this);
       updateReactUI();
     }
 
     function createLevel() {
+      // Clear existing entities
       enemies.clear(true, true);
-      explorers.clear(true, true);
-      materials.clear(true, true);
-      walls.clear(true, true);
+      bullets.clear(true, true);
       
-      gameState.explorersFound = 0;
-      gameState.raftProgress = 0;
-      gameState.raftMaterials = 0;
-      gameState.allExplorersFound = false;
-      gameState.queryComplete = false;
-      gameState.stormIntensity = 0;
-      gameState.timeRemaining = gameState.timeLimit;
-      gameState.explorersData = [];
+      // Reset game state
+      gameState.health = 100;
+      gameState.bullets = 7;
+      gameState.enemiesKilled = 0;
+      gameState.gamePhase = 'shooting';
+      gameState.aimPosition = { x: 400, y: 250 };
+      gameState.canShoot = true;
+      gameState.invulnerable = false;
+      gameState.isLevelComplete = false;
       
-      // Create simpler jungle walls
-      createSimpleJungleWalls.call(this);
+      // Reset player
+      player.setPosition(60, 420);
+      player.clearTint();
       
-      // Create fewer explorers
-      createExplorers.call(this);
+      // Reset crosshair
+      aimCrosshair.setPosition(gameState.aimPosition.x, gameState.aimPosition.y);
       
-      // Create fewer, weaker enemies
-      createWeakerEnemies.call(this);
+      // Create enemies around the port
+      createEnemies.call(this);
       
-      // Create fewer materials
-      createFewerMaterials.call(this);
-      
-      // Create building zone
-      createBuildingZone.call(this);
-      
-      // Start timer (longer now)
-      startTimer.call(this);
-      
-      player.setPosition(100, 250).setVelocity(0, 0);
-      gameState.totalExplorers = explorers.children.entries.length;
+      showMessage('🎯 Defend the River Port! Use your weapons from Level 3!\n7 bullets, 5 enemies. Aim carefully!', 4000);
+      updateReactUI();
     }
-    
-    function createSimpleJungleWalls() {
-      // Much simpler wall layout with clear paths
-      const wallPositions = [
-        // Outer walls only
-        [40, 40], [120, 40], [200, 40], [280, 40], [360, 40], [440, 40], [520, 40], [600, 40], [680, 40], [760, 40],
-        [40, 460], [120, 460], [200, 460], [280, 460], [360, 460], [440, 460], [520, 460], [600, 460], [680, 460], [760, 460],
-        [40, 120], [40, 200], [40, 280], [40, 360],
-        [760, 120], [760, 200], [760, 280], [760, 360],
-        
-        // Only a few interior walls to create simple paths
-        [200, 150], [200, 230], [200, 310], [200, 390],
-        [400, 120], [400, 200], [400, 280], [400, 360],
-        [600, 150], [600, 230], [600, 310]
-      ];
-      
-      wallPositions.forEach(pos => {
-        const wall = walls.create(pos[0], pos[1], 'jungle_wall');
-        wall.body.setSize(35, 35);
-      });
-    }
-    
-    function createExplorers() {
-      const explorerData = [
-        // Artifact holders (TRUE) - 3 instead of 4
-        { x: 150, y: 180, type: 'artifact_holder', artifact_found: true, name: 'Maya' },
-        { x: 320, y: 140, type: 'artifact_holder', artifact_found: true, name: 'Jin' },
-        { x: 480, y: 200, type: 'artifact_holder', artifact_found: true, name: 'Elena' },
-        
-        // Empty handed explorers (FALSE) - 3 decoys
-        { x: 140, y: 320, type: 'empty_handed', artifact_found: false, name: 'Tom' },
-        { x: 350, y: 280, type: 'empty_handed', artifact_found: false, name: 'Sarah' },
-        { x: 500, y: 340, type: 'empty_handed', artifact_found: false, name: 'Mike' }
-      ];
-      
-      explorerData.forEach(data => {
-        const explorer = explorers.create(data.x, data.y, `explorer_${data.type}`);
-        explorer.setCollideWorldBounds(true).body.setSize(30, 35).setOffset(5, 5);
-        explorer.explorerData = data;
-        explorer.found = false;
-        explorer.hasArtifact = data.artifact_found;
-        
-        // Add floating animation
-        sceneRef.tweens.add({
-          targets: explorer,
-          y: explorer.y - 8,
-          duration: 2000 + (Math.random() * 1000),
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-        
-        // Add name text above explorer - more visible
-        const nameText = sceneRef.add.text(data.x, data.y - 35, data.name, {
-          fontSize: '14px',
-          fontFamily: 'Courier New',
-          color: data.artifact_found ? '#00ff00' : '#ff6666',
-          fontStyle: 'bold',
-          backgroundColor: '#000000',
-          padding: { x: 4, y: 2 }
-        }).setOrigin(0.5);
-        
-        explorer.nameText = nameText;
-        gameState.explorersData.push(data);
-      });
-    }
-    
-    function createWeakerEnemies() {
-      // Only 4 enemies instead of 8, and weaker
+
+    function createEnemies() {
       const enemyPositions = [
-        { x: 180, y: 200, type: 'storm_beast' },
-        { x: 320, y: 180, type: 'wind_demon' },
-        { x: 280, y: 320, type: 'storm_beast' },
-        { x: 450, y: 260, type: 'wind_demon' }
+        { x: 200, y: 200, type: 'bandit' },
+        { x: 400, y: 150, type: 'pirate' },
+        { x: 600, y: 180, type: 'mercenary' },
+        { x: 300, y: 300, type: 'guard' },
+        { x: 500, y: 320, type: 'assassin' }
       ];
       
       enemyPositions.forEach((pos, index) => {
         const enemy = enemies.create(pos.x, pos.y, pos.type);
-        enemy.setCollideWorldBounds(true).body.setSize(30, 40).setOffset(5, 5);
-        enemy.health = 60;
-        enemy.maxHealth = 60;
-        enemy.speed = 50;
-        enemy.attackDamage = 15;
-        enemy.patrolDistance = 80;
-        enemy.startX = pos.x;
-        enemy.startY = pos.y;
-        enemy.direction = 1;
-        enemy.monsterType = pos.type;
-        enemy.aggroRange = 80;
+        enemy.setCollideWorldBounds(true);
+        enemy.body.setSize(25, 35);
+        enemy.health = 100;
+        enemy.enemyType = pos.type;
+        enemy.attackDamage = 20;
+        enemy.lastAttack = 0;
+        enemy.attackRate = 2000 + (index * 500); // Different attack rates
         
-        // Gentle animations
+        // Enemy movement pattern
+        enemy.patrolStart = pos.x - 50;
+        enemy.patrolEnd = pos.x + 50;
+        enemy.direction = 1;
+        enemy.speed = 30 + (Math.random() * 20);
+        
+        // Add floating animation
         sceneRef.tweens.add({
           targets: enemy,
-          scaleX: 1.05,
-          scaleY: 0.95,
-          duration: 1500 + (index * 300),
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      });
-    }
-    
-    function createFewerMaterials() {
-      // Only 8 materials instead of 15, better positioned
-      const materialPositions = [
-        { x: 120, y: 160, type: 'wood_log' },
-        { x: 160, y: 240, type: 'rope' },
-        { x: 240, y: 180, type: 'wood_log' },
-        { x: 280, y: 240, type: 'rope' },
-        { x: 360, y: 160, type: 'wood_log' },
-        { x: 420, y: 220, type: 'rope' },
-        { x: 480, y: 300, type: 'wood_log' },
-        { x: 520, y: 180, type: 'rope' }
-      ];
-      
-      materialPositions.forEach(pos => {
-        const material = materials.create(pos.x, pos.y, pos.type);
-        material.setCollideWorldBounds(true).body.setSize(30, 30).setOffset(5, 5);
-        material.materialType = pos.type;
-        
-        // Floating animation
-        sceneRef.tweens.add({
-          targets: material,
-          y: material.y - 8,
-          duration: 1800 + (Math.random() * 400),
+          y: enemy.y - 5,
+          duration: 1500 + (index * 200),
           yoyo: true,
           repeat: -1,
           ease: 'Sine.easeInOut'
         });
         
-        // Glowing effect
+        // Add enemy glow
         sceneRef.tweens.add({
-          targets: material,
+          targets: enemy,
           alpha: 0.8,
-          scaleX: 1.1,
-          scaleY: 1.1,
-          duration: 1400,
+          duration: 1000,
           yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
+          repeat: -1
         });
-      });
-    }
-    
-    function createBuildingZone() {
-      const buildZone = sceneRef.add.image(gameState.buildingZone.x, gameState.buildingZone.y, 'build_zone');
-      buildZone.setAlpha(0.8);
-      
-      // Pulsing animation
-      sceneRef.tweens.add({
-        targets: buildZone,
-        scaleX: 1.1,
-        scaleY: 1.1,
-        alpha: 0.6,
-        duration: 2500,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-      
-      // Add build zone text
-      const buildText = sceneRef.add.text(gameState.buildingZone.x, gameState.buildingZone.y - 90, 'RAFT BUILDING ZONE\nPress B to Build', {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#00ff00',
-        fontStyle: 'bold',
-        align: 'center',
-        backgroundColor: '#000000',
-        padding: { x: 8, y: 4 }
-      }).setOrigin(0.5);
-      
-      sceneRef.tweens.add({
-        targets: buildText,
-        alpha: 0.7,
-        duration: 2000,
-        yoyo: true,
-        repeat: -1
-      });
-    }
-    
-    function startTimer() {
-      sceneRef.time.addEvent({
-        delay: 1000,
-        callback: () => {
-          gameState.timeRemaining -= 1000;
-          gameState.stormIntensity = Math.max(0, (gameState.timeLimit - gameState.timeRemaining) / gameState.timeLimit);
-          
-          if (gameState.timeRemaining <= 0) {
-            gameOver('Time ran out! The storm has arrived!');
-          }
-          
-          updateReactUI();
-        },
-        callbackScope: sceneRef,
-        loop: true
       });
     }
 
     function update() {
-      if (gameState.isLevelComplete) return;
+      if (gameState.isLevelComplete || gameState.gamePhase === 'completed') return;
       
-      player.setVelocity(0);
-      const speed = 200;
+      const aimSpeed = 300;
       
-      // Use the ref instead of state for game logic
-      if (cursors.left.isDown || mobileControlsRef.current.left) {
-        player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
-        player.setVelocityX(speed);
-      }
-      
+      // Crosshair aiming controls
       if (cursors.up.isDown || mobileControlsRef.current.up) {
-        player.setVelocityY(-speed);
+        gameState.aimPosition.y = Math.max(50, gameState.aimPosition.y - aimSpeed * this.game.loop.delta / 1000);
+        aimCrosshair.setPosition(gameState.aimPosition.x, gameState.aimPosition.y);
       } else if (cursors.down.isDown || mobileControlsRef.current.down) {
-        player.setVelocityY(speed);
-      }
-
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
-        attack.call(this);
+        gameState.aimPosition.y = Math.min(350, gameState.aimPosition.y + aimSpeed * this.game.loop.delta / 1000);
+        aimCrosshair.setPosition(gameState.aimPosition.x, gameState.aimPosition.y);
       }
       
-      if ((Phaser.Input.Keyboard.JustDown(buildKey) || mobileControlsRef.current.build) && gameState.canBuild) {
-        buildRaft.call(this);
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
+        gameState.aimPosition.x = Math.max(150, gameState.aimPosition.x - aimSpeed * this.game.loop.delta / 1000);
+        aimCrosshair.setPosition(gameState.aimPosition.x, gameState.aimPosition.y);
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
+        gameState.aimPosition.x = Math.min(750, gameState.aimPosition.x + aimSpeed * this.game.loop.delta / 1000);
+        aimCrosshair.setPosition(gameState.aimPosition.x, gameState.aimPosition.y);
       }
-
-      // Update enemies with simpler AI
-      updateSimpleEnemies.call(this);
       
-      // Check if player is in building zone
-      const distanceToZone = Phaser.Math.Distance.Between(
-        player.x, player.y, 
-        gameState.buildingZone.x, gameState.buildingZone.y
-      );
-      
-      if (distanceToZone <= gameState.buildingZone.radius) {
-        player.setTint(0x90ee90);
-      } else {
-        player.clearTint();
+      // Shooting
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canShoot && gameState.bullets > 0) {
+        shoot.call(this);
       }
-    }
-
-    function updateSimpleEnemies() {
+      
+      // Update bullets
+      bullets.children.entries.forEach(bullet => {
+        if (!bullet.active) return;
+        
+        // Remove bullets that go off screen
+        if (bullet.x < 0 || bullet.x > 800 || bullet.y < 0 || bullet.y > 500) {
+          bullet.destroy();
+        }
+      });
+      
+      // Enemy AI and attacks
       enemies.children.entries.forEach(enemy => {
         if (!enemy.active) return;
         
-        const distanceToPlayer = Phaser.Math.Distance.Between(enemy.x, enemy.y, player.x, player.y);
+        // Simple patrol movement
+        enemy.x += enemy.direction * enemy.speed * this.game.loop.delta / 1000;
         
-        if (distanceToPlayer < enemy.aggroRange) {
-          // Simple chase
-          sceneRef.physics.moveTo(enemy, player.x, player.y, enemy.speed);
-          enemy.setTint(0xff8888);
-          
-          // Attack if close enough
-          if (distanceToPlayer < 35 && (!enemy.lastAttack || sceneRef.time.now - enemy.lastAttack > 2000)) {
-            enemy.lastAttack = sceneRef.time.now;
-            gameState.health -= enemy.attackDamage;
-            
-            if (gameState.health <= 0) {
-              gameOver('You were defeated by the storm monsters!');
-            }
-          }
-        } else {
-          // Simple patrol
-          enemy.clearTint();
-          const distanceFromStart = Phaser.Math.Distance.Between(enemy.x, enemy.startX, enemy.y, enemy.startY);
-          
-          if (distanceFromStart > enemy.patrolDistance) {
-            enemy.direction *= -1;
-          }
-          
-          const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, enemy.startX + (enemy.direction * enemy.patrolDistance), enemy.startY);
-          enemy.setVelocity(Math.cos(angle) * (enemy.speed * 0.4), Math.sin(angle) * (enemy.speed * 0.4));
+        if (enemy.x <= enemy.patrolStart || enemy.x >= enemy.patrolEnd) {
+          enemy.direction *= -1;
+        }
+        
+        // Enemy attacks
+        if (sceneRef.time.now - enemy.lastAttack > enemy.attackRate) {
+          enemyAttack(enemy);
+          enemy.lastAttack = sceneRef.time.now;
         }
       });
+      
+      // Check win condition
+      if (gameState.enemiesKilled >= gameState.totalEnemies && gameState.gamePhase === 'shooting') {
+        allEnemiesDefeated();
+      }
+      
+      // Check lose condition
+      if (gameState.bullets <= 0 && enemies.children.entries.length > 0 && gameState.gamePhase === 'shooting') {
+        gameOver('Out of bullets! You failed to secure the port!');
+      }
+      
+      updateReactUI();
     }
 
-    function attack() {
-      gameState.canAttack = false;
+    function shoot() {
+      if (!gameState.canShoot || gameState.bullets <= 0) return;
       
-      const attackRange = 100;
+      gameState.canShoot = false;
+      gameState.bullets--;
       
-      // Magical attack effects
-      const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x8b5cf6, 0.4);
-      const innerEffect = sceneRef.add.circle(player.x, player.y, attackRange * 0.6, 0xfbbf24, 0.5);
+      // Create bullet
+      const bullet = bullets.create(player.x + 20, player.y, 'bullet');
+      bullet.setCollideWorldBounds(false);
+      bullet.body.setSize(5, 5);
       
+      // Calculate trajectory to crosshair
+      const angle = Phaser.Math.Angle.Between(player.x, player.y, gameState.aimPosition.x, gameState.aimPosition.y);
+      const speed = 600;
+      
+      bullet.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+      bullet.setRotation(angle);
+      
+      // Muzzle flash effect
+      const flash = sceneRef.add.circle(player.x + 25, player.y, 8, 0xffff00, 0.8);
       sceneRef.tweens.add({
-        targets: attackEffect,
-        scaleX: 1.8,
-        scaleY: 1.8,
-        alpha: 0,
-        duration: 300,
-        onComplete: () => attackEffect.destroy()
-      });
-      
-      sceneRef.tweens.add({
-        targets: innerEffect,
+        targets: flash,
         scaleX: 2,
         scaleY: 2,
         alpha: 0,
-        duration: 250,
-        onComplete: () => innerEffect.destroy()
+        duration: 100,
+        onComplete: () => flash.destroy()
       });
       
-      enemies.children.entries.forEach(enemy => {
-        if (!enemy.active) return;
-        
-        const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
-        if (distance <= attackRange) {
-          enemy.health -= 80;
-          
-          const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
-          enemy.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-          
-          enemy.setTint(0x8b5cf6);
-          sceneRef.time.delayedCall(150, () => {
-            if (enemy.active) enemy.clearTint();
-          });
-          
-          if (enemy.health <= 0) {
-            const explosion = sceneRef.add.circle(enemy.x, enemy.y, 35, 0xff6b6b);
-            sceneRef.tweens.add({
-              targets: explosion,
-              scaleX: 4,
-              scaleY: 4,
-              alpha: 0,
-              duration: 500,
-              onComplete: () => explosion.destroy()
-            });
-            
-            enemy.destroy();
-          }
-        }
+      // Screen shake
+      sceneRef.cameras.main.shake(100, 0.01);
+      
+      // Cooldown
+      sceneRef.time.delayedCall(gameState.shootCooldown, () => {
+        gameState.canShoot = true;
       });
-      
-      sceneRef.time.delayedCall(gameState.attackCooldown, () => {
-        gameState.canAttack = true;
-      });
-    }
-
-    function buildRaft() {
-      const distanceToZone = Phaser.Math.Distance.Between(
-        player.x, player.y, 
-        gameState.buildingZone.x, gameState.buildingZone.y
-      );
-      
-      if (distanceToZone > gameState.buildingZone.radius) {
-        showMessage('You must be in the building zone to build the raft!', 2000);
-        return;
-      }
-      
-      if (!gameState.queryComplete) {
-        showQueryInput();
-        return;
-      }
-      
-      if (gameState.raftMaterials < gameState.totalMaterials) {
-        showMessage(`You need ${gameState.totalMaterials - gameState.raftMaterials} more materials!`, 2000);
-        return;
-      }
-      
-      if (gameState.explorersFound < 3) {
-        showMessage(`You need ${3 - gameState.explorersFound} more artifact holders to help!`, 2000);
-        return;
-      }
-      
-      gameState.canBuild = false;
-      
-      // Build raft progress
-      gameState.raftProgress += 50;
-      
-      if (gameState.raftProgress >= 100) {
-        showLevelComplete();
-      } else {
-        showMessage(`Raft ${gameState.raftProgress}% complete! Keep building!`, 1500);
-        
-        sceneRef.time.delayedCall(800, () => {
-          gameState.canBuild = true;
-        });
-      }
       
       updateReactUI();
     }
 
-    function findExplorer(player, explorer) {
-      if (explorer.found) return;
+    function bulletHitEnemy(bullet, enemy) {
+      enemy.health -= 100; // One shot kill
       
-      explorer.found = true;
+      // Explosion effect
+      const explosion = sceneRef.add.sprite(enemy.x, enemy.y, 'explosion');
+      sceneRef.tweens.add({
+        targets: explosion,
+        scaleX: 2,
+        scaleY: 2,
+        alpha: 0,
+        duration: 500,
+        onComplete: () => explosion.destroy()
+      });
       
-      if (explorer.hasArtifact) {
-        // Correct explorer (has artifact)
-        gameState.explorersFound++;
+      // Screen shake
+      sceneRef.cameras.main.shake(200, 0.02);
+      
+      // Remove enemy and bullet
+      gameState.enemiesKilled++;
+      enemy.destroy();
+      bullet.destroy();
+      
+      updateReactUI();
+    }
+
+    function enemyAttack(enemy) {
+      if (gameState.invulnerable) return;
+      
+      // Enemy shoots at player
+      const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, player.x, player.y);
+      const accuracy = Math.max(0.3, 1 - (distance / 400)); // Closer = more accurate
+      
+      if (Math.random() < accuracy) {
+        // Hit player
+        gameState.health -= enemy.attackDamage;
+        gameState.invulnerable = true;
         
-        explorer.setTint(0x00ff00);
-        if (explorer.nameText) explorer.nameText.setColor('#00ff00');
-        
-        // Success effect
-        const successEffect = sceneRef.add.circle(explorer.x, explorer.y, 50, 0x00ff00, 0.6);
-        sceneRef.tweens.add({
-          targets: successEffect,
-          scaleX: 2.5,
-          scaleY: 2.5,
-          alpha: 0,
-          duration: 600,
-          onComplete: () => successEffect.destroy()
-        });
-        
-        showMessage(`${explorer.explorerData.name} will help build the raft!`, 2000);
-        
-        sceneRef.time.delayedCall(1500, () => {
-          explorer.destroy();
-          if (explorer.nameText) explorer.nameText.destroy();
-        });
-        
-      } else {
-        // Wrong explorer (no artifact)
-        gameState.health -= 10;
-        
-        explorer.setTint(0xff0000);
         player.setTint(0xff0000);
-        sceneRef.time.delayedCall(200, () => {
+        sceneRef.cameras.main.shake(300, 0.02);
+        
+        // Muzzle flash from enemy
+        const enemyFlash = sceneRef.add.circle(enemy.x + 15, enemy.y, 6, 0xff6666, 0.8);
+        sceneRef.tweens.add({
+          targets: enemyFlash,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          alpha: 0,
+          duration: 150,
+          onComplete: () => enemyFlash.destroy()
+        });
+        
+        if (gameState.health <= 0) {
+          gameOver('💀 The port defenders overwhelmed you!');
+          return;
+        }
+        
+        // Remove invulnerability
+        sceneRef.time.delayedCall(gameState.invulnerabilityTime, () => {
+          gameState.invulnerable = false;
           if (player.active) player.clearTint();
         });
-        
-        showMessage(`${explorer.explorerData.name} cannot help - no artifact!`, 2000);
+      } else {
+        // Miss - show muzzle flash only
+        const enemyFlash = sceneRef.add.circle(enemy.x + 15, enemy.y, 6, 0xff6666, 0.6);
+        sceneRef.tweens.add({
+          targets: enemyFlash,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          alpha: 0,
+          duration: 150,
+          onComplete: () => enemyFlash.destroy()
+        });
       }
       
       updateReactUI();
     }
-    
-    function collectMaterial(player, material) {
-      gameState.raftMaterials++;
+
+    function allEnemiesDefeated() {
+      gameState.gamePhase = 'building';
       
-      // Visual collection effect
-      const collectEffect = sceneRef.add.circle(material.x, material.y, 40, 0xffd700, 0.8);
+      // Success effect
+      const victoryEffect = sceneRef.add.circle(400, 250, 100, 0x00ff00, 0.6);
       sceneRef.tweens.add({
-        targets: collectEffect,
-        scaleX: 2.5,
-        scaleY: 2.5,
+        targets: victoryEffect,
+        scaleX: 5,
+        scaleY: 5,
         alpha: 0,
-        duration: 400,
-        onComplete: () => collectEffect.destroy()
+        duration: 1500,
+        onComplete: () => victoryEffect.destroy()
       });
       
-      material.destroy();
-      updateReactUI();
-    }
-    
-    function showQueryInput() {
-      setUiState(prev => ({ ...prev, showQueryInput: true }));
-    }
-    
-    function completeQuery() {
-      gameState.queryComplete = true;
-      showMessage('Query executed! You can now build the raft with artifact holders!', 3000);
-      updateReactUI();
-    }
-
-    function showMessage(text, duration) {
-      const messageText = sceneRef.add.text(400, 80, text, {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#ffff00',
-        backgroundColor: '#000000',
-        align: 'center',
-        padding: { x: 12, y: 6 }
-      }).setOrigin(0.5).setDepth(1000);
+      showMessage('🎯 All enemies defeated! Now access the guide book to build your raft!', 3000);
       
-      sceneRef.time.delayedCall(duration, () => messageText.destroy());
+      // Auto-open query after delay
+      sceneRef.time.delayedCall(3000, () => {
+        setUiState(prev => ({ ...prev, showQueryInput: true }));
+      });
+      
+      updateReactUI();
     }
 
-    function showLevelComplete() {
-      gameState.isLevelComplete = true;
+    function enemyHitPlayer(player, enemy) {
+      // This handles melee contact (rare)
+      if (gameState.invulnerable) return;
+      
+      gameState.health -= 30;
+      gameState.invulnerable = true;
+      
+      player.setTint(0xff0000);
+      sceneRef.cameras.main.shake(400, 0.03);
+      
+      if (gameState.health <= 0) {
+        gameOver('💀 An enemy got too close!');
+        return;
+      }
+      
+      // Knockback enemy
+      const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
+      enemy.setVelocity(Math.cos(angle) * 200, Math.sin(angle) * 200);
+      
+      // Remove invulnerability
+      sceneRef.time.delayedCall(gameState.invulnerabilityTime, () => {
+        gameState.invulnerable = false;
+        if (player.active) player.clearTint();
+      });
+      
       updateReactUI();
+    }
+
+    function completeLevel() {
+      gameState.isLevelComplete = true;
       
       const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
       overlay.setDepth(1000);
       
-      const completionText = sceneRef.add.text(400, 120, '🚤 Raft Built Successfully! 🚤', {
+      const completionText = sceneRef.add.text(400, 120, '🚤 River Port Secured! Raft Built! 🚤', {
         fontSize: '28px',
         fontFamily: 'Courier New',
         color: '#00ff00',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText2 = sceneRef.add.text(400, 180, 'SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;', {
+      
+      const statsText = sceneRef.add.text(400, 250, `🎯 Enemies Defeated: ${gameState.enemiesKilled}/${gameState.totalEnemies}\n🔫 Bullets Used: ${gameState.maxBullets - gameState.bullets}/${gameState.maxBullets}\n💚 Health Remaining: ${gameState.health}/100`, {
         fontSize: '14px',
         fontFamily: 'Courier New',
-        color: '#00ffff',
-        fontStyle: 'bold'
+        color: '#90ee90',
+        align: 'center'
       }).setOrigin(0.5).setDepth(1001);
       
-      const statsText = sceneRef.add.text(400, 250, `🔨 Materials: ${gameState.raftMaterials}/${gameState.totalMaterials}\n👥 Helpers: ${gameState.explorersFound}/3`, {
-        fontSize: '16px',
+      const skillsText = sceneRef.add.text(400, 340, '🏆 Skills Mastered:\n• Tactical shooting & aiming\n• Fill-in-the-blank SQL queries\n• Resource management (bullets)\n• Level 3 weapons utilized', {
+        fontSize: '14px',
         fontFamily: 'Courier New',
         color: '#ffff00',
         align: 'center'
       }).setOrigin(0.5).setDepth(1001);
       
-      const instructionText = sceneRef.add.text(400, 350, 'You escaped! Click to return to map', {
-        fontSize: '32px',
+      const instructionText = sceneRef.add.text(400, 430, 'Click to continue your adventure', {
+        fontSize: '28px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -895,51 +691,63 @@ const Level4 = ({ onComplete }) => {
       });
     }
 
-    function hitByEnemy(player, enemy) {
-      if (enemy.lastPlayerHit && sceneRef.time.now - enemy.lastPlayerHit < 2000) return;
-      
-      enemy.lastPlayerHit = sceneRef.time.now;
-      gameState.health -= enemy.attackDamage;
-      
-      player.setTint(0xff0000);
-      sceneRef.time.delayedCall(300, () => player.clearTint());
-      
-      const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-      player.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
-      
-      if (gameState.health <= 0) {
-        gameOver('You were defeated!');
-      }
-      updateReactUI();
-    }
-    
     function gameOver(message) {
-      const gameOverText = sceneRef.add.text(400, 250, message, {
-        fontSize: '22px',
+      const gameOverText = sceneRef.add.text(400, 200, `💀 MISSION FAILED 💀\n${message}`, {
+        fontSize: '24px',
         fontFamily: 'Courier New',
         color: '#ff4444',
         backgroundColor: '#000000',
         align: 'center',
-        padding: { x: 10, y: 6 }
-      }).setOrigin(0.5);
+        padding: { x: 15, y: 8 }
+      }).setOrigin(0.5).setDepth(1000);
       
-      sceneRef.cameras.main.flash(500, 255, 0, 0);
-      gameState.health = 100;
+      const restartText = sceneRef.add.text(400, 300, 'Restarting in 3 seconds...', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffffff',
+        backgroundColor: '#333333',
+        padding: { x: 10, y: 5 }
+      }).setOrigin(0.5).setDepth(1000);
       
+      // Auto-restart after 3 seconds
+      sceneRef.time.delayedCall(3000, () => {
+        gameOverText.destroy();
+        restartText.destroy();
+        restartLevel();
+      });
+    }
+
+    function restartLevel() {
       // Reset UI state
       setUiState(prev => ({
         ...prev,
+        health: 100,
+        bullets: 7,
+        enemiesKilled: 0,
+        gamePhase: 'shooting',
         showQueryInput: false,
-        allExplorersFound: false
+        isQueryComplete: false,
+        aimPosition: { x: 400, y: 250 }
       }));
-      setSqlQuery('');
-      setQueryError('');
-      setQuerySuccess(false);
       
-      sceneRef.time.delayedCall(3000, () => {
-        gameOverText.destroy();
-        createLevel.call(sceneRef);
-        updateReactUI();
+      setSqlQuery('SELECT    FROM guide_book WHERE category =    AND instructions    OR instructions   ;');
+      setQueryError('');
+      
+      createLevel.call(sceneRef);
+    }
+
+    function showMessage(text, duration) {
+      const messageText = sceneRef.add.text(400, 50, text, {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffff00',
+        backgroundColor: '#000000',
+        align: 'center',
+        padding: { x: 12, y: 6 }
+      }).setOrigin(0.5).setDepth(1000);
+      
+      sceneRef.time.delayedCall(duration, () => {
+        if (messageText.active) messageText.destroy();
       });
     }
 
@@ -947,12 +755,10 @@ const Level4 = ({ onComplete }) => {
       setUiState(prev => ({
         ...prev,
         health: Math.max(0, gameState.health),
-        isQueryComplete: gameState.isLevelComplete,
-        explorersFound: gameState.explorersFound,
-        totalExplorers: 3,
-        raftProgress: gameState.raftProgress,
-        raftMaterials: gameState.raftMaterials,
-        stormIntensity: Math.round(gameState.stormIntensity * 100)
+        bullets: gameState.bullets,
+        enemiesKilled: gameState.enemiesKilled,
+        gamePhase: gameState.gamePhase,
+        aimPosition: { ...gameState.aimPosition }
       }));
     }
 
@@ -961,7 +767,7 @@ const Level4 = ({ onComplete }) => {
       width: 800,
       height: 500,
       parent: gameContainerRef.current,
-      physics: { default: 'arcade', arcade: { gravity: { y: 0 }}},
+      physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
       scene: { preload, create, update },
       scale: {
         mode: Phaser.Scale.FIT,
@@ -971,144 +777,137 @@ const Level4 = ({ onComplete }) => {
 
     gameInstance.current = new Phaser.Game(config);
 
-    return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+    return () => { if (gameInstance.current) { gameInstance.current.destroy(true); } };
+  }, [onComplete]);
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Display the game elements as reference */}
-      <div className="flex  items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
+      {/* Game Status Display */}
+      <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-            <span className="text-xs text-yellow-300">🧙</span>
-          </div>
-          <span>Your Wizard</span>
+          <GiCrosshair size={20} color="#ff0000" />
+          <span>Tactical Wizard</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiTreasureMap size={20} color="#00ff00" />
-          <span>Artifact Holders</span>
+          <FaSkull size={20} color="#8b0000" />
+          <span>Port Enemies</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiWoodBeam size={20} color="#8b4513" />
-          <span>Materials</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <GiSailboat size={20} color="#87ceeb" />
-          <span>Building Zone</span>
+          <GiSailboat size={20} color="#4682b4" />
+          <span>River Port</span>
         </div>
       </div>
 
-      {/* Responsive game container */}
+
+
+      {/* Game Container */}
       <div className="w-full max-w-4xl">
         <div 
           ref={gameContainerRef} 
-          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
+          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-red-500 shadow-lg mx-auto bg-gradient-to-b from-blue-400 to-blue-700"
           style={{ maxWidth: '800px' }}
         />
       </div>
       
-      <div className="w-full max-w-3xl grid grid-cols-2 gap-4 pixel-font text-sm">
-        <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
-        <div>Time: <span className="text-orange-400">3 minutes</span></div>
-        <div>Artifact Holders: <span className="text-green-400">{uiState.explorersFound}/{uiState.totalExplorers}</span></div>
-        <div>Materials: <span className="text-blue-400">{uiState.raftMaterials}/{uiState.totalMaterials}</span></div>
+      {/* Game Stats */}
+      <div className="w-full max-w-3xl grid grid-cols-3 gap-4 text-sm">
+        <div>Health: <span className={`${uiState.health > 60 ? 'text-green-400' : uiState.health > 30 ? 'text-yellow-400' : 'text-red-400'}`}>
+          {uiState.health}/100
+        </span></div>
+        <div>Bullets: <span className={`${uiState.bullets > 3 ? 'text-green-400' : uiState.bullets > 1 ? 'text-yellow-400' : 'text-red-400'}`}>
+          {uiState.bullets}/7
+        </span></div>
+        <div>Enemies: <span className="text-red-400">{uiState.totalEnemies - uiState.enemiesKilled}/{uiState.totalEnemies}</span></div>
       </div>
 
-      {/* SQL Query Input Modal */}
-      {uiState.showQueryInput && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
-            <h3 className="pixel-font text-xl text-yellow-400 mb-4 text-center">🚤 Build the Raft 🚤</h3>
-            <p className="text-slate-300 mb-4 text-sm text-center">
-              Write the SQL query to find explorers who can help build the raft:
-            </p>
-            
-            <textarea
-              value={sqlQuery}
-              onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="Enter your SQL query here..."
-              className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
-              rows={3}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-              }}
-              style={{ outline: 'none' }}
-            />
-            
-            {queryError && (
-              <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-sm">
-                {queryError}
-              </div>
-            )}
-            
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={handleQuerySubmit}
-                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
-              >
-                Execute Query
-              </button>
-            </div>
-          </div>
+      {/* SQL Query Modal - Fill in the blanks */}
+      {/* SQL Query Modal - Fill in the blanks with LIKE conditions */}
+{uiState.showQueryInput && (
+  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-lg w-full mx-4">
+      <h3 className="text-xl text-green-400 mb-4 text-center">📖 Raft Building Guide Book 📖</h3>
+      <p className="text-slate-300 mb-4 text-sm text-center">
+        Port secured! Fill in the blanks to find raft instructions with specific materials:
+      </p>
+      
+      <div className="bg-black p-3 rounded border mb-4">
+        <p className="text-cyan-400 text-xs font-mono mb-2"><strong>Schema:</strong></p>
+        <p className="text-yellow-300 text-xs">guide_book: id, instructions, category, author , page_number</p>
+        <p className="text-slate-400 text-xs mt-1">Find raft instructions containing "bamboo" or "vines"</p>
+      </div>
+      
+      <textarea
+        value={sqlQuery}
+        onChange={(e) => setSqlQuery(e.target.value)}
+        className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
+        rows={4}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+        }}
+        style={{ outline: 'none' }}
+      />
+
+      
+      {queryError && (
+        <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-xs">
+          {queryError}
         </div>
       )}
-        {/* Mobile Controls - Custom for Level4 with Build button */}
+      
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={handleQuerySubmit}
+          className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded font-bold transition-colors"
+        >
+          🚤 Build Raft & Escape!
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         <div className="block md:hidden">
           <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra build functionality */}
+            <div className="text-xs text-center text-yellow-300 mb-2">
+              📱 D-pad: Move red crosshair • ATTACK: Shoot bullets
+            </div>
             <MobileControls 
               mobileControlsRef={mobileControlsRef}
               setMobileControls={setMobileControls}
             />
-            
-            {/* Extra Build Button for Level4 - positioned separately */}
-            <button
-              className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-              onPointerDown={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                mobileControlsRef.current.build = true;
-                setMobileControls(prev => ({ ...prev, build: true }));
-                setTimeout(() => {
-                  mobileControlsRef.current.build = false;
-                  setMobileControls(prev => ({ ...prev, build: false }));
-                }, 50);
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              BUILD
-            </button>
           </div>
         </div>
-
+      {/* Game Instructions */}
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
-        <div className="font-mono text-lg">
-          {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Query Completed Successfully!
+        <div className="text-slate-300 mb-2">🎯 Tactical Port Defense:</div>
+        <div className="text-lg">
+          {uiState.gamePhase === 'shooting' ? (
+            <span className="text-red-400 font-bold">
+              🔫 Aim with crosshair!
+            </span>
+          ) : uiState.gamePhase === 'building' ? (
+            <span className="text-yellow-400 font-bold animate-pulse">
+              📖 Port secured! Fill in the SQL blanks to build your escape raft!
             </span>
           ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-              Find explorers with artifacts to help build the raft
+            <span className="text-cyan-400 font-bold">
+              ✅ Mission complete! Port defended and raft built!
             </span>
           )}
         </div>
-        <div className="text-bold text-slate-500 mt-2">
-          Collect all artifacts, and list from jungle_explorers where artifact_found TRUE
+        <div className="text-xs text-slate-500 mt-2">
+          🎮 Fixed position tactical shooter! Aim carefully - limited ammo!
         </div>
       </div>
 
-      {/* Use the reusable MobileControls component with custom buttons */}
+      {/* Controls */}
+      <div className="w-full max-w-3xl p-3 hidden md:block bg-slate-800/50 rounded-lg border border-slate-600">
+        <div className="text-slate-400 text-sm mb-2 text-center"><strong> CONTROLS:</strong></div>
         
-        {/* Desktop Controls */}
-      <div className="w-full max-w-3xl p-3 hidden  md:block bg-slate-800/50 rounded-lg border border-slate-600">
         <div className="hidden md:block">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE : Attack</div>
-            <div>B : Build Raft</div>
+          <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
+            <div>↑↓←→: Move Crosshair</div>
+            <div>SPACE: Shoot</div>
           </div>
         </div>
 

@@ -16,12 +16,7 @@ export const levels = [
     query: "SELECT * FROM jungle_explorers WHERE courage_level > 80;",
     riddle:
       " Find all explorers whose courage level is greater than 80.",
-    schema: `CREATE TABLE jungle_explorers (
-  id INT,
-  name VARCHAR,
-  courage_level INT,
-  artifact_found BOOLEAN
-);`,
+     
     unlocked: false,
     completed: false,
     type: "basic",
@@ -50,15 +45,16 @@ export const levels = [
       mobile: { x: 85, y: 30 },
     },
     title: "Build the Raft",
-    query: "SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;",
+    query: "SELECT instructions FROM guide_book WHERE category = 'raft' and instructions LIKE '%bamboo%' OR instructions LIKE '%vines%';",
     riddle:
-      "You must build a raft. Only those who have found artifacts can assist. Find them.",
-    schema: `CREATE TABLE jungle_explorers (
+      "You are at port of rover ,kill eneimes by weapon you collected and build the raft .",
+    schema: `Create Table guide_book (
   id INT,
-  name VARCHAR,
-  courage_level INT,
-  artifact_found BOOLEAN
-);`,
+  category TEXT,
+  instructions TEXT,
+  author TEXT,
+  page_number INT
+)`,
     unlocked: false,
     completed: false,
     type: "intermediate",
@@ -70,14 +66,16 @@ export const levels = [
       mobile: { x: 54, y: 29 },
     },
     title: "Free the Sacred Beast",
-    query:
-      "SELECT * FROM jungle_explorers ORDER BY courage_level DESC LIMIT 1;",
+    query:"SELECT name, power, durability FROM weapons WHERE agility >= 80 AND power > 70 AND weight < 10;",
     riddle:
       "Free the monkey trapped in stone. Only the most courageous explorer can do it. Who is it?",
-    schema: `CREATE TABLE jungle_explorers (
-  id INT,
-  name VARCHAR,
-  courage_level INT
+    schema: `CREATE TABLE weapons (
+  id INT PRIMARY KEY,
+  name VARCHAR(50),
+  power INT,
+  durability INT,
+  agility INT,    
+  weight INT       
 );`,
     unlocked: false,
     completed: false,

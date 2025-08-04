@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
-import { GiFishing, GiMonkey, GiSeaSerpent , GiSailboat } from "react-icons/gi";
-import MobileControls from '../MobileControls'; // Import the component
+import { GiRun, GiSkeletonKey, GiMonkey, GiSwordClash } from "react-icons/gi";
+import { FaSkull } from "react-icons/fa";
+import MobileControls from '../MobileControls';
 
 const Level5 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
@@ -13,49 +14,34 @@ const Level5 = ({ onComplete }) => {
     left: false,
     right: false,
     attack: false,
-    fish: false // Added fish control
   });
   
   const [uiState, setUiState] = useState({
     health: 100,
     isQueryComplete: false,
-    courageLevel: 30,
-    maxCourage: 100,
-    fishCollected: 0,
-    totalFish: 12,
-    sharksDefeated: 0,
-    totalSharks: 5,
+    gamePhase: 'running',
     showQueryInput: false,
-    monkeyFreed: false,
-    requiredCourage: 80
+    canAttack: false,
+    distanceToSafety: 100,
+    enemyDefeated: false,
+    mazeProgress: 0
   });
 
   // SQL Query input state
   const [sqlQuery, setSqlQuery] = useState('');
   const [queryError, setQueryError] = useState('');
-  const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state (for UI updates only)
+  // Mobile controls state
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
     left: false,
     right: false,
-    attack: false,
-    fish: false
+    attack: false
   });
-
-  // Expected correct queries
-  const correctQueries = [
-    'SELECT * FROM jungle_explorers ORDER BY courage_level DESC LIMIT 1;',
-    'select * from jungle_explorers order by courage_level desc limit 1;',
-    'SELECT * FROM jungle_explorers ORDER BY courage_level DESC LIMIT 1',
-    'select * from jungle_explorers order by courage_level desc limit 1'
-  ];
 
   // Memoized mobile control handlers
   const handleMobileControlStart = useCallback((direction) => {
-    // Update both ref and state
     mobileControlsRef.current[direction] = true;
     setMobileControls((prev) => {
       if (prev[direction]) return prev;
@@ -64,7 +50,6 @@ const Level5 = ({ onComplete }) => {
   }, []);
 
   const handleMobileControlEnd = useCallback((direction) => {
-    // Update both ref and state
     mobileControlsRef.current[direction] = false;
     setMobileControls((prev) => {
       if (!prev[direction]) return prev;
@@ -73,76 +58,106 @@ const Level5 = ({ onComplete }) => {
   }, []);
 
   const handleAttack = useCallback(() => {
-    // Update both ref and state
     mobileControlsRef.current.attack = true;
     setMobileControls((prev) => ({ ...prev, attack: true }));
     setTimeout(() => {
       mobileControlsRef.current.attack = false;
       setMobileControls((prev) => ({ ...prev, attack: false }));
-    }, 50);
+    }, 100);
   }, []);
 
-  const handleFish = useCallback(() => {
-    // Update both ref and state
-    mobileControlsRef.current.fish = true;
-    setMobileControls((prev) => ({ ...prev, fish: true }));
-    setTimeout(() => {
-      mobileControlsRef.current.fish = false;
-      setMobileControls((prev) => ({ ...prev, fish: false }));
-    }, 50);
-  }, []);
+  // Expected correct query - weapons table
+  const correctQueries = [
+    "SELECT name, power, durability FROM weapons WHERE agility >= 80 AND power > 70 AND weight < 10;",
+    "select name, power, durability from weapons where agility >= 80 and power > 70 and weight < 10;",
+    "SELECT name, power, durability FROM weapons WHERE agility>=80 AND power>70 AND weight<10;",
+    "select name, power, durability from weapons where agility>=80 and power>70 and weight<10;"
+  ];
 
   const handleQuerySubmit = () => {
-    const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
-    const isCorrect = correctQueries.some(query => 
-      normalizedQuery === query.toLowerCase().replace(/\s+/g, ' ')
-    );
+  // Fix: Better normalization that preserves important spaces
+  const normalizedUserQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, ' ');
+  
+  // Updated correct queries with your exact format
+  const correctQueries = [
+    "SELECT name, power, durability FROM weapons WHERE agility >= 80 AND power > 70 AND weight < 10;",
+    "select name, power, durability from weapons where agility >= 80 and power > 70 and weight < 10;",
+    "SELECT name, power, durability FROM weapons WHERE agility>=80 AND power>70 AND weight<10;",
+    "select name, power, durability from weapons where agility>=80 and power>70 and weight<10;",
+    // Add variations with different spacing
+    "select name , power , durability from weapons where agility >= 80 and power > 70 and weight < 10;",
+    "SELECT name , power , durability FROM weapons WHERE agility >= 80 AND power > 70 AND weight < 10;"
+  ];
 
-    if (isCorrect) {
-      setQuerySuccess(true);
-      setQueryError('');
-      setUiState(prev => ({ ...prev, showQueryInput: false }));
-      
-      // Signal to game that query is complete
-      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        gameInstance.current.scene.scenes[0].completeQuery();
-      }
-    } else {
-      setQueryError('Query failed! Find the explorer with the highest courage level.');
-      setTimeout(() => setQueryError(''), 3000);
+  const isCorrect = correctQueries.some(query => {
+    const normalizedExpected = query.trim().toLowerCase().replace(/\s+/g, ' ');
+    return normalizedUserQuery === normalizedExpected;
+  });
+
+  if (isCorrect) {
+    setQueryError('');
+    setUiState(prev => ({ 
+      ...prev, 
+      showQueryInput: false, 
+      isQueryComplete: true, 
+      canAttack: true,
+      gamePhase: 'fighting'
+    }));
+    
+    // Enable combat mode
+    if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
+      gameInstance.current.scene.scenes[0].enableCombat();
     }
-  };
+  } else {
+    setQueryError('Wrong query! Select name, power, durability from weapons where agility >= 80 AND power > 70 AND weight < 10');
+    setTimeout(() => setQueryError(''), 5000);
+  }
+};
+
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
 
-    let player, raft, fish, sharks, monkey, islands, powerUps;
-    let cursors, spaceKey, fishKey;
+    let player, enemy, monkey, safeZone, wallLayer;
+    let cursors, spaceKey;
+    
+    const TILE_SIZE = 32;
+    const MAZE_WIDTH = 15;
+    const MAZE_HEIGHT = 15;
+    
+    // More complex jungle maze layout: 0 = walkable, 1 = wall
+    const MAZE_MAP = [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+      [1,0,1,0,1,0,1,0,1,0,1,1,1,0,1],
+      [1,0,1,0,0,0,1,0,0,0,1,0,0,0,1],
+      [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1],
+      [1,0,0,0,1,0,0,0,1,0,0,0,1,0,1],
+      [1,1,1,0,1,1,1,0,1,1,1,0,1,0,1],
+      [1,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
+      [1,0,1,1,1,1,1,1,1,0,1,1,1,0,1],
+      [1,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+      [1,1,1,1,1,1,1,0,1,0,1,0,1,0,1],
+      [1,0,0,0,0,0,0,0,1,0,1,0,0,0,1],
+      [1,0,1,1,1,1,1,0,1,0,1,1,1,1,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ];
     
     const gameState = {
       health: 100,
       maxHealth: 100,
+      gamePhase: 'running',
+      isQueryComplete: false,
+      canAttack: false,
+      enemyDefeated: false,
       isLevelComplete: false,
-      canAttack: true,
-      canFish: true,
-      attackCooldown: 500,
-      fishCooldown: 1000,
-      courageLevel: 30,
-      maxCourage: 100,
-      fishCollected: 0,
-      totalFish: 12,
-      sharksDefeated: 0,
-      totalSharks: 5,
-      queryComplete: false,
-      monkeyFreed: false,
-      requiredCourage: 80,
-      isOnRaft: true,
-      explorersData: [
-        { id: 1, name: 'Alex the Brave', courage_level: 95 },
-        { id: 2, name: 'Maya the Bold', courage_level: 78 },
-        { id: 3, name: 'Jin the Fearless', courage_level: 82 },
-        { id: 4, name: 'Elena the Daring', courage_level: 88 }
-      ]
+      invulnerable: false,
+      invulnerabilityTime: 1500,
+      playerSpeed: 120,
+      enemySpeed: 80,
+      lastEnemyMove: 0,
+      enemyMoveInterval: 500
     };
     
     let sceneRef;
@@ -150,857 +165,452 @@ const Level5 = ({ onComplete }) => {
     function preload() {
       sceneRef = this;
       
-      // --- Create Wizard Character on Raft ---
-      const playerGraphics = this.add.graphics();
+      // Create running wizard sprite (jungle explorer style)
+      const wizardGraphics = this.add.graphics();
       
-      // Wizard robe (main body)
-      playerGraphics.fillStyle(0x1e3a8a, 1);
-      playerGraphics.fillCircle(20, 30, 16);
-      playerGraphics.fillRect(4, 18, 32, 24);
+      // Wizard in jungle explorer outfit
+      wizardGraphics.fillStyle(0x8b4513, 1); // Brown explorer outfit
+      wizardGraphics.fillCircle(16, 20, 10);
+      wizardGraphics.fillRect(6, 14, 20, 16);
       
-      // Wizard hood
-      playerGraphics.fillStyle(0x1e40af, 1);
-      playerGraphics.fillCircle(20, 15, 12);
+      // Running legs
+      wizardGraphics.fillStyle(0x654321, 1);
+      wizardGraphics.fillRect(12, 28, 3, 6);
+      wizardGraphics.fillRect(17, 30, 3, 4);
+      
+      // Explorer hat
+      wizardGraphics.fillStyle(0x2f4f4f, 1);
+      wizardGraphics.fillEllipse(16, 12, 14, 6);
       
       // Face
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillCircle(20, 20, 8);
+      wizardGraphics.fillStyle(0xfdbcb4, 1);
+      wizardGraphics.fillCircle(16, 16, 5);
       
-      // Eyes
-      playerGraphics.fillStyle(0x60a5fa, 0.7);
-      playerGraphics.fillCircle(17, 19, 3);
-      playerGraphics.fillCircle(23, 19, 3);
-      playerGraphics.fillStyle(0x000000, 1);
-      playerGraphics.fillCircle(17, 19, 2);
-      playerGraphics.fillCircle(23, 19, 2);
+      // Eyes (determined)
+      wizardGraphics.fillStyle(0x000000, 1);
+      wizardGraphics.fillCircle(14, 15, 1);
+      wizardGraphics.fillCircle(18, 15, 1);
       
-      // Fishing rod
-      playerGraphics.lineStyle(3, 0x8b4513);
-      playerGraphics.beginPath();
-      playerGraphics.moveTo(28, 42);
-      playerGraphics.lineTo(35, 10);
-      playerGraphics.strokePath();
+      // Jungle machete
+      wizardGraphics.lineStyle(2, 0x8b4513);
+      wizardGraphics.beginPath();
+      wizardGraphics.moveTo(24, 22);
+      wizardGraphics.lineTo(26, 12);
+      wizardGraphics.strokePath();
+      wizardGraphics.fillStyle(0xc0c0c0, 1);
+      wizardGraphics.fillRect(25, 10, 3, 6);
       
-      // Fishing line
-      playerGraphics.lineStyle(1, 0x000000);
-      playerGraphics.beginPath();
-      playerGraphics.moveTo(35, 10);
-      playerGraphics.lineTo(40, 25);
-      playerGraphics.strokePath();
+      wizardGraphics.generateTexture('jungle_explorer', 32, 36);
+      wizardGraphics.destroy();
       
-      playerGraphics.generateTexture('player', 45, 50);
-      playerGraphics.destroy();
+      // Create single jungle beast (relentless chaser)
+      const beastGraphics = this.add.graphics();
       
-      // --- Create Wooden Raft ---
-      const raftGraphics = this.add.graphics();
+      // Jungle beast body
+      beastGraphics.fillStyle(0x8b4513, 1);
+      beastGraphics.fillEllipse(16, 20, 24, 14);
+      beastGraphics.fillCircle(24, 14, 6);
       
-      // Raft base
-      raftGraphics.fillStyle(0x8b4513, 1);
-      raftGraphics.fillRect(5, 10, 50, 30);
+      // Beast legs
+      beastGraphics.fillRect(6, 26, 3, 6);
+      beastGraphics.fillRect(11, 28, 3, 4);
+      beastGraphics.fillRect(19, 26, 3, 6);
+      beastGraphics.fillRect(24, 28, 3, 4);
       
-      // Log details
-      raftGraphics.fillStyle(0x654321, 1);
-      for (let i = 0; i < 5; i++) {
-        raftGraphics.fillRect(7 + (i * 9), 12, 7, 26);
-      }
+      // Beast face features
+      beastGraphics.fillStyle(0x654321, 1);
+      beastGraphics.fillCircle(24, 14, 5);
       
-      // Rope bindings
-      raftGraphics.fillStyle(0xdaa520, 1);
-      raftGraphics.fillRect(5, 15, 50, 2);
-      raftGraphics.fillRect(5, 25, 50, 2);
-      raftGraphics.fillRect(5, 35, 50, 2);
+      // Glowing eyes
+      beastGraphics.fillStyle(0xff4444, 1);
+      beastGraphics.fillCircle(22, 12, 2);
+      beastGraphics.fillCircle(26, 12, 2);
       
-      raftGraphics.generateTexture('raft', 60, 50);
-      raftGraphics.destroy();
+      // Claws
+      beastGraphics.fillStyle(0xffffff, 1);
+      beastGraphics.fillTriangle(28, 14, 30, 11, 32, 14);
+      beastGraphics.fillTriangle(28, 18, 30, 21, 32, 18);
       
-      // --- Create Different Fish Types ---
-      const fishTypes = ['courage_fish', 'golden_fish', 'power_fish'];
-      const fishColors = [0x00ff00, 0xffd700, 0xff4500];
+      // Danger aura
+      beastGraphics.fillStyle(0xff4444, 0.4);
+      beastGraphics.fillCircle(16, 20, 20);
       
-      fishTypes.forEach((type, index) => {
-        const fishGraphics = this.add.graphics();
-        const color = fishColors[index];
-        
-        // Fish body
-        fishGraphics.fillStyle(color, 1);
-        fishGraphics.fillEllipse(15, 15, 20, 12);
-        
-        // Fish tail
-        fishGraphics.fillTriangle(5, 15, 0, 10, 0, 20);
-        
-        // Fish eye
-        fishGraphics.fillStyle(0x000000, 1);
-        fishGraphics.fillCircle(20, 13, 2);
-        fishGraphics.fillStyle(0xffffff, 1);
-        fishGraphics.fillCircle(21, 12, 1);
-        
-        // Fish fins
-        fishGraphics.fillStyle(color, 0.8);
-        fishGraphics.fillTriangle(15, 18, 12, 22, 18, 22);
-        fishGraphics.fillTriangle(15, 12, 12, 8, 18, 8);
-        
-        // Special effects for different fish
-        if (type === 'courage_fish') {
-          // Green glow for courage
-          fishGraphics.fillStyle(0x90ee90, 0.4);
-          fishGraphics.fillCircle(15, 15, 20);
-        } else if (type === 'golden_fish') {
-          // Golden sparkles
-          fishGraphics.fillStyle(0xffff00, 1);
-          fishGraphics.fillCircle(10, 10, 1);
-          fishGraphics.fillCircle(20, 8, 1);
-          fishGraphics.fillCircle(18, 18, 1);
-        } else if (type === 'power_fish') {
-          // Red energy aura
-          fishGraphics.fillStyle(0xff6666, 0.5);
-          fishGraphics.fillCircle(15, 15, 18);
-        }
-        
-        fishGraphics.generateTexture(type, 30, 30);
-        fishGraphics.destroy();
-      });
+      beastGraphics.generateTexture('jungle_beast', 32, 36);
+      beastGraphics.destroy();
       
-      // --- Create Dangerous Sharks ---
-      const sharkTypes = ['tiger_shark', 'bull_shark', 'great_white'];
-      const sharkColors = [0x2f4f4f, 0x708090, 0xdcdcdc];
-
-      sharkTypes.forEach((type, index) => {
-        const sharkGraphics = this.add.graphics();
-        const color = sharkColors[index];
-        
-        // Shark body
-        sharkGraphics.fillStyle(color, 1);
-        sharkGraphics.fillEllipse(25, 20, 40, 16);
-        
-        // Shark head
-        sharkGraphics.fillTriangle(45, 20, 55, 15, 55, 25);
-        
-        // Shark fins
-        sharkGraphics.fillTriangle(25, 12, 20, 5, 30, 8);  // Top fin
-        sharkGraphics.fillTriangle(10, 25, 5, 30, 15, 28); // Side fin
-        sharkGraphics.fillTriangle(5, 20, 0, 15, 0, 25);   // Tail
-        
-        // Shark teeth - FIXED LINES
-        sharkGraphics.fillStyle(0xffffff, 1);
-        for (let i = 0; i < 5; i++) {
-          const x = 48 + (i * 2);
-          sharkGraphics.fillTriangle(x, 18, x + 1, 16, x + 2, 18); // ✅ Fixed
-          sharkGraphics.fillTriangle(x, 22, x + 1, 24, x + 2, 22); // ✅ Fixed
-        }
-        
-        // Menacing eyes
-        sharkGraphics.fillStyle(0xff0000, 1);
-        sharkGraphics.fillCircle(40, 17, 3);
-        sharkGraphics.fillCircle(40, 23, 3);
-        
-        // Danger aura
-        sharkGraphics.fillStyle(0xff4444, 0.3);
-        sharkGraphics.fillCircle(25, 20, 35);
-        
-        sharkGraphics.generateTexture(type, 60, 40);
-        sharkGraphics.destroy();
-      });
-      
-      // --- Create Sacred Monkey Trapped in Stone ---
+      // Create trapped monkey in jungle cage
       const monkeyGraphics = this.add.graphics();
       
-      // Stone cage
-      monkeyGraphics.fillStyle(0x696969, 1);
-      monkeyGraphics.fillRect(10, 15, 40, 35);
+      // Bamboo cage
+      monkeyGraphics.fillStyle(0x9acd32, 1);
+      monkeyGraphics.fillRect(8, 12, 32, 32);
       
-      // Stone bars
-      monkeyGraphics.fillStyle(0x2f4f4f, 1);
+      // Bamboo bars
+      monkeyGraphics.fillStyle(0x556b2f, 1);
       for (let i = 0; i < 4; i++) {
-        monkeyGraphics.fillRect(15 + (i * 8), 15, 3, 35);
+        monkeyGraphics.fillRect(10 + (i * 6), 12, 2, 32);
       }
       for (let i = 0; i < 3; i++) {
-        monkeyGraphics.fillRect(10, 20 + (i * 10), 40, 3);
+        monkeyGraphics.fillRect(8, 14 + (i * 7), 32, 2);
       }
       
-      // Monkey inside (visible through bars)
+      // Sacred monkey inside
       monkeyGraphics.fillStyle(0x8b4513, 1);
-      monkeyGraphics.fillCircle(30, 25, 8); // Head
-      monkeyGraphics.fillRect(25, 30, 10, 12); // Body
+      monkeyGraphics.fillCircle(24, 24, 5);
+      monkeyGraphics.fillRect(21, 28, 5, 6);
       
       // Monkey face
       monkeyGraphics.fillStyle(0xfdbcb4, 1);
-      monkeyGraphics.fillCircle(30, 25, 6);
+      monkeyGraphics.fillCircle(24, 24, 4);
       
-      // Monkey eyes (sad)
+      // Pleading eyes
       monkeyGraphics.fillStyle(0x000000, 1);
-      monkeyGraphics.fillCircle(27, 23, 2);
-      monkeyGraphics.fillCircle(33, 23, 2);
+      monkeyGraphics.fillCircle(22, 23, 1);
+      monkeyGraphics.fillCircle(26, 23, 1);
       
-      // Tears
-      monkeyGraphics.fillStyle(0x87ceeb, 1);
-      monkeyGraphics.fillCircle(26, 27, 1);
-      monkeyGraphics.fillCircle(34, 27, 1);
+      // Sacred glow
+      monkeyGraphics.fillStyle(0xffd700, 0.3);
+      monkeyGraphics.fillCircle(24, 28, 20);
       
-      // Magic seal on cage
-      monkeyGraphics.fillStyle(0x8b5cf6, 0.8);
-      monkeyGraphics.fillCircle(30, 10, 8);
-      monkeyGraphics.fillStyle(0xffffff, 1);
-      monkeyGraphics.fillCircle(30, 10, 3);
-      
-      monkeyGraphics.generateTexture('trapped_monkey', 60, 55);
+      monkeyGraphics.generateTexture('trapped_monkey', 48, 48);
       monkeyGraphics.destroy();
       
-      // --- Create Free Monkey ---
-      const freeMonkeyGraphics = this.add.graphics();
+      // Create jungle wall tiles (vines and trees)
+      const wallGraphics = this.add.graphics();
+      wallGraphics.fillStyle(0x228b22, 1);
+      wallGraphics.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
       
-      // Monkey body
-      freeMonkeyGraphics.fillStyle(0x8b4513, 1);
-      freeMonkeyGraphics.fillCircle(20, 18, 10); // Head
-      freeMonkeyGraphics.fillRect(15, 25, 10, 15); // Body
+      // Tree bark texture
+      wallGraphics.fillStyle(0x8b4513, 0.8);
+      for (let i = 0; i < 6; i++) {
+        const x = Math.random() * TILE_SIZE;
+        const y = Math.random() * TILE_SIZE;
+        wallGraphics.fillCircle(x, y, 1 + Math.random() * 2);
+      }
       
-      // Monkey face
-      freeMonkeyGraphics.fillStyle(0xfdbcb4, 1);
-      freeMonkeyGraphics.fillCircle(20, 18, 8);
+      // Vine details
+      wallGraphics.fillStyle(0x32cd32, 0.7);
+      wallGraphics.fillRect(2, 0, 2, TILE_SIZE);
+      wallGraphics.fillRect(TILE_SIZE - 4, 0, 2, TILE_SIZE);
       
-      // Happy eyes
-      freeMonkeyGraphics.fillStyle(0x000000, 1);
-      freeMonkeyGraphics.fillCircle(17, 16, 2);
-      freeMonkeyGraphics.fillCircle(23, 16, 2);
+      wallGraphics.generateTexture('jungle_wall', TILE_SIZE, TILE_SIZE);
+      wallGraphics.destroy();
       
-      // Smile
-      freeMonkeyGraphics.lineStyle(2, 0x000000);
-      freeMonkeyGraphics.beginPath();
-      freeMonkeyGraphics.arc(20, 20, 4, 0, Math.PI);
-      freeMonkeyGraphics.strokePath();
+      // Create safe zone around cage
+      const safeZoneGraphics = this.add.graphics();
+      safeZoneGraphics.lineStyle(3, 0x00ff00, 0.8);
+      safeZoneGraphics.strokeCircle(24, 24, 20);
+      safeZoneGraphics.fillStyle(0x00ff00, 0.2);
+      safeZoneGraphics.fillCircle(24, 24, 20);
+      safeZoneGraphics.generateTexture('safe_zone', 48, 48);
+      safeZoneGraphics.destroy();
       
-      // Arms raised in joy
-      freeMonkeyGraphics.fillStyle(0x8b4513, 1);
-      freeMonkeyGraphics.fillRect(10, 22, 5, 8); // Left arm
-      freeMonkeyGraphics.fillRect(25, 22, 5, 8); // Right arm
+      // Create jungle background
+      const jungleGraphics = this.add.graphics();
+      jungleGraphics.fillStyle(0x006400, 1);
+      jungleGraphics.fillRect(0, 0, 800, 500);
       
-      // Celebration sparkles
-      freeMonkeyGraphics.fillStyle(0xffd700, 1);
-      freeMonkeyGraphics.fillCircle(12, 12, 2);
-      freeMonkeyGraphics.fillCircle(28, 14, 2);
-      freeMonkeyGraphics.fillCircle(15, 8, 1);
-      freeMonkeyGraphics.fillCircle(25, 10, 1);
+      // Jungle floor texture
+      jungleGraphics.fillStyle(0x8b4513, 0.4);
+      for (let i = 0; i < 60; i++) {
+        const x = Math.random() * 800;
+        const y = Math.random() * 500;
+        jungleGraphics.fillCircle(x, y, 2 + Math.random() * 3);
+      }
       
-      freeMonkeyGraphics.generateTexture('free_monkey', 40, 45);
-      freeMonkeyGraphics.destroy();
+      // Leaf shadows
+      jungleGraphics.fillStyle(0x228b22, 0.3);
+      for (let i = 0; i < 30; i++) {
+        const x = Math.random() * 800;
+        const y = Math.random() * 500;
+        jungleGraphics.fillEllipse(x, y, 6 + Math.random() * 4, 3 + Math.random() * 2);
+      }
       
-      // --- Create River Islands ---
-      const islandGraphics = this.add.graphics();
-      
-      // Island base
-      islandGraphics.fillStyle(0xc2b280, 1);
-      islandGraphics.fillCircle(40, 30, 35);
-      
-      // Palm tree
-      islandGraphics.fillStyle(0x8b4513, 1);
-      islandGraphics.fillRect(38, 10, 4, 25);
-      
-      // Palm leaves
-      islandGraphics.fillStyle(0x228b22, 1);
-      islandGraphics.fillEllipse(35, 8, 15, 6);
-      islandGraphics.fillEllipse(45, 8, 15, 6);
-      islandGraphics.fillEllipse(40, 5, 6, 15);
-      islandGraphics.fillEllipse(40, 12, 6, 15);
-      
-      // Beach sand
-      islandGraphics.fillStyle(0xf4a460, 1);
-      islandGraphics.fillCircle(40, 35, 25);
-      
-      islandGraphics.generateTexture('island', 80, 70);
-      islandGraphics.destroy();
-      
-      // Create water texture
-      this.add.graphics().fillStyle(0x006994).fillRect(0, 0, 800, 500).generateTexture('water_background', 800, 500);
-      
-      // Create courage bar
-      const courageBarGraphics = this.add.graphics();
-      courageBarGraphics.fillStyle(0x333333, 1);
-      courageBarGraphics.fillRect(0, 0, 200, 20);
-      courageBarGraphics.fillStyle(0x00ff00, 1);
-      courageBarGraphics.fillRect(2, 2, 196, 16);
-      courageBarGraphics.generateTexture('courage_bar', 200, 20);
-      courageBarGraphics.destroy();
+      jungleGraphics.generateTexture('jungle_bg', 800, 500);
+      jungleGraphics.destroy();
     }
 
     function create() {
-      // Create water background
-      this.add.image(400, 250, 'water_background');
+      // Jungle background
+      this.add.image(400, 250, 'jungle_bg');
       
-      // Add water waves effect
-      createWaterWaves.call(this);
+      // Create tilemap for walls
+      const map = this.make.tilemap({ 
+        data: MAZE_MAP, 
+        tileWidth: TILE_SIZE, 
+        tileHeight: TILE_SIZE 
+      });
+      const tileset = map.addTilesetImage('jungle_wall');
+      wallLayer = map.createLayer(0, tileset, 120, 20);
       
-      fish = this.physics.add.group();
-      sharks = this.physics.add.group();
-      islands = this.physics.add.staticGroup();
-      powerUps = this.physics.add.group();
+      // Set collision on wall tiles
+      wallLayer.setCollisionByExclusion([0]); // 0 = walkable, everything else = collision
       
-      // Create raft first
-      raft = this.physics.add.sprite(100, 250, 'raft');
-      raft.setCollideWorldBounds(true);
-      raft.body.setSize(50, 40);
+      // Create safe zone around monkey cage
+      safeZone = this.add.image(
+        13 * TILE_SIZE + TILE_SIZE / 2 + 120,
+        13 * TILE_SIZE + TILE_SIZE / 2 + 20,
+        'safe_zone'
+      );
       
-      // Player starts on the raft
-      player = this.physics.add.sprite(100, 250, 'player');
-      player.setCollideWorldBounds(true).body.setSize(35, 40).setOffset(5, 5);
+      // Trapped monkey in cage
+      monkey = this.physics.add.sprite(
+        13 * TILE_SIZE + TILE_SIZE / 2 + 120,
+        13 * TILE_SIZE + TILE_SIZE / 2 + 20,
+        'trapped_monkey'
+      );
+      monkey.body.setImmovable(true);
+      monkey.body.setSize(40, 40);
       
-      // Create trapped monkey on an island
-      monkey = this.physics.add.sprite(650, 250, 'trapped_monkey');
-      monkey.setImmovable(true);
+      // Player jungle explorer starts at grid position (1,1)
+      player = this.physics.add.sprite(
+        1 * TILE_SIZE + TILE_SIZE / 2 + 120,
+        1 * TILE_SIZE + TILE_SIZE / 2 + 20,
+        'jungle_explorer'
+      );
+      player.setCollideWorldBounds(true);
+      player.body.setSize(20, 28); // Proper body size to prevent wall clipping
       
+      // Single jungle beast enemy starts behind player
+      enemy = this.physics.add.sprite(
+        1 * TILE_SIZE + TILE_SIZE / 2 + 120,
+        4 * TILE_SIZE + TILE_SIZE / 2 + 20,
+        'jungle_beast'
+      );
+      enemy.setCollideWorldBounds(true);
+      enemy.body.setSize(20, 28); // Same size as player
+      enemy.health = 100;
+      
+      // Controls
       cursors = this.input.keyboard.createCursorKeys();
       spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-      fishKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
       
-      // Setup physics interactions
-      this.physics.add.overlap(player, fish, catchFish, null, this);
-      this.physics.add.overlap(player, sharks, fightShark, null, this);
-      this.physics.add.overlap(player, monkey, rescueMonkey, null, this);
+      // CRITICAL: Set up proper collisions
+      this.physics.add.collider(player, wallLayer); // Player cannot pass through walls
+      this.physics.add.collider(enemy, wallLayer);  // Enemy cannot pass through walls
       
-      // Add methods to scene
-      this.completeQuery = completeQuery;
-      this.showQueryInput = showQueryInput;
+      // Overlap detection for damage and interaction
+      this.physics.add.overlap(player, enemy, enemyHitPlayer, null, this);
+      this.physics.add.overlap(player, monkey, reachMonkey, null, this);
+      
+      // Add methods
+      this.enableCombat = enableCombat;
+      this.completeLevel = completeLevel;
+      this.restartLevel = restartLevel;
       
       createLevel.call(this);
       updateReactUI();
     }
 
     function createLevel() {
-      fish.clear(true, true);
-      sharks.clear(true, true);
-      islands.clear(true, true);
+      // Reset game state
+      gameState.health = 100;
+      gameState.gamePhase = 'running';
+      gameState.isQueryComplete = false;
+      gameState.canAttack = false;
+      gameState.enemyDefeated = false;
+      gameState.isLevelComplete = false;
+      gameState.invulnerable = false;
       
-      gameState.fishCollected = 0;
-      gameState.sharksDefeated = 0;
-      gameState.courageLevel = 30;
-      gameState.queryComplete = false;
-      gameState.monkeyFreed = false;
+      // Reset positions
+      player.setPosition(
+        1 * TILE_SIZE + TILE_SIZE / 2 + 120,
+        1 * TILE_SIZE + TILE_SIZE / 2 + 20
+      );
+      player.clearTint();
+      player.setVelocity(0, 0);
       
-      // Create islands
-      createIslands.call(this);
+      enemy.setPosition(
+        1 * TILE_SIZE + TILE_SIZE / 2 + 120,
+        4 * TILE_SIZE + TILE_SIZE / 2 + 20
+      );
+      enemy.clearTint();
+      enemy.health = 100;
+      enemy.setVelocity(0, 0);
       
-      // Spawn fish in the river
-      spawnFish.call(this);
-      
-      // Spawn sharks patrolling the water
-      spawnSharks.call(this);
-      
-      // Create courage display
-      createCourageDisplay.call(this);
-      
-      player.setPosition(100, 250).setVelocity(0, 0);
-    }
-    
-    function createWaterWaves() {
-      // Create animated water effects
-      for (let i = 0; i < 10; i++) {
-        const wave = sceneRef.add.circle(
-          Math.random() * 800,
-          Math.random() * 500,
-          5 + Math.random() * 10,
-          0x87ceeb,
-          0.3
-        );
-        
-        sceneRef.tweens.add({
-          targets: wave,
-          scaleX: 1.5,
-          scaleY: 1.5,
-          alpha: 0,
-          duration: 2000 + Math.random() * 1000,
-          repeat: -1,
-          delay: Math.random() * 2000
-        });
-      }
-    }
-    
-    function createIslands() {
-      // Small islands scattered in the river
-      const islandPositions = [
-        { x: 200, y: 150 },
-        { x: 350, y: 350 },
-        { x: 500, y: 180 },
-        { x: 650, y: 300 } // Monkey island
-      ];
-      
-      islandPositions.forEach((pos, index) => {
-        const island = islands.create(pos.x, pos.y, 'island');
-        island.setScale(0.8);
-        
-        if (index === islandPositions.length - 1) {
-          // This is the monkey island - place monkey here
-          monkey.setPosition(pos.x, pos.y - 20);
-        }
-      });
-    }
-    
-    function spawnFish() {
-      const fishPositions = [
-        { x: 150, y: 200, type: 'courage_fish' },
-        { x: 250, y: 300, type: 'golden_fish' },
-        { x: 180, y: 350, type: 'courage_fish' },
-        { x: 320, y: 180, type: 'power_fish' },
-        { x: 280, y: 380, type: 'courage_fish' },
-        { x: 420, y: 220, type: 'golden_fish' },
-        { x: 380, y: 320, type: 'courage_fish' },
-        { x: 520, y: 160, type: 'power_fish' },
-        { x: 480, y: 350, type: 'courage_fish' },
-        { x: 580, y: 280, type: 'golden_fish' },
-        { x: 620, y: 200, type: 'courage_fish' },
-        { x: 550, y: 380, type: 'power_fish' }
-      ];
-      
-      fishPositions.forEach(pos => {
-        const fishSprite = fish.create(pos.x, pos.y, pos.type);
-        fishSprite.setCollideWorldBounds(true).body.setSize(25, 20).setOffset(2, 5);
-        fishSprite.fishType = pos.type;
-        
-        // Fish swimming animation
-        sceneRef.tweens.add({
-          targets: fishSprite,
-          x: fishSprite.x + (Math.random() - 0.5) * 100,
-          y: fishSprite.y + (Math.random() - 0.5) * 60,
-          duration: 3000 + Math.random() * 2000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-        
-        // Fish floating animation
-        sceneRef.tweens.add({
-          targets: fishSprite,
-          rotation: (Math.random() - 0.5) * 0.5,
-          duration: 2000 + Math.random() * 1000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      });
-    }
-    
-    function spawnSharks() {
-      const sharkPositions = [
-        { x: 300, y: 200, type: 'tiger_shark' },
-        { x: 450, y: 300, type: 'bull_shark' },
-        { x: 200, y: 350, type: 'great_white' },
-        { x: 550, y: 150, type: 'tiger_shark' },
-        { x: 400, y: 400, type: 'bull_shark' }
-      ];
-      
-      sharkPositions.forEach((pos, index) => {
-        const shark = sharks.create(pos.x, pos.y, pos.type);
-        shark.setCollideWorldBounds(true).body.setSize(50, 30).setOffset(5, 5);
-        shark.health = 80;
-        shark.maxHealth = 80;
-        shark.speed = 60;
-        shark.attackDamage = 20;
-        shark.patrolDistance = 100;
-        shark.startX = pos.x;
-        shark.startY = pos.y;
-        shark.direction = 1;
-        shark.sharkType = pos.type;
-        
-        // Shark swimming animation
-        sceneRef.tweens.add({
-          targets: shark,
-          scaleX: 1.1,
-          scaleY: 0.95,
-          duration: 1200 + (index * 200),
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      });
-    }
-    
-    function createCourageDisplay() {
-      // Create courage meter at top of screen
-      const courageText = sceneRef.add.text(20, 20, 'Courage Level:', {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#ffffff',
-        backgroundColor: '#000000',
-        padding: { x: 8, y: 4 }
-      });
-      
-      const courageBar = sceneRef.add.graphics();
-      courageBar.x = 20;
-      courageBar.y = 50;
-      sceneRef.courageBar = courageBar;
-      
-      // Create separate text object for courage numbers
-      const courageValueText = sceneRef.add.text(120, 60, '', {
-        fontSize: '12px',
-        fontFamily: 'Courier New',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-      sceneRef.courageValueText = courageValueText;
-      
-      updateCourageBar();
-    }
-
-    function updateCourageBar() {
-      if (!sceneRef.courageBar) return;
-      
-      sceneRef.courageBar.clear();
-      
-      // Background
-      sceneRef.courageBar.fillStyle(0x333333, 1);
-      sceneRef.courageBar.fillRect(0, 0, 200, 20);
-      
-      // Courage fill
-      const couragePercent = gameState.courageLevel / gameState.maxCourage;
-      const fillWidth = 196 * couragePercent;
-      const color = couragePercent >= 0.8 ? 0x00ff00 : couragePercent >= 0.5 ? 0xffff00 : 0xff4444;
-      
-      sceneRef.courageBar.fillStyle(color, 1);
-      sceneRef.courageBar.fillRect(2, 2, fillWidth, 16);
-      
-      // ✅ Update the separate text object instead
-      if (sceneRef.courageValueText) {
-        sceneRef.courageValueText.setText(`${gameState.courageLevel}/${gameState.maxCourage}`);
-      }
+      // Show initial message
+      showMessage('🌿 Escape through the jungle maze! A relentless beast is chasing you!', 4000);
+      updateReactUI();
     }
 
     function update() {
       if (gameState.isLevelComplete) return;
       
-      // Player movement (raft moves with player)
+      // Player movement with proper physics
       player.setVelocity(0);
-      raft.setVelocity(0);
       
-      const speed = 160;
-      
-      // Use the ref instead of state for game logic
       if (cursors.left.isDown || mobileControlsRef.current.left) {
-        player.setVelocityX(-speed);
-        raft.setVelocityX(-speed);
+        player.setVelocityX(-gameState.playerSpeed);
       } else if (cursors.right.isDown || mobileControlsRef.current.right) {
-        player.setVelocityX(speed);
-        raft.setVelocityX(speed);
+        player.setVelocityX(gameState.playerSpeed);
       }
       
       if (cursors.up.isDown || mobileControlsRef.current.up) {
-        player.setVelocityY(-speed);
-        raft.setVelocityY(-speed);
+        player.setVelocityY(-gameState.playerSpeed);
       } else if (cursors.down.isDown || mobileControlsRef.current.down) {
-        player.setVelocityY(speed);
-        raft.setVelocityY(speed);
-      }
-
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
-        attack.call(this);
+        player.setVelocityY(gameState.playerSpeed);
       }
       
-      if ((Phaser.Input.Keyboard.JustDown(fishKey) || mobileControlsRef.current.fish) && gameState.canFish) {
-        tryFishing.call(this);
+      // Enemy constantly chases player (relentless pursuit)
+      if (gameState.gamePhase === 'running' && !gameState.enemyDefeated) {
+        // Move enemy towards player every frame
+        sceneRef.physics.moveToObject(enemy, player, gameState.enemySpeed);
+        
+        // Make enemy more aggressive by highlighting it
+        enemy.setTint(0xff6666);
       }
-
-      // Update sharks with patrol behavior
-      updateSharks.call(this);
       
-      // Keep player on raft
-      const distanceToRaft = Phaser.Math.Distance.Between(player.x, player.y, raft.x, raft.y);
-      if (distanceToRaft > 30) {
-        // Snap player back to raft
-        const angle = Phaser.Math.Angle.Between(raft.x, raft.y, player.x, player.y);
-        player.x = raft.x + Math.cos(angle) * 25;
-        player.y = raft.y + Math.sin(angle) * 25;
+      // Attack (only when enabled)
+      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) 
+          && gameState.canAttack && !gameState.enemyDefeated) {
+        attackEnemy.call(this);
       }
+      
+      // Calculate progress based on distance to cage
+      const distX = Math.abs(player.x - monkey.x);
+      const distY = Math.abs(player.y - monkey.y);
+      const distance = Math.sqrt(distX * distX + distY * distY);
+      gameState.mazeProgress = Math.max(0, 100 - (distance / 10));
+      
+      updateReactUI();
     }
 
-    function updateSharks() {
-      sharks.children.entries.forEach(shark => {
-        if (!shark.active) return;
-        
-        const distanceToPlayer = Phaser.Math.Distance.Between(shark.x, shark.y, player.x, player.y);
-        
-        if (distanceToPlayer < 120) {
-          // Chase player
-          sceneRef.physics.moveTo(shark, player.x, player.y, shark.speed * 1.2);
-          shark.setTint(0xff6666);
-        } else {
-          // Patrol behavior
-          shark.clearTint();
-          const distanceFromStart = Phaser.Math.Distance.Between(shark.x, shark.startX, shark.y, shark.startY);
-          
-          if (distanceFromStart > shark.patrolDistance) {
-            shark.direction *= -1;
-          }
-          
-          const angle = Phaser.Math.Angle.Between(shark.x, shark.y, shark.startX + (shark.direction * shark.patrolDistance), shark.startY);
-          shark.setVelocity(Math.cos(angle) * shark.speed, Math.sin(angle) * shark.speed);
-        }
+    function enemyHitPlayer(player, enemy) {
+      if (gameState.invulnerable || gameState.gamePhase !== 'running') return;
+      
+      // Damage player
+      gameState.health -= 25;
+      gameState.invulnerable = true;
+      
+      // Visual feedback
+      player.setTint(0xff0000);
+      sceneRef.cameras.main.shake(200, 0.02);
+      
+      // Show damage message
+      showMessage(`Beast attacks! -25 Health! Remaining: ${gameState.health}/100`, 1500);
+      
+      // Knockback effect
+      const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+      player.setVelocity(Math.cos(angle) * 200, Math.sin(angle) * 200);
+      
+      // Check if health depleted
+      if (gameState.health <= 0) {
+        gameOver('💀 The jungle beast overwhelmed you! You ran out of health!');
+        return;
+      }
+      
+      // Remove invulnerability
+      sceneRef.time.delayedCall(gameState.invulnerabilityTime, () => {
+        gameState.invulnerable = false;
+        if (player.active) player.clearTint();
       });
+      
+      updateReactUI();
     }
 
-    function tryFishing() {
-      gameState.canFish = false;
+    function reachMonkey(player, monkey) {
+      if (gameState.gamePhase === 'running') {
+        // Player reached safety!
+        gameState.gamePhase = 'safe';
+        
+        // Stop enemy movement
+        enemy.setVelocity(0, 0);
+        enemy.clearTint();
+        
+        // Safe zone visual effect
+        const safeEffect = sceneRef.add.circle(monkey.x, monkey.y, 40, 0x00ff00, 0.6);
+        sceneRef.tweens.add({
+          targets: safeEffect,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          alpha: 0,
+          duration: 1000,
+          onComplete: () => safeEffect.destroy()
+        });
+        
+        showMessage('🛡️ Safe in the jungle sanctuary! The beast cannot reach you here! Solve the query!', 4000);
+        
+        // Auto-open query after delay
+        sceneRef.time.delayedCall(4000, () => {
+          setUiState(prev => ({ ...prev, showQueryInput: true }));
+        });
+        
+        updateReactUI();
+      }
+    }
+
+    function enableCombat() {
+      gameState.canAttack = true;
+      gameState.gamePhase = 'fighting';
       
-      // Create fishing effect
-      const fishingEffect = sceneRef.add.circle(player.x + 40, player.y + 20, 30, 0x87ceeb, 0.5);
+      showMessage('⚔️ Query complete! You can now fight the jungle beast!', 3000);
+      
+      // Make enemy aggressive again
+      enemy.setTint(0xff4444);
+      
+      updateReactUI();
+    }
+
+    function attackEnemy() {
+      const distance = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
+      
+      if (distance > 60) {
+        showMessage('Get closer to the jungle beast to attack!', 1500);
+        return;
+      }
+      
+      // Attack the beast
+      enemy.health -= 50;
+      
+      // Attack effects
+      const attackEffect = sceneRef.add.circle(enemy.x, enemy.y, 30, 0x8b5cf6, 0.6);
       sceneRef.tweens.add({
-        targets: fishingEffect,
+        targets: attackEffect,
         scaleX: 2,
         scaleY: 2,
         alpha: 0,
-        duration: 800,
-        onComplete: () => fishingEffect.destroy()
-      });
-      
-      // Check for nearby fish
-      let caughtFish = false;
-      fish.children.entries.forEach(fishSprite => {
-        if (!fishSprite.active) return;
-        
-        const distance = Phaser.Math.Distance.Between(player.x, player.y, fishSprite.x, fishSprite.y);
-        if (distance <= 80) {
-          catchFish(player, fishSprite);
-          caughtFish = true;
-        }
-      });
-      
-      if (!caughtFish) {
-        showMessage('No fish nearby! Get closer to fish and try again.', 1500);
-      }
-      
-      sceneRef.time.delayedCall(gameState.fishCooldown, () => {
-        gameState.canFish = true;
-      });
-    }
-
-    function attack() {
-      gameState.canAttack = false;
-      
-      const attackRange = 90;
-      
-      // Magic attack effects
-      const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x8b5cf6, 0.4);
-      const innerEffect = sceneRef.add.circle(player.x, player.y, attackRange * 0.6, 0xfbbf24, 0.5);
-      
-      sceneRef.tweens.add({
-        targets: attackEffect,
-        scaleX: 1.8,
-        scaleY: 1.8,
-        alpha: 0,
-        duration: 300,
+        duration: 400,
         onComplete: () => attackEffect.destroy()
       });
       
-      sceneRef.tweens.add({
-        targets: innerEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 250,
-        onComplete: () => innerEffect.destroy()
+      // Knockback enemy
+      const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
+      enemy.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
+      
+      enemy.setTint(0xffffff);
+      sceneRef.time.delayedCall(200, () => {
+        if (enemy.active) enemy.setTint(0xff4444);
       });
       
-      sharks.children.entries.forEach(shark => {
-        if (!shark.active) return;
+      if (enemy.health <= 0) {
+        // Beast defeated!
+        gameState.enemyDefeated = true;
+        enemy.destroy();
         
-        const distance = Phaser.Math.Distance.Between(player.x, player.y, shark.x, shark.y);
-        if (distance <= attackRange) {
-          shark.health -= 60;
-          
-          const angle = Phaser.Math.Angle.Between(player.x, player.y, shark.x, shark.y);
-          shark.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-          
-          shark.setTint(0x8b5cf6);
-          sceneRef.time.delayedCall(150, () => {
-            if (shark.active) shark.clearTint();
-          });
-          
-          if (shark.health <= 0) {
-            gameState.sharksDefeated++;
-            
-            const explosion = sceneRef.add.circle(shark.x, shark.y, 40, 0xff6b6b);
-            sceneRef.tweens.add({
-              targets: explosion,
-              scaleX: 4,
-              scaleY: 4,
-              alpha: 0,
-              duration: 500,
-              onComplete: () => explosion.destroy()
-            });
-            
-            // Courage bonus for defeating shark
-            gameState.courageLevel = Math.min(gameState.maxCourage, gameState.courageLevel + 5);
-            showMessage('+5 Courage! Shark defeated!', 1500);
-            
-            shark.destroy();
-          }
-        }
-      });
+        sceneRef.time.delayedCall(1000, () => {
+          completeLevel();
+        });
+      }
       
-      sceneRef.time.delayedCall(gameState.attackCooldown, () => {
-        gameState.canAttack = true;
-      });
-      
-      updateCourageBar();
       updateReactUI();
     }
 
-    function catchFish(player, fishSprite) {
-      gameState.fishCollected++;
-      
-      // Different fish give different courage bonuses
-      let courageBonus = 0;
-      let message = '';
-      
-      switch (fishSprite.fishType) {
-        case 'courage_fish':
-          courageBonus = 8;
-          message = '+8 Courage! Brave fish caught!';
-          break;
-        case 'golden_fish':
-          courageBonus = 12;
-          message = '+12 Courage! Golden fish caught!';
-          break;
-        case 'power_fish':
-          courageBonus = 15;
-          message = '+15 Courage! Power fish caught!';
-          break;
-      }
-      
-      gameState.courageLevel = Math.min(gameState.maxCourage, gameState.courageLevel + courageBonus);
-      
-      // Visual collection effect
-      const collectEffect = sceneRef.add.circle(fishSprite.x, fishSprite.y, 40, 0x00ff00, 0.8);
-      sceneRef.tweens.add({
-        targets: collectEffect,
-        scaleX: 2.5,
-        scaleY: 2.5,
-        alpha: 0,
-        duration: 600,
-        onComplete: () => collectEffect.destroy()
-      });
-      
-      showMessage(message, 2000);
-      
-      fishSprite.destroy();
-      updateCourageBar();
-      updateReactUI();
-    }
-
-    function fightShark(player, shark) {
-      if (shark.lastPlayerHit && sceneRef.time.now - shark.lastPlayerHit < 2000) return;
-      
-      shark.lastPlayerHit = sceneRef.time.now;
-      
-      // Courage affects damage taken
-      const courageFactor = gameState.courageLevel / gameState.maxCourage;
-      const damageReduction = courageFactor * 0.5; // Up to 50% damage reduction
-      const actualDamage = Math.round(shark.attackDamage * (1 - damageReduction));
-      
-      gameState.health -= actualDamage;
-      
-      player.setTint(0xff0000);
-      sceneRef.time.delayedCall(300, () => player.clearTint());
-      
-      const angle = Phaser.Math.Angle.Between(shark.x, shark.y, player.x, player.y);
-      player.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
-      raft.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
-      
-      showMessage(`Shark attack! -${actualDamage} health`, 1500);
-      
-      if (gameState.health <= 0) {
-        gameOver('The sharks have defeated you!');
-      }
-      updateReactUI();
-    }
-    
-    function rescueMonkey(player, monkey) {
-      if (gameState.courageLevel < gameState.requiredCourage) {
-        showMessage(`You need ${gameState.requiredCourage} courage to free the monkey! Current: ${gameState.courageLevel}`, 3000);
-        return;
-      }
-      
-      if (!gameState.queryComplete) {
-        showQueryInput();
-        return;
-      }
-      
-      // Free the monkey!
-      gameState.monkeyFreed = true;
-      monkey.setTexture('free_monkey');
-      
-      showLevelComplete();
-    }
-    
-    function showQueryInput() {
-      setUiState(prev => ({ ...prev, showQueryInput: true }));
-    }
-    
-    function completeQuery() {
-      gameState.queryComplete = true;
-      showMessage('Query executed! You found the most courageous explorer!\nYou can now free the monkey!', 3000);
-      updateReactUI();
-    }
-
-    function showMessage(text, duration) {
-      const messageText = sceneRef.add.text(400, 80, text, {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#ffff00',
-        backgroundColor: '#000000',
-        align: 'center',
-        padding: { x: 12, y: 6 }
-      }).setOrigin(0.5).setDepth(1000);
-      
-      sceneRef.time.delayedCall(duration, () => messageText.destroy());
-    }
-
-    function showLevelComplete() {
+    function completeLevel() {
       gameState.isLevelComplete = true;
-      updateReactUI();
       
       const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
       overlay.setDepth(1000);
       
-      const completionText = sceneRef.add.text(400, 100, '🐒 Sacred Monkey Freed! 🐒', {
+      const completionText = sceneRef.add.text(400, 80, '🐒 Sacred Monkey Freed! 🐒', {
         fontSize: '28px',
         fontFamily: 'Courier New',
         color: '#00ff00',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText = sceneRef.add.text(400, 140, 'Query Executed Successfully:', {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#00ffff'
-      }).setOrigin(0.5).setDepth(1001);
       
-      const queryText2 = sceneRef.add.text(400, 160, 'SELECT * FROM jungle_explorers ORDER BY courage_level DESC LIMIT 1;', {
-        fontSize: '13px',
-        fontFamily: 'Courier New',
-        color: '#00ffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      // Show the most courageous explorer
-      const topExplorer = gameState.explorersData.sort((a, b) => b.courage_level - a.courage_level)[0];
-      const resultText = sceneRef.add.text(400, 200, `Most Courageous Explorer Found:`, {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#ffff00'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const explorerResult = sceneRef.add.text(400, 220, `${topExplorer.name} - Courage: ${topExplorer.courage_level}`, {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#90ee90',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const statsText = sceneRef.add.text(400, 270, `🐟 Fish Caught: ${gameState.fishCollected}/${gameState.totalFish}\n🦈 Sharks Defeated: ${gameState.sharksDefeated}/${gameState.totalSharks}\n💪 Final Courage: ${gameState.courageLevel}/${gameState.maxCourage}`, {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#ffff00',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const instructionText = sceneRef.add.text(400, 350, 'The Sacred Monkey is free! Click to return to map', {
-        fontSize: '28px',
+      const instructionText = sceneRef.add.text(400, 420, 'Mission Complete! Click to continue', {
+        fontSize: '32px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1018,35 +628,67 @@ const Level5 = ({ onComplete }) => {
         repeat: -1
       });
     }
-    
+
     function gameOver(message) {
-      const gameOverText = sceneRef.add.text(400, 250, message, {
-        fontSize: '22px',
+      const gameOverText = sceneRef.add.text(400, 200, `💀 GAME OVER 💀\n${message}`, {
+        fontSize: '24px',
         fontFamily: 'Courier New',
         color: '#ff4444',
         backgroundColor: '#000000',
         align: 'center',
-        padding: { x: 10, y: 6 }
-      }).setOrigin(0.5);
+        padding: { x: 15, y: 8 }
+      }).setOrigin(0.5).setDepth(1000);
+      
+      const restartText = sceneRef.add.text(400, 300, 'Restarting in 3 seconds...', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffffff',
+        backgroundColor: '#333333',
+        padding: { x: 10, y: 5 }
+      }).setOrigin(0.5).setDepth(1000);
       
       sceneRef.cameras.main.flash(500, 255, 0, 0);
-      gameState.health = 100;
-      gameState.courageLevel = 30;
       
+      // Auto-restart after 3 seconds
+      sceneRef.time.delayedCall(3000, () => {
+        gameOverText.destroy();
+        restartText.destroy();
+        restartLevel();
+      });
+    }
+
+    function restartLevel() {
       // Reset UI state
       setUiState(prev => ({
         ...prev,
+        health: 100,
+        gamePhase: 'running',
         showQueryInput: false,
-        courageLevel: 30
+        isQueryComplete: false,
+        canAttack: false,
+        enemyDefeated: false,
+        mazeProgress: 0,
+        distanceToSafety: 100
       }));
+      
       setSqlQuery('');
       setQueryError('');
-      setQuerySuccess(false);
       
-      sceneRef.time.delayedCall(3000, () => {
-        gameOverText.destroy();
-        createLevel.call(sceneRef);
-        updateReactUI();
+      createLevel.call(sceneRef);
+    }
+
+    function showMessage(text, duration) {
+      const messageText = sceneRef.add.text(400, 50, text, {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffff00',
+        backgroundColor: '#000000',
+        align: 'center',
+        padding: { x: 12, y: 6 }
+      }).setOrigin(0.5).setDepth(1000);
+      
+      sceneRef.time.delayedCall(duration, () => {
+        if (messageText.active) messageText.destroy();
       });
     }
 
@@ -1054,11 +696,11 @@ const Level5 = ({ onComplete }) => {
       setUiState(prev => ({
         ...prev,
         health: Math.max(0, gameState.health),
-        isQueryComplete: gameState.isLevelComplete,
-        courageLevel: gameState.courageLevel,
-        fishCollected: gameState.fishCollected,
-        sharksDefeated: gameState.sharksDefeated,
-        monkeyFreed: gameState.monkeyFreed
+        gamePhase: gameState.gamePhase,
+        canAttack: gameState.canAttack,
+        enemyDefeated: gameState.enemyDefeated,
+        mazeProgress: gameState.mazeProgress,
+        distanceToSafety: Math.round(Phaser.Math.Distance.Between(player.x, player.y, monkey.x, monkey.y) / TILE_SIZE)
       }));
     }
 
@@ -1067,7 +709,7 @@ const Level5 = ({ onComplete }) => {
       width: 800,
       height: 500,
       parent: gameContainerRef.current,
-      physics: { default: 'arcade', arcade: { gravity: { y: 0 }}},
+      physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
       scene: { preload, create, update },
       scale: {
         mode: Phaser.Scale.FIT,
@@ -1077,64 +719,87 @@ const Level5 = ({ onComplete }) => {
 
     gameInstance.current = new Phaser.Game(config);
 
-    return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+    return () => { if (gameInstance.current) { gameInstance.current.destroy(true); } };
+  }, [onComplete]);
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Display the game elements as reference */}
+      {/* Game Status Display */}
       <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-            <GiSailboat size={12} color="white" />
-          </div>
-          <span>Your Raft</span>
+          <GiRun size={20} color="#8b4513" />
+          <span>Jungle Explorer</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiFishing size={20} color="#00ff00" />
-          <span>Fish (Courage)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <GiSeaSerpent  size={20} color="#ff4444" />
-          <span>Sharks</span>
+          <FaSkull size={20} color="#ff4444" />
+          <span>Relentless Beast</span>
         </div>
         <div className="flex items-center gap-2">
           <GiMonkey size={20} color="#8b4513" />
-          <span>Trapped Monkey</span>
+          <span>Sacred Monkey</span>
         </div>
       </div>
 
-      {/* Responsive game container */}
+      {/* Health Bar */}
+      <div className="w-full max-w-3xl">
+        <div className="flex justify-between text-sm text-slate-400 mb-1">
+          <span>🌿 Health</span>
+          <span>{uiState.health}/100</span>
+        </div>
+        <div className="w-full bg-slate-700 rounded-full h-4">
+          <div 
+            className={`h-4 rounded-full transition-all duration-300 ${
+              uiState.health > 75 ? 'bg-green-500' : 
+              uiState.health > 50 ? 'bg-yellow-500' : 
+              uiState.health > 25 ? 'bg-orange-500' : 'bg-red-500'
+            }`}
+            style={{ width: `${Math.max(2, uiState.health)}%` }}
+          ></div>
+        </div>
+      </div>
+
+      {/* Game Container */}
       <div className="w-full max-w-4xl">
         <div 
           ref={gameContainerRef} 
-          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-blue-500 shadow-lg mx-auto"
+          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-green-600 shadow-lg mx-auto bg-gradient-to-b from-green-800 to-green-900"
           style={{ maxWidth: '800px' }}
         />
       </div>
+        <div className="block md:hidden">
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-xs text-center text-yellow-300 mb-2">
+              📱 D-pad: Move through jungle  • ATTACK: Fight beast 
+            </div>
+            <MobileControls 
+              mobileControlsRef={mobileControlsRef}
+              setMobileControls={setMobileControls}
+            />
+          </div>
+        </div>
       
-      <div className="w-full max-w-3xl grid grid-cols-2 gap-4 pixel-font text-sm">
-        <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
-        <div>Courage: <span className="text-green-400">{uiState.courageLevel}/{uiState.maxCourage}</span></div>
-        <div>Fish Caught: <span className="text-blue-400">{uiState.fishCollected}/{uiState.totalFish}</span></div>
-        <div>Sharks Defeated: <span className="text-red-400">{uiState.sharksDefeated}/{uiState.totalSharks}</span></div>
-      </div>
 
-      {/* SQL Query Input Modal */}
+      {/* SQL Query Modal */}
       {uiState.showQueryInput && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
-            <h3 className="pixel-font text-xl text-yellow-400 mb-4 text-center">🐒 Free the Sacred Monkey 🐒</h3>
+          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-lg w-full mx-4">
+            <h3 className="text-xl text-green-400 mb-4 text-center">🐒 Free the Sacred Monkey 🐒</h3>
             <p className="text-slate-300 mb-4 text-sm text-center">
-              list all columns from jungle_explorers where order by courage_level has to be maximum and limit is 1.
+              You reached the jungle sanctuary! Query the weapons database to unlock combat mode:
             </p>
+            
+            <div className="bg-black p-3 rounded border mb-4">
+              <p className="text-cyan-400 text-xs font-mono mb-2"><strong>Schema:</strong></p>
+              <p className="text-yellow-300 text-xs">weapons: name, power, durability, agility, weight</p>
+              <p className="text-slate-400 text-xs mt-1">Find weapons (name , power , durability) with agility greater than and equal too 80, power greater than 70, weight less than 10</p>
+            </div>
             
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="Enter your SQL query here..."
+              placeholder="SELECT name, power, durability FROM weapons WHERE..."
               className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
-              rows={3}
+              rows={4}
               onKeyDown={(e) => {
                 e.stopPropagation();
               }}
@@ -1142,7 +807,7 @@ const Level5 = ({ onComplete }) => {
             />
             
             {queryError && (
-              <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-sm">
+              <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-xs">
                 {queryError}
               </div>
             )}
@@ -1150,73 +815,59 @@ const Level5 = ({ onComplete }) => {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleQuerySubmit}
-                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
+                className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded font-bold transition-colors"
               >
-                Execute Query
+                ⚔️ Enable Jungle Combat!
               </button>
             </div>
           </div>
         </div>
       )}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra fish functionality */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-            {/* Extra Fish Button for Level5 - positioned separately */}
-            <button
-              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-              onPointerDown={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                handleFish();
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              FISH
-            </button>
-          </div>
-        </div>
 
+      {/* Game Instructions */}
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
-        <div className="font-mono text-lg">
-          {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Query Completed Successfully!
+        <div className="text-slate-300 mb-2">🌿 Jungle Survival Challenge:</div>
+        <div className="text-lg">
+          {uiState.gamePhase === 'running' ? (
+            <span className="text-red-400 font-bold animate-pulse">
+              🏃 Navigate the jungle maze! One relentless beast is constantly chasing you!
             </span>
-          ) : uiState.courageLevel >= uiState.requiredCourage ? (
-            <span className="text-yellow-400 font-bold bg-yellow-900/50 px-2 py-1 rounded animate-pulse">
-              You have enough courage! Write the SQL query to free the monkey
+          ) : uiState.gamePhase === 'safe' ? (
+            <span className="text-yellow-400 font-bold">
+              🛡️ Safe in the sanctuary! Write the SQL query to fight back!
             </span>
+          ) : uiState.gamePhase === 'fighting' ? (
+            uiState.enemyDefeated ? (
+              <span className="text-green-400 font-bold">
+                ✅ Jungle beast defeated! Sacred monkey is free!
+              </span>
+            ) : (
+              <span className="text-orange-400 font-bold">
+                ⚔️ Combat enabled! Defeat the jungle beast to free the monkey!
+              </span>
+            )
           ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">
-              Need {uiState.requiredCourage} courage to free the monkey! Catch fish to gain courage
+            <span className="text-cyan-400 font-bold">
+              🏆 Jungle conquered! Beast defeated and monkey rescued!
             </span>
           )}
         </div>
         <div className="text-xs text-slate-500 mt-2">
-          Catch fish to gain courage • Defeat sharks • Reach 80 courage • Write SQL query • Free monkey!
+          🎮 Fixed wall collision • Single pursuing enemy • Health-based survival system!
         </div>
       </div>
 
-      {/* Use the reusable MobileControls component with custom Fishing button */}
-      <div className="w-full hidden md:block max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+      {/* Controls */}
+      <div className="w-full max-w-3xl p-3 hidden md:block bg-slate-800/50 rounded-lg border border-slate-600">
+        <div className="text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
         
-        {/* Desktop Controls */}
         <div className="hidden md:block">
-        <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Navigate Raft</div>
-            <div>SPACE : Attack</div>
-            <div>F : Fishing</div>
+          <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
+            <div>↑↓←→: Navigate Jungle </div>
+            <div>SPACE: Attack Beast </div>
           </div>
         </div>
 
-        {/* Mobile Controls - Custom for Level5 with Fish button */}
       </div>
 
       <style jsx>{`
