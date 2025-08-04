@@ -239,7 +239,7 @@ function LevelPage() {
                 {/* Quest Header */}
                 <div className="flex items-center justify-center gap-2 mb-4">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                  <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl text-transparent bg-gradient-to-r from-cyan-300 to-blue-300  bg-clip-text font-bold">
+                  <h2 className="pixel-font text-lg sm:text-xl xl:text-2xl    font-bold">
                     ⚡ Your Quest ⚡
                   </h2>
                   <div
@@ -290,77 +290,6 @@ function LevelPage() {
                   <div className="w-8 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent rounded-full opacity-60" />
                   <div className="w-6 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent rounded-full opacity-60" />
                   <div className="w-8 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full opacity-60" />
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Level Info Card */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/40 via-pink-500/40 to-cyan-500/40 rounded-2xl blur-md opacity-50 group-hover:opacity-70 transition-opacity duration-500" />
-
-              <div className="relative bg-gradient-to-br from-slate-800/85 to-slate-900/85 backdrop-blur-lg border-2 border-purple-400/30 rounded-2xl p-4 sm:p-5 shadow-xl">
-                <h3 className="pixel-font text-purple-300 font-bold text-sm sm:text-base mb-3 text-center">
-                  📊 Level Details
-                </h3>
-                <div className="flex items-center justify-center space-x-2">
-                  <span className=" text-white font-bold text-xs sm:text-sm">
-                    Lives:
-                  </span>
-                  <div className="flex space-x-1">
-                    {[...Array(3)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`text-lg sm:text-xl transition-all duration-500 transform ${
-                          i < lives
-                            ? "text-rose-400 animate-pulse scale-110 drop-shadow-lg filter brightness-125"
-                            : "text-slate-600 grayscale scale-75 opacity-50"
-                        }`}
-                        style={{ animationDelay: `${i * 0.2}s` }}
-                      >
-                        ❤️
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Difficulty:</span>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        levelData.type === "basic"
-                          ? "bg-green-600/30 text-green-300 border border-green-500/30"
-                          : levelData.type === "intermediate"
-                          ? "bg-yellow-600/30 text-yellow-300 border border-yellow-500/30"
-                          : levelData.type === "advanced"
-                          ? "bg-orange-600/30 text-orange-300 border border-orange-500/30"
-                          : "bg-red-600/30 text-red-300 border border-red-500/30"
-                      }`}
-                    >
-                      {levelData.type?.toUpperCase() || "UNKNOWN"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Level:</span>
-                    <span className="text-cyan-300 font-bold">
-                      {levelData.id} / {levels.length}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-700/50">
-                    <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-1000 ease-out"
-                        style={{
-                          width: `${(levelData.id / levels.length) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-center text-xs text-slate-400 mt-1">
-                      Quest Progress
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>

@@ -114,6 +114,7 @@ const MapMainView = () => {
   const [showSpeechBubble, setShowSpeechBubble] = useState(true);
   const [speechBubbleAnimation, setSpeechBubbleAnimation] = useState("fadeIn");
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
 
   const gameState = useSelector(
     (state) =>
@@ -213,7 +214,11 @@ const MapMainView = () => {
 
   // Handle start level
   const handleStartLevel = () => {
-    navigate(`/level/${gameState.currentLevel}`);
+    setShowTransition(true);
+
+    setTimeout(() => {
+      navigate(`/level/${gameState.currentLevel}`);
+    }, 3000); // Duration of your video (in ms)
   };
 
   // Handle restart
@@ -275,7 +280,7 @@ const MapMainView = () => {
                       i < remainingLives ? "text-red-400" : "text-gray-600"
                     }`}
                   >
-                     {i < remainingLives ?  "❤️" : "🖤" }
+                    {i < remainingLives ? "❤️" : "🖤"}
                   </div>
                 ))}
               </div>
@@ -463,6 +468,18 @@ const MapMainView = () => {
                 )}
               </div>
             </div>
+
+            {showTransition && (
+              <div className="fixed inset-0 z-50 bg-black flex items-center ">
+                <video
+                  src="/Transition2.mp4" // put this in your public/videos folder
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             {/* Right Side - Level Information Panel or Champion Card */}
             <div className="flex-1 w-full max-w-lg">
