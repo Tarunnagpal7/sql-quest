@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Phaser from "phaser";
 import { levels } from "../../assets/data/levels";
 import { AiFillBug } from "react-icons/ai";
-import { GiAncientRuins, GiTreasureMap, GiCrystalBall } from "react-icons/gi";
+import { GiCastle, GiTreasureMap, GiBowArrow } from "react-icons/gi";
 import MobileControls from "../MobileControls"; // Import the component
 
 const Level3 = ({ onComplete }) => {
@@ -19,17 +19,21 @@ const Level3 = ({ onComplete }) => {
   const [uiState, setUiState] = useState({
     health: 100,
     isQueryComplete: false,
-    artifactsCollected: 0,
-    totalArtifacts: 0,
+    castlesDestroyed: 0,
+    totalCastles: 3,
     enemiesDefeated: 0,
-    totalEnemies: 0,
-    templeDoorsOpen: false,
     showQueryInput: false,
-    allEnemiesKilled: false,
+    queryKeywords: [],
+    wrongShots: 0,
+    maxWrongShots: 2, // 2 wrong shots allowed
+    gamePhase: "shooting", // 'shooting', 'query', 'completed', 'failed'
+    currentAim: { x: 400, y: 200 }, // Aiming crosshair position
   });
 
   // SQL Query input state
-  const [sqlQuery, setSqlQuery] = useState("");
+  const [sqlQuery, setSqlQuery] = useState(
+    "SELECT * FROM artifacts WHERE found_by      category      ('weapons', 'raft');"
+  );
   const [queryError, setQueryError] = useState("");
   const [querySuccess, setQuerySuccess] = useState(false);
 
@@ -42,43 +46,38 @@ const Level3 = ({ onComplete }) => {
     attack: false,
   });
 
-  const resetAllMobileControls = () => {
-    mobileControlsRef.current = {
-      up: false,
-      down: false,
-      left: false,
-      right: false,
-      attack: false,
-    };
-  };
-
-  useEffect(() => {
-    const handleGlobalTouchEnd = () => {
-      // Reset all controls when touch ends anywhere
-      resetAllMobileControls();
-    };
-
-    document.addEventListener("touchend", handleGlobalTouchEnd, {
-      passive: true,
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
     });
-    document.addEventListener("touchcancel", handleGlobalTouchEnd, {
-      passive: true,
-    });
-
-    return () => {
-      document.removeEventListener("touchend", handleGlobalTouchEnd);
-      document.removeEventListener("touchcancel", handleGlobalTouchEnd);
-    };
   }, []);
 
-  // Expected correct queries (multiple variations accepted)
+  const handleMobileControlEnd = useCallback((direction) => {
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  // Expected correct queries (with the blanks filled correctly)
   const correctQueries = [
-    "SELECT * FROM artifacts WHERE found_by IS NOT NULL;",
-    "select * from artifacts where found_by is not null;",
-    "SELECT * FROM artifacts WHERE found_by IS NOT NULL",
-    "select * from artifacts where found_by is not null",
-    "SELECT * FROM artifacts WHERE found_by != NULL;",
-    "select * from artifacts where found_by != null;",
+    "SELECT * FROM artifacts WHERE found_by IS NOT NULL AND category IN ('weapons', 'raft');",
+    "select * from artifacts where found_by is not null and category in ('weapons', 'raft');",
+    "SELECT * FROM artifacts WHERE found_by IS NOT NULL AND category IN ('weapons','raft');",
+    "select * from artifacts where found_by is not null and category in ('weapons','raft');",
   ];
 
   const handleQuerySubmit = () => {
@@ -93,17 +92,16 @@ const Level3 = ({ onComplete }) => {
       setUiState((prev) => ({
         ...prev,
         showQueryInput: false,
-        templeDoorsOpen: true,
+        isQueryComplete: true,
+        gamePhase: "completed",
       }));
 
-      // Signal to game that doors should open
+      // Complete the level
       if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        gameInstance.current.scene.scenes[0].openTempleDoors();
+        gameInstance.current.scene.scenes[0].completeLevel();
       }
     } else {
-      setQueryError(
-        "Query failed! Try finding all artifacts where found_by is not null."
-      );
+      setQueryError("Query failed! ");
       setTimeout(() => setQueryError(""), 3000);
     }
   };
@@ -111,29 +109,53 @@ const Level3 = ({ onComplete }) => {
   useEffect(() => {
     if (!gameContainerRef.current) return;
 
-    let player,
-      enemies,
-      artifacts,
-      courageOrbs,
-      walls,
-      templeGates,
-      templeDoors;
+    let player, enemies, castles, arrows, walls, aimCrosshair;
     let cursors, spaceKey;
 
     const gameState = {
       health: 100,
       maxHealth: 100,
       isLevelComplete: false,
-      canAttack: true,
-      attackCooldown: 400,
-      artifactsCollected: 0,
+      canShoot: true,
+      shootCooldown: 1000,
+      castlesDestroyed: 0,
       enemiesDefeated: 0,
-      totalArtifacts: 5,
-      totalEnemies: 5,
-      templeDoorsOpen: false,
-      allEnemiesKilled: false,
-      artifactsSpawned: false,
-      artifactsData: [],
+      wrongShots: 0,
+      maxWrongShots: 2,
+      gamePhase: "shooting",
+      aimPosition: { x: 400, y: 200 },
+      castleData: [
+        {
+          id: 1,
+          x: 200,
+          y: 150,
+          hasCorrectArtifact: false,
+          category: "tools",
+          name: "Ancient Tools Castle",
+          destroyed: false,
+          enemy: null,
+        },
+        {
+          id: 2,
+          x: 400,
+          y: 150,
+          hasCorrectArtifact: true,
+          category: "weapons & raft",
+          name: "Weapons & Raft Castle",
+          destroyed: false,
+          enemy: null,
+        },
+        {
+          id: 3,
+          x: 600,
+          y: 150,
+          hasCorrectArtifact: false,
+          category: "books",
+          name: "Ancient Books Castle",
+          destroyed: false,
+          enemy: null,
+        },
+      ],
     };
 
     let sceneRef;
@@ -143,329 +165,205 @@ const Level3 = ({ onComplete }) => {
     function preload() {
       sceneRef = this;
 
-      // --- Create Wizard Character (same as previous levels) ---
+      // --- Create Archer Wizard Character ---
       const playerGraphics = this.add.graphics();
 
-      // Wizard robe (main body)
-      playerGraphics.fillStyle(0x1e3a8a, 1); // Dark blue robe
+      // Wizard archer robe (green/brown for forest theme)
+      playerGraphics.fillStyle(0x2d5016, 1); // Dark green robe
       playerGraphics.fillCircle(16, 25, 14); // Body
       playerGraphics.fillRect(2, 15, 28, 20); // Robe body
 
       // Wizard hood
-      playerGraphics.fillStyle(0x1e40af, 1);
+      playerGraphics.fillStyle(0x365314, 1);
       playerGraphics.fillCircle(16, 12, 10); // Hood
-
-      // Hood shadow/depth
-      playerGraphics.fillStyle(0x0f172a, 1);
-      playerGraphics.fillEllipse(16, 14, 18, 8);
 
       // Face
       playerGraphics.fillStyle(0xfbbf24, 1);
       playerGraphics.fillCircle(16, 16, 6);
 
-      // Eyes with glow
-      playerGraphics.fillStyle(0x60a5fa, 0.7);
-      playerGraphics.fillCircle(13, 15, 2.5);
-      playerGraphics.fillCircle(19, 15, 2.5);
+      // Eyes
       playerGraphics.fillStyle(0x000000, 1);
       playerGraphics.fillCircle(13, 15, 1.5);
       playerGraphics.fillCircle(19, 15, 1.5);
 
-      // Robe details
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillRect(2, 20, 28, 2);
-      playerGraphics.fillRect(14, 15, 4, 25);
-
-      // Magic staff
-      playerGraphics.lineStyle(3, 0x92400e);
+      // Magical bow
+      playerGraphics.lineStyle(3, 0x8b4513);
       playerGraphics.beginPath();
-      playerGraphics.moveTo(24, 35);
-      playerGraphics.lineTo(26, 18);
+      playerGraphics.moveTo(24, 12);
+      playerGraphics.lineTo(26, 8);
+      playerGraphics.lineTo(28, 12);
+      playerGraphics.lineTo(26, 16);
+      playerGraphics.lineTo(24, 12);
       playerGraphics.strokePath();
-      playerGraphics.fillStyle(0x8b5cf6, 0.8);
-      playerGraphics.fillCircle(26, 16, 4);
 
-      // Robe bottom
-      playerGraphics.fillStyle(0x1e3a8a, 1);
+      // Bow string
+      playerGraphics.lineStyle(1, 0x4a5568);
       playerGraphics.beginPath();
-      playerGraphics.moveTo(5, 35);
-      playerGraphics.lineTo(8, 38);
-      playerGraphics.lineTo(12, 35);
-      playerGraphics.lineTo(16, 38);
-      playerGraphics.lineTo(20, 35);
-      playerGraphics.lineTo(24, 38);
-      playerGraphics.lineTo(27, 35);
-      playerGraphics.lineTo(27, 25);
-      playerGraphics.lineTo(5, 25);
-      playerGraphics.closePath();
-      playerGraphics.fillPath();
+      playerGraphics.moveTo(26, 8);
+      playerGraphics.lineTo(26, 16);
+      playerGraphics.strokePath();
+
+      // Quiver
+      playerGraphics.fillStyle(0x8b4513, 1);
+      playerGraphics.fillRect(4, 18, 3, 12);
 
       playerGraphics.generateTexture("player", 32, 40);
       playerGraphics.destroy();
 
-      // --- Create Temple Guardian Enemies ---
-      const enemyTypes = [
-        "skeleton_warrior",
-        "stone_golem",
-        "shadow_guardian",
-        "ancient_mummy",
-        "demon_guardian",
-      ];
-      const enemyColors = [0xf5f5dc, 0x696969, 0x2f1b69, 0xd2691e, 0x8b0000];
+      // --- Create Castle Graphics ---
+      const castleGraphics = this.add.graphics();
 
-      enemyTypes.forEach((type, index) => {
-        const enemyGraphics = this.add.graphics();
-        const color = enemyColors[index];
+      // Castle base
+      castleGraphics.fillStyle(0x6b7280, 1);
+      castleGraphics.fillRect(0, 40, 80, 60); // Main castle body
 
-        if (type === "skeleton_warrior") {
-          // Skeleton warrior
-          enemyGraphics.fillStyle(color, 1);
-          enemyGraphics.fillRect(8, 20, 16, 18); // Body
-          enemyGraphics.fillCircle(16, 12, 8); // Head
+      // Castle towers
+      castleGraphics.fillRect(-10, 20, 20, 40); // Left tower
+      castleGraphics.fillRect(70, 20, 20, 40); // Right tower
+      castleGraphics.fillRect(30, 15, 20, 45); // Center tower
 
-          // Armor details
-          enemyGraphics.fillStyle(0x708090, 1);
-          enemyGraphics.fillRect(10, 22, 12, 3); // Chest plate
-          enemyGraphics.fillRect(6, 18, 4, 8); // Left arm armor
-          enemyGraphics.fillRect(22, 18, 4, 8); // Right arm armor
+      // Castle details
+      castleGraphics.fillStyle(0x374151, 1);
+      castleGraphics.fillRect(35, 70, 10, 20); // Gate
 
-          // Weapon
-          enemyGraphics.fillStyle(0xc0c0c0, 1);
-          enemyGraphics.fillRect(26, 12, 2, 16); // Sword
-          enemyGraphics.fillRect(24, 12, 6, 3); // Sword guard
-        } else if (type === "stone_golem") {
-          // Stone golem
-          enemyGraphics.fillStyle(color, 1);
-          enemyGraphics.fillRect(6, 15, 20, 23); // Large body
-          enemyGraphics.fillRect(10, 8, 12, 12); // Head
+      // Battlements
+      castleGraphics.fillStyle(0x6b7280, 1);
+      for (let i = 0; i < 8; i++) {
+        if (i % 2 === 0) {
+          castleGraphics.fillRect(i * 10, 35, 8, 8);
+        }
+      }
 
-          // Stone texture
-          enemyGraphics.fillStyle(0x2f4f4f, 1);
-          enemyGraphics.fillRect(8, 18, 3, 3);
-          enemyGraphics.fillRect(21, 18, 3, 3);
-          enemyGraphics.fillRect(14, 25, 4, 4);
+      // Flags
+      castleGraphics.fillStyle(0xdc2626, 1);
+      castleGraphics.fillTriangle(35, 15, 45, 15, 40, 5);
 
-          // Glowing eyes
-          enemyGraphics.fillStyle(0xff4500, 1);
-          enemyGraphics.fillCircle(13, 12, 2);
-          enemyGraphics.fillCircle(19, 12, 2);
-        } else if (type === "shadow_guardian") {
-          // Shadow guardian
-          enemyGraphics.fillStyle(color, 0.8);
-          enemyGraphics.fillEllipse(16, 25, 18, 20); // Shadowy body
-          enemyGraphics.fillCircle(16, 12, 10); // Head
+      castleGraphics.generateTexture("castle", 80, 100);
+      castleGraphics.destroy();
 
-          // Ethereal effects
-          enemyGraphics.fillStyle(0x9932cc, 0.6);
-          enemyGraphics.fillCircle(16, 20, 25); // Aura
+      // --- Create Castle Enemy Guards ---
+      const guardTypes = ["archer_guard", "sword_guard", "mage_guard"];
+      const guardColors = [0x059669, 0x7c2d12, 0x6d28d9];
 
-          // Glowing eyes
-          enemyGraphics.fillStyle(0x8a2be2, 1);
-          enemyGraphics.fillCircle(13, 12, 2);
-          enemyGraphics.fillCircle(19, 12, 2);
-        } else if (type === "ancient_mummy") {
-          // Ancient mummy
-          enemyGraphics.fillStyle(color, 1);
-          enemyGraphics.fillRect(8, 18, 16, 20); // Body
-          enemyGraphics.fillCircle(16, 12, 8); // Head
+      guardTypes.forEach((type, index) => {
+        const guardGraphics = this.add.graphics();
+        const color = guardColors[index];
 
-          // Bandage wrappings
-          enemyGraphics.fillStyle(0xffffff, 0.8);
-          enemyGraphics.fillRect(6, 16, 20, 2);
-          enemyGraphics.fillRect(6, 22, 20, 2);
-          enemyGraphics.fillRect(6, 28, 20, 2);
-          enemyGraphics.fillRect(6, 34, 20, 2);
+        // Guard body
+        guardGraphics.fillStyle(color, 1);
+        guardGraphics.fillRect(8, 20, 16, 18); // Body
+        guardGraphics.fillCircle(16, 12, 8); // Head
 
-          // Ancient jewelry
-          enemyGraphics.fillStyle(0xffd700, 1);
-          enemyGraphics.fillRect(14, 20, 4, 2);
-          enemyGraphics.fillCircle(16, 12, 1);
-        } else if (type === "demon_guardian") {
-          // Demon guardian
-          enemyGraphics.fillStyle(color, 1);
-          enemyGraphics.fillRect(8, 18, 16, 20); // Body
-          enemyGraphics.fillCircle(16, 12, 10); // Head
-
-          // Horns
-          enemyGraphics.fillTriangle(12, 8, 14, 3, 16, 8);
-          enemyGraphics.fillTriangle(16, 8, 18, 3, 20, 8);
-
-          // Wings
-          enemyGraphics.fillStyle(color, 0.7);
-          enemyGraphics.fillEllipse(6, 20, 8, 12);
-          enemyGraphics.fillEllipse(26, 20, 8, 12);
-
-          // Glowing eyes
-          enemyGraphics.fillStyle(0xff0000, 1);
-          enemyGraphics.fillCircle(13, 12, 2);
-          enemyGraphics.fillCircle(19, 12, 2);
+        if (type === "archer_guard") {
+          // Bow and arrow
+          guardGraphics.lineStyle(2, 0x8b4513);
+          guardGraphics.beginPath();
+          guardGraphics.moveTo(24, 8);
+          guardGraphics.lineTo(26, 12);
+          guardGraphics.lineTo(24, 16);
+          guardGraphics.strokePath();
+        } else if (type === "sword_guard") {
+          // Sword
+          guardGraphics.fillStyle(0xc0c0c0, 1);
+          guardGraphics.fillRect(26, 8, 2, 16);
+          guardGraphics.fillRect(24, 8, 6, 3);
+        } else if (type === "mage_guard") {
+          // Magic staff
+          guardGraphics.lineStyle(3, 0x8b4513);
+          guardGraphics.beginPath();
+          guardGraphics.moveTo(26, 24);
+          guardGraphics.lineTo(28, 8);
+          guardGraphics.strokePath();
+          guardGraphics.fillStyle(0x8b5cf6, 1);
+          guardGraphics.fillCircle(28, 6, 3);
         }
 
-        enemyGraphics.generateTexture(type, 32, 40);
-        enemyGraphics.destroy();
+        // Guard armor
+        guardGraphics.fillStyle(0x374151, 1);
+        guardGraphics.fillRect(10, 22, 12, 3);
+
+        guardGraphics.generateTexture(type, 32, 40);
+        guardGraphics.destroy();
       });
 
-      // --- Create Ancient Artifacts ---
-      const artifactTypes = [
-        "golden_idol",
-        "crystal_orb",
-        "ancient_scroll",
-        "mystic_amulet",
-        "sacred_chalice",
-      ];
-      const artifactColors = [0xffd700, 0x00bfff, 0xdaa520, 0x9370db, 0xcd853f];
+      // --- Create Magical Arrow ---
+      const arrowGraphics = this.add.graphics();
+      arrowGraphics.fillStyle(0x8b4513, 1); // Brown shaft
+      arrowGraphics.fillRect(0, 3, 20, 2);
 
-      artifactTypes.forEach((type, index) => {
-        const artifactGraphics = this.add.graphics();
-        const color = artifactColors[index];
+      // Arrow head
+      arrowGraphics.fillStyle(0xc0c0c0, 1);
+      arrowGraphics.fillTriangle(20, 4, 24, 1, 24, 7);
 
-        if (type === "golden_idol") {
-          // Golden idol
-          artifactGraphics.fillStyle(color, 1);
-          artifactGraphics.fillRect(10, 20, 12, 15); // Base
-          artifactGraphics.fillCircle(16, 12, 8); // Head
-          artifactGraphics.fillRect(8, 18, 4, 8); // Left arm
-          artifactGraphics.fillRect(20, 18, 4, 8); // Right arm
+      // Feathers
+      arrowGraphics.fillStyle(0x22c55e, 1);
+      arrowGraphics.fillTriangle(0, 4, -4, 2, -4, 6);
 
-          // Details
-          artifactGraphics.fillStyle(0xffff00, 1);
-          artifactGraphics.fillCircle(14, 10, 1);
-          artifactGraphics.fillCircle(18, 10, 1);
-        } else if (type === "crystal_orb") {
-          // Crystal orb
-          artifactGraphics.fillStyle(color, 0.8);
-          artifactGraphics.fillCircle(16, 16, 12);
+      // Magic glow
+      arrowGraphics.fillStyle(0x8b5cf6, 0.6);
+      arrowGraphics.fillCircle(12, 4, 8);
 
-          // Inner glow
-          artifactGraphics.fillStyle(0xffffff, 0.6);
-          artifactGraphics.fillCircle(16, 16, 8);
-          artifactGraphics.fillStyle(color, 0.4);
-          artifactGraphics.fillCircle(16, 16, 4);
-        } else if (type === "ancient_scroll") {
-          // Ancient scroll
-          artifactGraphics.fillStyle(color, 1);
-          artifactGraphics.fillRect(8, 8, 16, 20);
+      arrowGraphics.generateTexture("arrow", 28, 8);
+      arrowGraphics.destroy();
 
-          // Scroll details
-          artifactGraphics.fillStyle(0x8b4513, 1);
-          artifactGraphics.fillRect(6, 8, 2, 20);
-          artifactGraphics.fillRect(24, 8, 2, 20);
+      // --- Create Aiming Crosshair ---
+      const crosshairGraphics = this.add.graphics();
+      crosshairGraphics.lineStyle(3, 0xff0000, 1);
+      crosshairGraphics.beginPath();
+      crosshairGraphics.moveTo(-15, 0);
+      crosshairGraphics.lineTo(-5, 0);
+      crosshairGraphics.moveTo(5, 0);
+      crosshairGraphics.lineTo(15, 0);
+      crosshairGraphics.moveTo(0, -15);
+      crosshairGraphics.lineTo(0, -5);
+      crosshairGraphics.moveTo(0, 5);
+      crosshairGraphics.lineTo(0, 15);
+      crosshairGraphics.strokePath();
 
-          // Text lines
-          artifactGraphics.fillStyle(0x2f4f4f, 1);
-          for (let i = 0; i < 5; i++) {
-            artifactGraphics.fillRect(10, 10 + i * 3, 12, 1);
-          }
-        } else if (type === "mystic_amulet") {
-          // Mystic amulet
-          artifactGraphics.fillStyle(color, 1);
-          artifactGraphics.fillCircle(16, 18, 10);
+      // Center dot
+      crosshairGraphics.fillStyle(0xff0000, 1);
+      crosshairGraphics.fillCircle(0, 0, 3);
 
-          // Chain
-          artifactGraphics.fillStyle(0xc0c0c0, 1);
-          artifactGraphics.fillRect(15, 8, 2, 8);
+      crosshairGraphics.generateTexture("crosshair", 30, 30);
+      crosshairGraphics.destroy();
 
-          // Center gem
-          artifactGraphics.fillStyle(0xff0000, 1);
-          artifactGraphics.fillCircle(16, 18, 4);
-        } else if (type === "sacred_chalice") {
-          // Sacred chalice
-          artifactGraphics.fillStyle(color, 1);
-          artifactGraphics.fillRect(12, 15, 8, 8); // Cup
-          artifactGraphics.fillRect(14, 23, 4, 6); // Stem
-          artifactGraphics.fillRect(10, 29, 12, 2); // Base
-
-          // Decorative gems
-          artifactGraphics.fillStyle(0xff0000, 1);
-          artifactGraphics.fillCircle(12, 19, 2);
-          artifactGraphics.fillStyle(0x00ff00, 1);
-          artifactGraphics.fillCircle(20, 19, 2);
-        }
-
-        // Add magical glow effect to all artifacts
-        artifactGraphics.fillStyle(color, 0.3);
-        artifactGraphics.fillCircle(16, 18, 20);
-
-        artifactGraphics.generateTexture(type, 32, 36);
-        artifactGraphics.destroy();
-      });
-
-      // --- Create Temple Doors ---
-      const doorGraphics = this.add.graphics();
-
-      // Closed door
-      doorGraphics.fillStyle(0x8b4513, 1); // Brown stone
-      doorGraphics.fillRect(0, 0, 60, 80);
-
-      // Door decorations
-      doorGraphics.fillStyle(0xffd700, 1);
-      doorGraphics.fillRect(5, 10, 50, 4);
-      doorGraphics.fillRect(5, 66, 50, 4);
-      doorGraphics.fillRect(5, 10, 4, 60);
-      doorGraphics.fillRect(51, 10, 4, 60);
-
-      // Door handles
-      doorGraphics.fillCircle(15, 40, 3);
-      doorGraphics.fillCircle(45, 40, 3);
-
-      // Ancient symbols
-      doorGraphics.fillStyle(0xff4500, 1);
-      doorGraphics.fillCircle(30, 25, 4);
-      doorGraphics.fillTriangle(25, 45, 30, 35, 35, 45);
-      doorGraphics.fillRect(25, 50, 10, 3);
-
-      doorGraphics.generateTexture("temple_door_closed", 60, 80);
-      doorGraphics.destroy();
-
-      // Open door
-      const openDoorGraphics = this.add.graphics();
-      openDoorGraphics.fillStyle(0x000000, 0.8);
-      openDoorGraphics.fillRect(0, 0, 60, 80);
-
-      // Golden light streaming out
-      openDoorGraphics.fillStyle(0xffd700, 0.6);
-      openDoorGraphics.fillRect(10, 0, 40, 80);
-      openDoorGraphics.fillStyle(0xffff00, 0.4);
-      openDoorGraphics.fillRect(20, 0, 20, 80);
-
-      openDoorGraphics.generateTexture("temple_door_open", 60, 80);
-      openDoorGraphics.destroy();
-
-      // Create other textures
+      // Create background
       this.add
         .graphics()
-        .fillStyle(0x8b4513)
-        .fillRect(0, 0, 40, 40)
-        .generateTexture("temple_wall", 40, 40);
-      this.add
-        .graphics()
-        .fillStyle(0x654321)
+        .fillStyle(0x16a34a)
         .fillRect(0, 0, 800, 500)
-        .generateTexture("temple_background", 800, 500);
+        .generateTexture("forest_bg", 800, 500);
 
-      // Healing orbs
-      const orbGraphics = this.add.graphics();
-      orbGraphics.fillStyle(0x00ff00, 0.8);
-      orbGraphics.fillCircle(15, 15, 12);
-      orbGraphics.fillStyle(0x90ee90, 0.6);
-      orbGraphics.fillCircle(15, 15, 8);
-      orbGraphics.fillStyle(0xffffff, 0.8);
-      orbGraphics.fillCircle(15, 15, 4);
-      orbGraphics.generateTexture("healing_orb", 30, 30);
-      orbGraphics.destroy();
+      // Create explosion effect
+      const explosionGraphics = this.add.graphics();
+      explosionGraphics.fillStyle(0xff6b35, 1);
+      explosionGraphics.fillCircle(15, 15, 15);
+      explosionGraphics.fillStyle(0xffd23f, 1);
+      explosionGraphics.fillCircle(15, 15, 10);
+      explosionGraphics.generateTexture("explosion", 30, 30);
+      explosionGraphics.destroy();
     }
 
     function create() {
-      this.add.image(400, 250, "temple_background");
+      this.add.image(400, 250, "forest_bg");
 
       walls = this.physics.add.staticGroup();
       enemies = this.physics.add.group();
-      artifacts = this.physics.add.group();
-      courageOrbs = this.physics.add.group();
-      templeGates = this.physics.add.staticGroup();
+      castles = this.physics.add.group();
+      arrows = this.physics.add.group();
 
-      player = this.physics.add.sprite(100, 250, "player");
+      // FIXED: Player wizard stays at center bottom - no movement
+      player = this.physics.add.sprite(400, 420, "player");
+      player.body.setImmovable(true); // Make player immovable
       player.setCollideWorldBounds(true).body.setSize(20, 25).setOffset(6, 10);
+
+      // Create aiming crosshair
+      aimCrosshair = this.add.sprite(
+        gameState.aimPosition.x,
+        gameState.aimPosition.y,
+        "crosshair"
+      );
+      aimCrosshair.setDepth(100);
 
       cursors = this.input.keyboard.createCursorKeys();
       spaceKey = this.input.keyboard.addKey(
@@ -473,22 +371,12 @@ const Level3 = ({ onComplete }) => {
       );
 
       this.physics.add.collider(player, walls);
-      this.physics.add.collider(enemies, walls);
-      this.physics.add.collider(enemies, enemies);
+      this.physics.add.overlap(arrows, enemies, hitEnemy, null, this);
+      this.physics.add.overlap(arrows, castles, hitCastle, null, this);
 
-      this.physics.add.overlap(player, artifacts, collectArtifact, null, this);
-      this.physics.add.overlap(
-        player,
-        courageOrbs,
-        collectHealingOrb,
-        null,
-        this
-      );
-      this.physics.add.overlap(player, templeGates, enterTemple, null, this);
-      this.physics.add.overlap(player, enemies, hitByEnemy, null, this);
-
-      // Add openTempleDoors method to scene
-      this.openTempleDoors = openTempleDoors;
+      // Add methods to scene
+      this.completeLevel = completeLevel;
+      this.restartLevel = restartLevel;
 
       createLevel.call(this);
       updateReactUI();
@@ -496,616 +384,275 @@ const Level3 = ({ onComplete }) => {
 
     function createLevel() {
       enemies.clear(true, true);
-      artifacts.clear(true, true);
-      courageOrbs.clear(true, true);
-      templeGates.clear(true, true);
-      walls.clear(true, true);
+      castles.clear(true, true);
+      arrows.clear(true, true);
 
-      gameState.artifactsCollected = 0;
+      gameState.castlesDestroyed = 0;
       gameState.enemiesDefeated = 0;
-      gameState.templeDoorsOpen = false;
-      gameState.allEnemiesKilled = false;
-      gameState.artifactsSpawned = false;
-      gameState.artifactsData = [
-        { id: 1, name: "Golden Idol", found_by: null },
-        { id: 2, name: "Crystal Orb", found_by: null },
-        { id: 3, name: "Ancient Scroll", found_by: null },
-        { id: 4, name: "Mystic Amulet", found_by: null },
-        { id: 5, name: "Sacred Chalice", found_by: null },
-      ];
+      gameState.wrongShots = 0;
+      gameState.gamePhase = "shooting";
+      gameState.isLevelComplete = false;
+      gameState.aimPosition = { x: 400, y: 200 };
 
-      // Create temple structure
-      createTempleWalls.call(this);
+      // Reset castle data
+      gameState.castleData.forEach((castle) => {
+        castle.destroyed = false;
+        castle.enemy = null;
+      });
 
-      // Create only enemies initially - artifacts spawn after all enemies are killed
-      createEnemies.call(this);
+      // Create castles and their guards
+      gameState.castleData.forEach((castleData, index) => {
+        // Create castle
+        const castle = castles.create(castleData.x, castleData.y, "castle");
+        castle.setCollideWorldBounds(true);
+        castle.body.setSize(60, 80);
+        castle.castleData = castleData;
 
-      // Create healing orbs
-      createHealingOrbs.call(this);
-
-      // Create temple doors at the end
-      createTempleDoors.call(this);
-
-      player.setPosition(100, 250).setVelocity(0, 0);
-      gameState.totalEnemies = enemies.children.entries.length;
-    }
-
-    function createTempleWalls() {
-      // Create ancient temple layout
-      const wallPositions = [
-        // Outer temple walls
-        [40, 40],
-        [120, 40],
-        [200, 40],
-        [280, 40],
-        [360, 40],
-        [440, 40],
-        [520, 40],
-        [600, 40],
-        [680, 40],
-        [760, 40],
-        [40, 460],
-        [120, 460],
-        [200, 460],
-        [280, 460],
-        [360, 460],
-        [440, 460],
-        [520, 460],
-        [600, 460],
-        [680, 460],
-        [760, 460],
-        [40, 120],
-        [40, 200],
-        [40, 280],
-        [40, 360],
-        [760, 120],
-        [760, 200],
-        [760, 280],
-        [760, 360],
-
-        // Inner temple chambers
-        [200, 120],
-        [200, 200],
-        [200, 280],
-        [200, 360],
-        [400, 120],
-        [400, 200],
-        [400, 280],
-        [400, 360],
-        [600, 120],
-        [600, 200],
-        [600, 280],
-        [600, 360],
-
-        // Cross passages
-        [280, 200],
-        [320, 200],
-        [480, 200],
-        [520, 200],
-        [280, 300],
-        [320, 300],
-        [480, 300],
-        [520, 300],
-      ];
-
-      wallPositions.forEach((pos) =>
-        walls.create(pos[0], pos[1], "temple_wall")
-      );
-    }
-
-    function createEnemies() {
-      const enemyPositions = [
-        { x: 150, y: 160, type: "skeleton_warrior" },
-        { x: 350, y: 160, type: "stone_golem" },
-        { x: 550, y: 160, type: "shadow_guardian" },
-        { x: 250, y: 340, type: "ancient_mummy" },
-        { x: 550, y: 340, type: "demon_guardian" },
-      ];
-
-      enemyPositions.forEach((pos, index) => {
-        const enemy = enemies.create(pos.x, pos.y, pos.type);
-        enemy.setCollideWorldBounds(true).body.setSize(25, 30).setOffset(3, 5);
-        enemy.health = 150;
-        enemy.maxHealth = 150;
-        enemy.speed = 60;
-        enemy.patrolDistance = 80;
-        enemy.startX = pos.x;
-        enemy.startY = pos.y;
+        // Create guard enemy for this castle
+        const guardTypes = ["archer_guard", "sword_guard", "mage_guard"];
+        const enemy = enemies.create(
+          castleData.x,
+          castleData.y + 50,
+          guardTypes[index]
+        );
+        enemy.setCollideWorldBounds(true);
+        enemy.body.setSize(25, 30).setOffset(3, 5);
+        enemy.health = 100;
+        enemy.castleId = castleData.id;
+        enemy.patrolStart = castleData.x - 40;
+        enemy.patrolEnd = castleData.x + 40;
         enemy.direction = 1;
-        enemy.guardianType = pos.type;
-        enemy.artifactIndex = index; // Link to artifact data
 
-        // Add wing flapping animation for demon guardian
-        if (pos.type === "demon_guardian") {
-          sceneRef.tweens.add({
-            targets: enemy,
-            scaleX: 1.1,
-            scaleY: 0.9,
-            duration: 600,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-      });
-    }
-
-    function spawnArtifacts() {
-      if (gameState.artifactsSpawned) return;
-
-      gameState.artifactsSpawned = true;
-
-      const artifactPositions = [
-        { x: 150, y: 160, type: "golden_idol", id: 1, name: "Golden Idol" },
-        { x: 350, y: 160, type: "crystal_orb", id: 2, name: "Crystal Orb" },
-        {
-          x: 550,
-          y: 160,
-          type: "ancient_scroll",
-          id: 3,
-          name: "Ancient Scroll",
-        },
-        { x: 250, y: 340, type: "mystic_amulet", id: 4, name: "Mystic Amulet" },
-        {
-          x: 550,
-          y: 340,
-          type: "sacred_chalice",
-          id: 5,
-          name: "Sacred Chalice",
-        },
-      ];
-
-      artifactPositions.forEach((data) => {
-        const artifact = artifacts.create(data.x, data.y, data.type);
-        artifact
-          .setCollideWorldBounds(true)
-          .body.setSize(25, 30)
-          .setOffset(3, 3);
-        artifact.artifactData = data;
-        artifact.setAlpha(0); // Start invisible
-
-        // Spawn animation
-        sceneRef.tweens.add({
-          targets: artifact,
-          alpha: 1,
-          scaleX: 1.2,
-          scaleY: 1.2,
-          duration: 1000,
-          ease: "Back.easeOut",
-        });
-
-        // Magical floating animation
-        sceneRef.tweens.add({
-          targets: artifact,
-          y: artifact.y - 8,
-          duration: 2000 + data.id * 200,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
-
-        // Glowing effect
-        sceneRef.tweens.add({
-          targets: artifact,
-          alpha: 0.7,
-          scaleX: 1.1,
-          scaleY: 1.1,
-          duration: 1500,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
+        // Link enemy to castle data
+        castleData.enemy = enemy;
       });
 
-      // Show message about artifacts appearing
-      const messageText = sceneRef.add
-        .text(
-          400,
-          100,
-          "✨ Ancient Artifacts Have Appeared! ✨\nDefeat all guardians, then write the SQL query to open the temple!",
-          {
-            fontSize: "16px",
-            fontFamily: "Courier New",
-            color: "#ffd700",
-            backgroundColor: "#000000",
-            align: "center",
-            padding: { x: 10, y: 5 },
-          }
-        )
-        .setOrigin(0.5)
-        .setDepth(1000);
+      // FIXED: Player always at center bottom
+      player.setPosition(400, 420).setVelocity(0, 0);
+      aimCrosshair.setPosition(
+        gameState.aimPosition.x,
+        gameState.aimPosition.y
+      );
 
-      sceneRef.time.delayedCall(4000, () => messageText.destroy());
-    }
-
-    function createHealingOrbs() {
-      const orbPositions = [
-        { x: 160, y: 120 },
-        { x: 360, y: 120 },
-        { x: 560, y: 120 },
-        { x: 160, y: 380 },
-        { x: 360, y: 380 },
-        { x: 560, y: 380 },
-      ];
-
-      orbPositions.forEach((pos) => {
-        const orb = courageOrbs.create(pos.x, pos.y, "healing_orb");
-        orb.body.setCircle(12);
-
-        // Pulsing animation
-        sceneRef.tweens.add({
-          targets: orb,
-          scaleX: 1.3,
-          scaleY: 1.3,
-          alpha: 0.6,
-          duration: 1000,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
-      });
-    }
-
-    function createTempleDoors() {
-      templeDoors = sceneRef.add.image(700, 250, "temple_door_closed");
-      templeDoors.setScale(1.2);
-
-      // Add temple gates collision area
-      const gateArea = templeGates.create(700, 250, null);
-      gateArea.body.setSize(80, 100);
-      gateArea.setVisible(false);
+      // Show initial instructions
+      showMessage(
+        '🏹 Use the D-pad to move the red crosshair around!\n🎯 Attack button to shoot! Find the castle with "weapons" and "raft" artifacts!\n❌ Only 2 wrong guesses allowed!',
+        5000
+      );
     }
 
     function update() {
-      if (gameState.isLevelComplete) return;
+      if (gameState.isLevelComplete || gameState.gamePhase !== "shooting")
+        return;
 
-      const currentMobileControls = getMobileControls();
-      const activeControls = Object.values(currentMobileControls).filter(
-        Boolean
-      ).length;
-      if (activeControls > 2) {
-        // Too many controls active, likely stuck - reset all
-        Object.keys(mobileControlsRef.current).forEach((key) => {
-          if (key !== "attack") mobileControlsRef.current[key] = false;
-        });
-      }
+      // FIXED: Player wizard stays fixed - no movement
+      player.setVelocity(0, 0);
 
-      player.setVelocity(0);
-      const speed = 180;
+      const aimSpeed = 200;
 
-      // Use the ref instead of state for game logic
-      if (cursors.left.isDown || mobileControlsRef.current.left) {
-        player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
-        player.setVelocityX(speed);
-      }
-
+      // FIXED: Aim controls now use cursors and mobile controls
       if (cursors.up.isDown || mobileControlsRef.current.up) {
-        player.setVelocityY(-speed);
+        gameState.aimPosition.y = Math.max(
+          50,
+          gameState.aimPosition.y - (aimSpeed * sceneRef.game.loop.delta) / 1000
+        );
+        aimCrosshair.setPosition(
+          gameState.aimPosition.x,
+          gameState.aimPosition.y
+        );
+        setUiState((prev) => ({
+          ...prev,
+          currentAim: { ...gameState.aimPosition },
+        }));
       } else if (cursors.down.isDown || mobileControlsRef.current.down) {
-        player.setVelocityY(speed);
+        gameState.aimPosition.y = Math.min(
+          350,
+          gameState.aimPosition.y + (aimSpeed * sceneRef.game.loop.delta) / 1000
+        );
+        aimCrosshair.setPosition(
+          gameState.aimPosition.x,
+          gameState.aimPosition.y
+        );
+        setUiState((prev) => ({
+          ...prev,
+          currentAim: { ...gameState.aimPosition },
+        }));
       }
 
+      if (cursors.left.isDown || mobileControlsRef.current.left) {
+        gameState.aimPosition.x = Math.max(
+          50,
+          gameState.aimPosition.x - (aimSpeed * sceneRef.game.loop.delta) / 1000
+        );
+        aimCrosshair.setPosition(
+          gameState.aimPosition.x,
+          gameState.aimPosition.y
+        );
+        setUiState((prev) => ({
+          ...prev,
+          currentAim: { ...gameState.aimPosition },
+        }));
+      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
+        gameState.aimPosition.x = Math.min(
+          750,
+          gameState.aimPosition.x + (aimSpeed * sceneRef.game.loop.delta) / 1000
+        );
+        aimCrosshair.setPosition(
+          gameState.aimPosition.x,
+          gameState.aimPosition.y
+        );
+        setUiState((prev) => ({
+          ...prev,
+          currentAim: { ...gameState.aimPosition },
+        }));
+      }
+
+      // Shooting
       if (
         (Phaser.Input.Keyboard.JustDown(spaceKey) ||
           mobileControlsRef.current.attack) &&
-        gameState.canAttack
+        gameState.canShoot
       ) {
-        attack.call(this);
+        shootArrow.call(this);
       }
 
-      // Enemy AI - guardian behavior
+      // Enemy patrol behavior
       enemies.children.entries.forEach((enemy) => {
         if (!enemy.active) return;
 
-        const distanceToPlayer = Phaser.Math.Distance.Between(
-          enemy.x,
-          enemy.y,
-          player.x,
-          player.y
-        );
+        // Simple patrol movement
+        enemy.x += enemy.direction * 30 * (sceneRef.game.loop.delta / 1000);
 
-        if (distanceToPlayer < 120) {
-          // Chase player if nearby
-          sceneRef.physics.moveTo(enemy, player.x, player.y, enemy.speed * 1.5);
-          enemy.setTint(0xff6666);
-        } else {
-          // Patrol behavior
-          enemy.clearTint();
-          const distanceFromStart = Phaser.Math.Distance.Between(
-            enemy.x,
-            enemy.startX,
-            enemy.y,
-            enemy.startY
-          );
-
-          if (distanceFromStart > enemy.patrolDistance) {
-            enemy.direction *= -1;
-          }
-
-          const angle = Phaser.Math.Angle.Between(
-            enemy.x,
-            enemy.y,
-            enemy.startX + enemy.direction * enemy.patrolDistance,
-            enemy.startY
-          );
-          enemy.setVelocity(
-            Math.cos(angle) * enemy.speed,
-            Math.sin(angle) * enemy.speed
-          );
+        if (enemy.x <= enemy.patrolStart || enemy.x >= enemy.patrolEnd) {
+          enemy.direction *= -1;
         }
       });
 
-      // Check if all enemies are killed
-      if (
-        !gameState.allEnemiesKilled &&
-        gameState.enemiesDefeated >= gameState.totalEnemies
-      ) {
-        gameState.allEnemiesKilled = true;
-        spawnArtifacts();
+      // Arrow movement
+      arrows.children.entries.forEach((arrow) => {
+        if (!arrow.active) return;
 
-        // Show query input after a delay
-        sceneRef.time.delayedCall(2000, () => {
+        // Remove arrows that go off screen
+        if (arrow.x < -50 || arrow.x > 850 || arrow.y < -50 || arrow.y > 550) {
+          arrow.destroy();
+        }
+      });
+    }
+
+    function shootArrow() {
+      if (!gameState.canShoot) return;
+
+      gameState.canShoot = false;
+
+      // FIXED: Create arrow at fixed player position (center bottom)
+      const arrow = arrows.create(player.x, player.y - 10, "arrow");
+      arrow.body.setSize(24, 6);
+
+      // Calculate trajectory to aim position
+      const angle = Phaser.Math.Angle.Between(
+        player.x,
+        player.y,
+        gameState.aimPosition.x,
+        gameState.aimPosition.y
+      );
+      const speed = 500;
+
+      arrow.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+      arrow.setRotation(angle);
+
+      // Visual shooting effect
+      player.setTint(0x22c55e);
+      sceneRef.time.delayedCall(100, () => player.clearTint());
+
+      sceneRef.time.delayedCall(gameState.shootCooldown, () => {
+        gameState.canShoot = true;
+      });
+    }
+
+    function hitEnemy(arrow, enemy) {
+      // Find which castle this enemy was guarding
+      const castleData = gameState.castleData.find(
+        (c) => c.id === enemy.castleId
+      );
+
+      if (castleData && !castleData.destroyed) {
+        // Check if this castle has the correct artifacts
+        if (castleData.hasCorrectArtifact) {
+          // Correct castle! Show query input
+          gameState.gamePhase = "query";
           setUiState((prev) => ({
             ...prev,
             showQueryInput: true,
-            allEnemiesKilled: true,
+            gamePhase: "query",
           }));
-        });
-      }
-    }
 
-    function attack() {
-      gameState.canAttack = false;
-
-      const attackRange = 90;
-
-      // Magical attack effects
-      const attackEffect = sceneRef.add.circle(
-        player.x,
-        player.y,
-        attackRange,
-        0x8b5cf6,
-        0.3
-      );
-      const innerEffect = sceneRef.add.circle(
-        player.x,
-        player.y,
-        attackRange * 0.6,
-        0xfbbf24,
-        0.4
-      );
-
-      sceneRef.tweens.add({
-        targets: attackEffect,
-        scaleX: 1.8,
-        scaleY: 1.8,
-        alpha: 0,
-        duration: 250,
-        onComplete: () => attackEffect.destroy(),
-      });
-
-      sceneRef.tweens.add({
-        targets: innerEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => innerEffect.destroy(),
-      });
-
-      enemies.children.entries.forEach((enemy) => {
-        if (!enemy.active) return;
-
-        const distance = Phaser.Math.Distance.Between(
-          player.x,
-          player.y,
-          enemy.x,
-          enemy.y
-        );
-        if (distance <= attackRange) {
-          enemy.health -= 75;
-
-          const angle = Phaser.Math.Angle.Between(
-            player.x,
-            player.y,
-            enemy.x,
-            enemy.y
+          showMessage(
+            `🎯 Perfect aim! You found the ${castleData.name}!\nNow complete the SQL query by filling in the blanks!`,
+            3000
           );
-          enemy.setVelocity(Math.cos(angle) * 400, Math.sin(angle) * 400);
+        } else {
+          // Wrong castle!
+          gameState.wrongShots++;
 
-          enemy.setTint(0x8b5cf6);
-          sceneRef.time.delayedCall(150, () => {
-            if (enemy.active) enemy.clearTint();
-          });
-
-          if (enemy.health <= 0) {
-            gameState.enemiesDefeated++;
-
-            const explosion = sceneRef.add.circle(
-              enemy.x,
-              enemy.y,
-              30,
-              0xff6b6b
+          if (gameState.wrongShots >= gameState.maxWrongShots) {
+            gameState.gamePhase = "failed";
+            showMessage(
+              `❌ Wrong castle again! You destroyed ${castleData.name}.\nYou've used all your chances! Restarting level...`,
+              3000
             );
-            sceneRef.tweens.add({
-              targets: explosion,
-              scaleX: 4,
-              scaleY: 4,
-              alpha: 0,
-              duration: 400,
-              onComplete: () => explosion.destroy(),
+            sceneRef.time.delayedCall(3000, () => {
+              restartLevel();
             });
-
-            enemy.destroy();
+          } else {
+            const remaining = gameState.maxWrongShots - gameState.wrongShots;
+            showMessage(
+              `❌ Wrong castle! This contained ${castleData.category}.\nYou have ${remaining} more chance(s) left!`,
+              3000
+            );
           }
         }
-      });
 
-      sceneRef.time.delayedCall(gameState.attackCooldown, () => {
-        gameState.canAttack = true;
-      });
+        // Destroy enemy and castle
+        castleData.destroyed = true;
+        gameState.enemiesDefeated++;
+        gameState.castlesDestroyed++;
 
-      updateReactUI();
-    }
+        // Explosion effect
+        const explosion = sceneRef.add.sprite(enemy.x, enemy.y, "explosion");
+        sceneRef.tweens.add({
+          targets: explosion,
+          scaleX: 2,
+          scaleY: 2,
+          alpha: 0,
+          duration: 500,
+          onComplete: () => explosion.destroy(),
+        });
 
-    function collectArtifact(player, artifact) {
-      if (!gameState.templeDoorsOpen) {
-        // Show message that doors must be opened first
-        const messageText = sceneRef.add
-          .text(
-            artifact.x,
-            artifact.y - 50,
-            "Open the temple doors first by writing the SQL query!",
-            {
-              fontSize: "12px",
-              fontFamily: "Courier New",
-              color: "#ff4444",
-              backgroundColor: "#000000",
-              align: "center",
-            }
-          )
-          .setOrigin(0.5);
-
-        sceneRef.time.delayedCall(3000, () => messageText.destroy());
-        return;
-      }
-
-      gameState.artifactsCollected++;
-
-      // Update artifact data to show it's been found
-      if (artifact.artifactData) {
-        artifact.artifactData.found_by = 1; // Player ID
-
-        // Update the artifacts data in gameState
-        const artifactIndex = gameState.artifactsData.findIndex(
-          (a) => a.id === artifact.artifactData.id
+        // Remove enemy and its castle
+        enemy.destroy();
+        const castle = castles.children.entries.find(
+          (c) => c.castleData.id === castleData.id
         );
-        if (artifactIndex !== -1) {
-          gameState.artifactsData[artifactIndex].found_by = 1;
+        if (castle) {
+          castle.setTint(0x666666); // Darken destroyed castle
         }
       }
 
-      // Visual collection effect
-      const collectEffect = sceneRef.add.circle(
-        artifact.x,
-        artifact.y,
-        40,
-        0xffd700,
-        0.7
-      );
-      sceneRef.tweens.add({
-        targets: collectEffect,
-        scaleX: 3,
-        scaleY: 3,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => collectEffect.destroy(),
-      });
-
-      artifact.destroy();
-
-      // Check if all artifacts collected
-      if (gameState.artifactsCollected >= gameState.totalArtifacts) {
-        showLevelComplete();
-      }
-
+      arrow.destroy();
       updateReactUI();
     }
 
-    function collectHealingOrb(player, orb) {
-      orb.destroy();
-
-      // Heal player
-      gameState.health = Math.min(gameState.maxHealth, gameState.health + 30);
-
-      // Visual effect
-      const healEffect = sceneRef.add.circle(
-        player.x,
-        player.y,
-        30,
-        0x00ff00,
-        0.7
-      );
-      sceneRef.tweens.add({
-        targets: healEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 300,
-        onComplete: () => healEffect.destroy(),
-      });
-
-      updateReactUI();
-    }
-
-    function openTempleDoors() {
-      gameState.templeDoorsOpen = true;
-
-      // Change door texture to open
-      templeDoors.setTexture("temple_door_open");
-
-      // Door opening effect
-      const doorEffect = sceneRef.add.circle(
-        templeDoors.x,
-        templeDoors.y,
-        50,
-        0xffd700,
-        0.5
-      );
-      sceneRef.tweens.add({
-        targets: doorEffect,
-        scaleX: 3,
-        scaleY: 3,
-        alpha: 0,
-        duration: 1000,
-        onComplete: () => doorEffect.destroy(),
-      });
-
-      // Show message
-      const messageText = sceneRef.add
-        .text(
-          templeDoors.x,
-          templeDoors.y - 80,
-          "🏛️ Temple Doors Opened! 🏛️\nNow collect all the artifacts!",
-          {
-            fontSize: "14px",
-            fontFamily: "Courier New",
-            color: "#ffd700",
-            backgroundColor: "#000000",
-            align: "center",
-          }
-        )
-        .setOrigin(0.5);
-
-      sceneRef.time.delayedCall(4000, () => messageText.destroy());
-
-      updateReactUI();
-    }
-
-    function enterTemple(player, gate) {
-      if (!gameState.templeDoorsOpen) {
-        const messageText = sceneRef.add
-          .text(
-            gate.x,
-            gate.y - 50,
-            "The temple doors are sealed.\nDefeat all guardians and write the SQL query!",
-            {
-              fontSize: "12px",
-              fontFamily: "Courier New",
-              color: "#ff4444",
-              backgroundColor: "#000000",
-              align: "center",
-            }
-          )
-          .setOrigin(0.5);
-
-        sceneRef.time.delayedCall(3000, () => messageText.destroy());
-        return;
+    function hitCastle(arrow, castle) {
+      // Arrows hitting castle directly (same logic as hitting enemy)
+      const enemy = castle.castleData.enemy;
+      if (enemy && enemy.active) {
+        hitEnemy(arrow, enemy);
+      } else {
+        arrow.destroy();
       }
     }
 
-    function showLevelComplete() {
+    function completeLevel() {
       gameState.isLevelComplete = true;
       updateReactUI();
 
@@ -1113,57 +660,11 @@ const Level3 = ({ onComplete }) => {
       overlay.setDepth(1000);
 
       const completionText = sceneRef.add
-        .text(400, 120, "🏛️ All Artifacts Collected! 🏛️", {
+        .text(400, 120, "🏹🏰 Master Archer! Quest Complete! 🏰🏹", {
           fontSize: "28px",
           fontFamily: "Courier New",
-          color: "#ffd700",
+          color: "#22c55e",
           fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setDepth(1001);
-
-      const queryText = sceneRef.add
-        .text(400, 160, "Query Executed Successfully:", {
-          fontSize: "16px",
-          fontFamily: "Courier New",
-          color: "#00ffff",
-        })
-        .setOrigin(0.5)
-        .setDepth(1001);
-
-      const queryText2 = sceneRef.add
-        .text(400, 180, "SELECT * FROM artifacts WHERE found_by IS NOT NULL;", {
-          fontSize: "14px",
-          fontFamily: "Courier New",
-          color: "#00ffff",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setDepth(1001);
-
-      // Show results
-      const resultsText = sceneRef.add
-        .text(400, 220, "Query Results:", {
-          fontSize: "14px",
-          fontFamily: "Courier New",
-          color: "#ffff00",
-        })
-        .setOrigin(0.5)
-        .setDepth(1001);
-
-      let resultsList = "";
-      gameState.artifactsData.forEach((artifact) => {
-        if (artifact.found_by !== null) {
-          resultsList += `${artifact.name} - Found by Explorer ${artifact.found_by}\n`;
-        }
-      });
-
-      const artifactResults = sceneRef.add
-        .text(400, 280, resultsList, {
-          fontSize: "12px",
-          fontFamily: "Courier New",
-          color: "#90ee90",
-          align: "center",
         })
         .setOrigin(0.5)
         .setDepth(1001);
@@ -1172,7 +673,15 @@ const Level3 = ({ onComplete }) => {
         .text(
           400,
           350,
-          `🗡️ Guardians Defeated: ${gameState.enemiesDefeated}/${gameState.totalEnemies}\n✨ Artifacts Collected: ${gameState.artifactsCollected}/${gameState.totalArtifacts}`,
+          `🏹 Precision: Perfect crosshair control\n🏰 Correct Castle: Found on ${
+            gameState.wrongShots === 0
+              ? "first try!"
+              : gameState.wrongShots === 1
+              ? "second try!"
+              : "final try!"
+          }\n❌ Wrong Shots: ${gameState.wrongShots}/${
+            gameState.maxWrongShots
+          }`,
           {
             fontSize: "14px",
             fontFamily: "Courier New",
@@ -1184,8 +693,8 @@ const Level3 = ({ onComplete }) => {
         .setDepth(1001);
 
       const instructionText = sceneRef.add
-        .text(400, 420, "Click to return to map", {
-          fontSize: "32px",
+        .text(400, 420, "Click to continue your quest", {
+          fontSize: "24px",
           fontFamily: "Courier New",
           color: "#00ff00",
         })
@@ -1206,67 +715,36 @@ const Level3 = ({ onComplete }) => {
       });
     }
 
-    function hitByEnemy(player, enemy) {
-      if (enemy.lastAttack && sceneRef.time.now - enemy.lastAttack < 1500)
-        return;
-
-      enemy.lastAttack = sceneRef.time.now;
-
-      // Different damage based on enemy type
-      let damage = 20;
-      if (enemy.guardianType === "stone_golem") damage = 30;
-      else if (enemy.guardianType === "shadow_guardian") damage = 25;
-      else if (enemy.guardianType === "ancient_mummy") damage = 15;
-      else if (enemy.guardianType === "demon_guardian") damage = 35;
-
-      gameState.health -= damage;
-
-      player.setTint(0xff0000);
-      sceneRef.time.delayedCall(300, () => player.clearTint());
-
-      const angle = Phaser.Math.Angle.Between(
-        enemy.x,
-        enemy.y,
-        player.x,
-        player.y
-      );
-      player.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250);
-
-      if (gameState.health <= 0) {
-        restartLevel();
-      }
-      updateReactUI();
-    }
-
     function restartLevel() {
-      const restartText = sceneRef.add
-        .text(
-          400,
-          250,
-          "The temple guardians have defeated you... Try Again!",
-          {
-            fontSize: "20px",
-            fontFamily: "Courier New",
-            color: "#ff4444",
-            backgroundColor: "#000000",
-            align: "center",
-          }
-        )
-        .setOrigin(0.5);
-
-      sceneRef.cameras.main.flash(500, 255, 0, 0);
-      gameState.health = 100;
-
       // Reset React UI state
       setUiState((prev) => ({
         ...prev,
         showQueryInput: false,
-        allEnemiesKilled: false,
-        templeDoorsOpen: false,
+        gamePhase: "shooting",
+        isQueryComplete: false,
+        castlesDestroyed: 0,
+        enemiesDefeated: 0,
+        wrongShots: 0,
+        currentAim: { x: 400, y: 200 },
       }));
-      setSqlQuery("");
+      setSqlQuery(
+        "SELECT * FROM artifacts WHERE found_by  category ('weapons', 'raft');"
+      );
       setQueryError("");
       setQuerySuccess(false);
+
+      sceneRef.cameras.main.flash(500, 255, 0, 0);
+      gameState.health = 100;
+
+      const restartText = sceneRef.add
+        .text(400, 250, "Restarting Archery Challenge...", {
+          fontSize: "24px",
+          fontFamily: "Courier New",
+          color: "#ff4444",
+          backgroundColor: "#000000",
+          align: "center",
+        })
+        .setOrigin(0.5);
 
       sceneRef.time.delayedCall(2000, () => {
         restartText.destroy();
@@ -1275,16 +753,31 @@ const Level3 = ({ onComplete }) => {
       });
     }
 
+    function showMessage(text, duration) {
+      const messageText = sceneRef.add
+        .text(400, 50, text, {
+          fontSize: "16px",
+          fontFamily: "Courier New",
+          color: "#ffff00",
+          backgroundColor: "#000000",
+          align: "center",
+          padding: { x: 12, y: 6 },
+        })
+        .setOrigin(0.5)
+        .setDepth(1000);
+
+      sceneRef.time.delayedCall(duration, () => messageText.destroy());
+    }
+
     function updateReactUI() {
       setUiState((prev) => ({
         ...prev,
         health: Math.max(0, gameState.health),
-        isQueryComplete: gameState.isLevelComplete,
-        artifactsCollected: gameState.artifactsCollected,
-        totalArtifacts: gameState.totalArtifacts,
+        castlesDestroyed: gameState.castlesDestroyed,
         enemiesDefeated: gameState.enemiesDefeated,
-        totalEnemies: gameState.totalEnemies,
-        templeDoorsOpen: gameState.templeDoorsOpen,
+        wrongShots: gameState.wrongShots,
+        gamePhase: gameState.gamePhase,
+        currentAim: { ...gameState.aimPosition },
       }));
     }
 
@@ -1306,25 +799,28 @@ const Level3 = ({ onComplete }) => {
     return () => {
       gameInstance.current?.destroy(true);
     };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+  }, [onComplete]);
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+      {/* Display the game elements */}
+      <div className="flex items-center flex-wrap justify-center gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-            <span className="text-xs text-yellow-300">🧙</span>
+          <div className="w-5 h-5 bg-gradient-to-b from-green-600 to-green-800 rounded-full flex items-center justify-center">
+            <span className="text-xs text-yellow-300">🏹</span>
           </div>
-          <span>Your Wizard</span>
+          <span>Fixed Archer Wizard</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiAncientRuins size={20} color="#666666" />
-          <span>Temple Guardians</span>
+          <GiCastle size={20} color="#6b7280" />
+          <span>Target Castles</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiCrystalBall size={20} color="#ffd700" />
-          <span>Ancient Artifacts</span>
+          <span className="text-red-500">🎯</span>
+          <span>
+            Aim: ({Math.round(uiState.currentAim.x)},{" "}
+            {Math.round(uiState.currentAim.y)})
+          </span>
         </div>
       </div>
 
@@ -1332,7 +828,7 @@ const Level3 = ({ onComplete }) => {
       <div className="w-full max-w-4xl">
         <div
           ref={gameContainerRef}
-          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
+          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-green-500 shadow-lg mx-auto"
           style={{ maxWidth: "800px" }}
         />
       </div>
@@ -1342,48 +838,50 @@ const Level3 = ({ onComplete }) => {
           Health: <span className="text-rose-400">{uiState.health}/100</span>
         </div>
         <div>
-          Guardians Defeated:{" "}
-          <span className="text-red-400">
-            {uiState.enemiesDefeated}/{uiState.totalEnemies}
-          </span>
-        </div>
-        <div>
-          Artifacts Collected:{" "}
-          <span className="text-yellow-400">
-            {uiState.artifactsCollected}/{uiState.totalArtifacts}
-          </span>
-        </div>
-        <div>
-          Temple Status:{" "}
-          <span
-            className={
-              uiState.templeDoorsOpen ? "text-green-400" : "text-red-400"
-            }
-          >
-            {uiState.templeDoorsOpen ? "OPEN" : "SEALED"}
-          </span>
+          Castles Hit:{" "}
+          <span className="text-yellow-400">{uiState.castlesDestroyed}/3</span>
         </div>
       </div>
 
+      <div className="block md:hidden">
+        <div className="flex flex-col items-center gap-4">
+          <div className="text-xs text-center text-yellow-300 mb-2">
+            📱 D-pad moves the red crosshair • Attack shoots arrow
+          </div>
+          {/* Use the MobileControls component */}
+          <MobileControls
+            mobileControlsRef={mobileControlsRef}
+            setMobileControls={setMobileControls}
+          />
+        </div>
+      </div>
       {/* SQL Query Input Modal */}
       {uiState.showQueryInput && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
-            <h3 className="pixel-font text-xl text-yellow-400 mb-4 text-center">
-              🏛️ Open the Temple Doors 🏛️
+          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-lg w-full mx-4">
+            <h3 className="pixel-font text-xl text-green-400 mb-4 text-center">
+              🏹 Perfect Shot! Complete the Query 🏹
             </h3>
             <p className="text-slate-300 mb-4 text-sm text-center">
-              Write the SQL query to open the temple doors:
+              You found the correct castle! Fill in the blanks to complete the
+              SQL query:
             </p>
+
+            <div className="bg-black p-3 rounded border mb-4">
+              <p className="text-cyan-400 text-xs font-mono mb-2">
+                <strong>
+                  Fill in the blanks where artifacts founded not null and
+                  category is weapons or raft.{" "}
+                </strong>
+              </p>
+            </div>
 
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="Enter your SQL query here..."
               className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
-              rows={3}
+              rows={4}
               onKeyDown={(e) => {
-                // Allow all keys including space
                 e.stopPropagation();
               }}
               style={{ outline: "none" }}
@@ -1398,9 +896,9 @@ const Level3 = ({ onComplete }) => {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleQuerySubmit}
-                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
+                className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded font-bold transition-colors"
               >
-                Execute Query
+                🏹 Execute Query
               </button>
             </div>
           </div>
@@ -1409,34 +907,48 @@ const Level3 = ({ onComplete }) => {
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">
-          SQL Query Challenge:
+          🏹 Crosshair Aiming Archery Challenge{" "}
         </div>
         <div className="font-mono text-lg">
-          {uiState.isQueryComplete ? (
+          {uiState.gamePhase === "shooting" ? (
             <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Query Completed Successfully!
+              🎯 Use controls to move the red crosshair, then shoot! Find the
+              castle with "weapons" & "raft"
             </span>
-          ) : uiState.allEnemiesKilled ? (
+          ) : uiState.gamePhase === "query" ? (
             <span className="text-yellow-400 font-bold bg-yellow-900/50 px-2 py-1 rounded animate-pulse">
-              Write your SQL query and then collect artifacts to open the temple
-              doors.
+              📝 Excellent aim! Fill the incomplete query.
+            </span>
+          ) : uiState.gamePhase === "completed" ? (
+            <span className="text-cyan-400 font-bold bg-cyan-900/50 px-2 py-1 rounded">
+              ✅ Quest Complete! Master archer and SQL expert!
             </span>
           ) : (
             <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">
-              Defeat all enemies first!
+              ❌ Mission failed! Try again, archer!
             </span>
           )}
         </div>
-        <div className="text-bold text-slate-500 mt-2">
-          Find all artifacts where found_by is not null to complete the quest
+        <div className="text-xs text-slate-500 mt-2">
+          🎯 Wizard stays fixed at center! Move the crosshair to aim, then
+          shoot!
         </div>
       </div>
 
       {/* Use the reusable MobileControls component */}
-      <MobileControls
-        mobileControlsRef={mobileControlsRef}
-        setMobileControls={setMobileControls}
-      />
+      <div className="w-full max-w-3xl p-3 hidden md:block bg-slate-800/50 rounded-lg border border-slate-600">
+        <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
+          <strong> CONTROLS:</strong>
+        </div>
+
+        <div className="hidden md:block">
+          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
+            <div>🏹 Wizard: Fixed Center</div>
+            <div>🎯 Crosshair: Arrow Keys</div>
+            <div>🔥 Shoot: SPACE</div>
+          </div>
+        </div>
+      </div>
 
       <style jsx>{`
         .pixel-font {

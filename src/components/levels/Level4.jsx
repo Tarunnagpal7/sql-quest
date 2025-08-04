@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Phaser from "phaser";
-import { levels } from "../../assets/data/levels";
-import { GiWoodBeam, GiTreasureMap, GiSailboat } from "react-icons/gi";
-import { FaHammer } from "react-icons/fa";
-import MobileControls from "../MobileControls"; // Import the component
+import {
+  GiTempleGate,
+  GiCrystalBall,
+  GiSpellBook,
+  GiMagicSwirl,
+} from "react-icons/gi";
 
 const Level4 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
@@ -13,1190 +15,594 @@ const Level4 = ({ onComplete }) => {
     down: false,
     left: false,
     right: false,
-    attack: false,
-    build: false, // Added build control
+    interact: false,
   });
+
+  // FIX 1: Use a ref to store the onComplete callback.
+  // This prevents the useEffect from re-running if the parent component re-renders.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const [uiState, setUiState] = useState({
     health: 100,
-    isQueryComplete: false,
-    explorersFound: 0,
-    totalExplorers: 0,
-    raftProgress: 0,
-    raftMaterials: 0,
-    totalMaterials: 8,
+    spiritsCollected: 0,
+    totalSpirits: 12,
+    spiritsGrouped: 0,
+    showDialogue: false,
+    dialogueText: "",
+    showQueryResult: false,
+    queryResult: "",
+    gamePhase: "exploring", // 'exploring', 'grouping', 'query', 'completed'
+    currentSpirit: null,
+    urnCounts: {
+      Healer: 0,
+      Hunter: 0,
+      Magician: 0,
+      Scout: 0,
+    },
+    showHint: false,
     showQueryInput: false,
-    allExplorersFound: false,
-    stormIntensity: 0,
-    timeRemaining: 180, // Add time remaining to UI state
+    userQuery: "",
   });
 
-  // SQL Query input state
-  const [sqlQuery, setSqlQuery] = useState("");
-  const [queryError, setQueryError] = useState("");
-  const [querySuccess, setQuerySuccess] = useState(false);
-
-  // Mobile controls state (for UI updates only)
-  const [mobileControls, setMobileControls] = useState({
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-    attack: false,
-    build: false,
-  });
-
-  const resetAllMobileControls = () => {
-    mobileControlsRef.current = {
-      up: false,
-      down: false,
-      left: false,
-      right: false,
-      attack: false,
-      build: false,
-    };
-  };
-
-  useEffect(() => {
-    const handleGlobalTouchEnd = () => {
-      // Reset all controls when touch ends anywhere
-      resetAllMobileControls();
-    };
-
-    document.addEventListener("touchend", handleGlobalTouchEnd, {
-      passive: true,
-    });
-    document.addEventListener("touchcancel", handleGlobalTouchEnd, {
-      passive: true,
-    });
-
-    return () => {
-      document.removeEventListener("touchend", handleGlobalTouchEnd);
-      document.removeEventListener("touchcancel", handleGlobalTouchEnd);
-    };
-  }, []);
-
-  // Expected correct queries
-  const correctQueries = [
-    "SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;",
-    "select * from jungle_explorers where artifact_found = true;",
-    "SELECT * FROM jungle_explorers WHERE artifact_found = TRUE",
-    "select * from jungle_explorers where artifact_found = true",
-    "SELECT * FROM jungle_explorers WHERE artifact_found=TRUE;",
-    "select * from jungle_explorers where artifact_found=true;",
+  // Jungle explorers data (simulating database table)
+  const jungle_explorers = [
+    { id: 1, name: "Zara", skill: "Healer" },
+    { id: 2, name: "Gorn", skill: "Hunter" },
+    { id: 3, name: "Lyra", skill: "Magician" },
+    { id: 4, name: "Kael", skill: "Scout" },
+    { id: 5, name: "Maya", skill: "Healer" },
+    { id: 6, name: "Rex", skill: "Hunter" },
+    { id: 7, name: "Vera", skill: "Magician" },
+    { id: 8, name: "Jin", skill: "Scout" },
+    { id: 9, name: "Luna", skill: "Healer" },
+    { id: 10, name: "Thor", skill: "Hunter" },
+    { id: 11, name: "Nova", skill: "Magician" },
+    { id: 12, name: "Echo", skill: "Healer" },
   ];
 
-  // Format time for display
-  const formatTime = (milliseconds) => {
-    const totalSeconds = Math.ceil(milliseconds / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  // Expected GROUP BY result: Healer (4), Magician (3), Hunter (3), Scout (2)
+  const expectedResult = { Healer: 4, Magician: 3, Hunter: 3, Scout: 2 };
+
+  // Mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    mobileControlsRef.current[direction] = true;
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    mobileControlsRef.current[direction] = false;
+  }, []);
+
+  const handleInteract = useCallback(() => {
+    mobileControlsRef.current.interact = true;
+    setTimeout(() => {
+      mobileControlsRef.current.interact = false;
+    }, 100);
+  }, []);
+
+  const closeDialogue = () => {
+    setUiState((prev) => ({ ...prev, showDialogue: false, dialogueText: "" }));
   };
 
-  const handleQuerySubmit = () => {
-    const normalizedQuery = sqlQuery.trim().toLowerCase().replace(/\s+/g, " ");
-    const isCorrect = correctQueries.some(
-      (query) => normalizedQuery === query.toLowerCase().replace(/\s+/g, " ")
+  const showHint = () => {
+    setUiState((prev) => ({ ...prev, showHint: true }));
+  };
+
+  const closeHint = () => {
+    setUiState((prev) => ({ ...prev, showHint: false }));
+  };
+
+  const checkQuery = (query) => {
+    // Normalize the query by removing extra spaces and converting to lowercase
+    const normalizedQuery = query
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/[;\n\r]/g, " ")
+      .trim();
+
+    // Define the expected patterns (multiple valid variations)
+    const validPatterns = [
+      // Basic pattern
+      /select\s+skill\s*,\s*count\s*\(\s*\*\s*\)\s+from\s+jungle_explorers\s+group\s+by\s+skill/,
+      // Allow COUNT(1) or COUNT()
+      /select\s+skill\s*,\s*count\s*\(\s*1?\s*\)\s+from\s+jungle_explorers\s+group\s+by\s+skill/,
+      // Allow 'as count' or other aliases
+      /select\s+skill\s*,\s*count\s*\(\s*\*\s*\)\s+as\s+\w+\s+from\s+jungle_explorers\s+group\s+by\s+skill/,
+      // Allow different order (GROUP BY first)
+      /select\s+skill\s*,\s*count\s*\(\s*\*\s*\)\s+from\s+jungle_explorers\s+group\s+by\s+skill/,
+      // Allow COUNT(id) or COUNT(name)
+      /select\s+skill\s*,\s*count\s*\(\s*(id|name)\s*\)\s+from\s+jungle_explorers\s+group\s+by\s+skill/,
+    ];
+
+    // Check if the query matches any of the valid patterns
+    const isValid = validPatterns.some((pattern) =>
+      pattern.test(normalizedQuery)
     );
 
-    if (isCorrect) {
-      setQuerySuccess(true);
-      setQueryError("");
-      setUiState((prev) => ({ ...prev, showQueryInput: false }));
+    // If not valid, check what's missing to provide better feedback
+    if (!isValid) {
+      const hasSelect = /select/.test(normalizedQuery);
+      const hasSkill = /skill/.test(normalizedQuery);
+      const hasCount = /count\s*\(/.test(normalizedQuery);
+      const hasFrom = /from\s+jungle_explorers/.test(normalizedQuery);
+      const hasGroupBy = /group\s+by/.test(normalizedQuery);
 
-      // Signal to game that query is complete
+      const missing = [];
+      if (!hasSelect) missing.push("SELECT keyword");
+      if (!hasSkill) missing.push("skill column");
+      if (!hasCount) missing.push("COUNT function");
+      if (!hasFrom) missing.push("FROM jungle_explorers");
+      if (!hasGroupBy) missing.push("GROUP BY clause");
+
+      if (missing.length > 0) {
+        setUiState((prev) => ({
+          ...prev,
+          showQueryResult: true,
+          queryResult: `Your query is missing: ${missing.join(
+            ", "
+          )}\n\nTry structuring your query like this:\nSELECT skill, COUNT(*)\nFROM jungle_explorers\nGROUP BY skill`,
+        }));
+      }
+    }
+
+    return isValid;
+  };
+
+  const executeQuery = () => {
+    const groupCounts = {};
+    jungle_explorers.forEach((explorer) => {
+      groupCounts[explorer.skill] = (groupCounts[explorer.skill] || 0) + 1;
+    });
+
+    const result = Object.entries(groupCounts)
+      .map(([skill, count]) => `${skill}: ${count} explorers`)
+      .join("\n");
+
+    const queryResult = `Query Result:\n${result}`;
+
+    if (checkQuery(uiState.userQuery)) {
+      setUiState((prev) => ({
+        ...prev,
+        showQueryResult: true,
+        queryResult: queryResult,
+        gamePhase: "completed",
+        showQueryInput: false,
+      }));
+
       if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        gameInstance.current.scene.scenes[0].completeQuery();
+        gameInstance.current.scene.scenes[0].completeLevel();
       }
     } else {
-      setQueryError(
-        "Query failed! Find all jungle explorers who have found artifacts."
-      );
-      setTimeout(() => setQueryError(""), 3000);
+      setUiState((prev) => ({
+        ...prev,
+        showQueryResult: true,
+        queryResult:
+          "Incorrect query! Try again.\nHint: Use SELECT skill, COUNT(*) FROM jungle_explorers GROUP BY skill",
+      }));
     }
   };
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
 
-    let player, enemies, explorers, materials, walls, raft;
-    let cursors, spaceKey, buildKey;
-    let timerEvent; // Add timer event reference
+    let player, statues, spiritStones, urns, altar, walls;
+    let cursors, interactKey;
+    let heldSpirit = null; // To track the spirit being carried
 
     const gameState = {
       health: 100,
-      maxHealth: 100,
       isLevelComplete: false,
-      canAttack: true,
-      canBuild: true,
-      attackCooldown: 400,
-      buildCooldown: 800,
-      explorersFound: 0,
-      totalExplorers: 6,
-      raftProgress: 0,
-      raftMaterials: 0,
-      totalMaterials: 8,
-      allExplorersFound: false,
-      queryComplete: false,
-      stormIntensity: 0,
-      timeLimit: 180000,
-      timeRemaining: 180000,
-      explorersData: [],
-      buildingZone: { x: 650, y: 350, radius: 70 },
-      gameOverTriggered: false, // Add flag to prevent multiple game over calls
+      spiritsCollected: 0,
+      spiritsGrouped: 0,
+      gamePhase: "exploring",
+      urnCounts: { Healer: 0, Hunter: 0, Magician: 0, Scout: 0 },
+      interactCooldown: false,
     };
 
     let sceneRef;
-    // Make mobile controls accessible to Phaser
-    const getMobileControls = () => mobileControlsRef.current;
 
     function preload() {
       sceneRef = this;
-
-      // --- Create Wizard Character with better spacing ---
-      const playerGraphics = this.add.graphics();
-
-      // Wizard robe (main body)
-      playerGraphics.fillStyle(0x1e3a8a, 1);
-      playerGraphics.fillCircle(20, 30, 16);
-      playerGraphics.fillRect(4, 18, 32, 24);
-
-      // Wizard hood
-      playerGraphics.fillStyle(0x1e40af, 1);
-      playerGraphics.fillCircle(20, 15, 12);
-
-      // Face
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillCircle(20, 20, 8);
-
-      // Eyes with glow
-      playerGraphics.fillStyle(0x60a5fa, 0.7);
-      playerGraphics.fillCircle(17, 19, 3);
-      playerGraphics.fillCircle(23, 19, 3);
-      playerGraphics.fillStyle(0x000000, 1);
-      playerGraphics.fillCircle(17, 19, 2);
-      playerGraphics.fillCircle(23, 19, 2);
-
-      // Robe details
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillRect(4, 24, 32, 3);
-      playerGraphics.fillRect(18, 18, 4, 28);
-
-      // Magic staff
-      playerGraphics.lineStyle(4, 0x92400e);
-      playerGraphics.beginPath();
-      playerGraphics.moveTo(28, 42);
-      playerGraphics.lineTo(30, 22);
-      playerGraphics.strokePath();
-      playerGraphics.fillStyle(0x8b5cf6, 0.8);
-      playerGraphics.fillCircle(30, 20, 5);
-
-      playerGraphics.generateTexture("player", 40, 50);
-      playerGraphics.destroy();
-
-      // --- Create Jungle Explorers with better graphics ---
-      const explorerTypes = ["artifact_holder", "empty_handed"];
-      const explorerColors = [0x00ff00, 0xff6666];
-
-      explorerTypes.forEach((type, index) => {
-        const explorerGraphics = this.add.graphics();
-        const color = explorerColors[index];
-
-        // Explorer body - larger and clearer
-        explorerGraphics.fillStyle(0x8b4513, 1);
-        explorerGraphics.fillRect(10, 25, 20, 18);
-
-        // Explorer head
-        explorerGraphics.fillStyle(0xfdbcb4, 1);
-        explorerGraphics.fillCircle(20, 18, 10);
-
-        // Explorer hair
-        explorerGraphics.fillStyle(0x4a4a4a, 1);
-        explorerGraphics.fillCircle(20, 12, 11);
-
-        // Explorer eyes
-        explorerGraphics.fillStyle(0x000000, 1);
-        explorerGraphics.fillCircle(16, 17, 2);
-        explorerGraphics.fillCircle(24, 17, 2);
-
-        // Clear artifact indicator
-        if (type === "artifact_holder") {
-          explorerGraphics.fillStyle(color, 0.4);
-          explorerGraphics.fillCircle(20, 25, 30);
-
-          // Show artifact in hands - more visible
-          explorerGraphics.fillStyle(0xffd700, 1);
-          explorerGraphics.fillCircle(30, 30, 4);
-          explorerGraphics.fillStyle(0xffff00, 0.8);
-          explorerGraphics.fillCircle(30, 30, 3);
-
-          // Sparkle effects
-          explorerGraphics.fillStyle(0xffffff, 1);
-          explorerGraphics.fillCircle(28, 27, 1);
-          explorerGraphics.fillCircle(32, 32, 1);
-        } else {
-          explorerGraphics.fillStyle(color, 0.3);
-          explorerGraphics.fillCircle(20, 25, 25);
-        }
-
-        // Explorer equipment
-        explorerGraphics.fillStyle(0x666666, 1);
-        explorerGraphics.fillRect(8, 22, 4, 10);
-        explorerGraphics.fillRect(28, 27, 10, 3);
-
-        explorerGraphics.generateTexture(`explorer_${type}`, 40, 45);
-        explorerGraphics.destroy();
-      });
-
-      // --- Create Fewer, Weaker Enemies ---
-      const enemyTypes = ["storm_beast", "wind_demon"];
-      const enemyColors = [0x4b0082, 0x00ffff];
-
-      enemyTypes.forEach((type, index) => {
-        const enemyGraphics = this.add.graphics();
-        const color = enemyColors[index];
-
-        if (type === "storm_beast") {
-          // Storm beast - clearer graphics
-          enemyGraphics.fillStyle(color, 1);
-          enemyGraphics.fillEllipse(20, 30, 24, 20);
-          enemyGraphics.fillCircle(32, 22, 10);
-
-          // Lightning effects
-          enemyGraphics.fillStyle(0xffff00, 0.8);
-          enemyGraphics.fillRect(15, 18, 3, 10);
-          enemyGraphics.fillRect(25, 18, 3, 10);
-
-          // Glowing eyes
-          enemyGraphics.fillStyle(0xff0000, 1);
-          enemyGraphics.fillCircle(29, 20, 3);
-          enemyGraphics.fillCircle(35, 20, 3);
-        } else if (type === "wind_demon") {
-          // Wind demon - flying creature
-          enemyGraphics.fillStyle(color, 0.8);
-          enemyGraphics.fillRect(10, 22, 20, 24);
-          enemyGraphics.fillCircle(20, 15, 12);
-
-          // Wings - more visible
-          enemyGraphics.fillStyle(color, 0.6);
-          enemyGraphics.fillEllipse(5, 25, 15, 10);
-          enemyGraphics.fillEllipse(35, 25, 15, 10);
-
-          // Wind swirls
-          enemyGraphics.fillStyle(0xffffff, 0.8);
-          for (let i = 0; i < 4; i++) {
-            const x = 10 + i * 7;
-            enemyGraphics.fillCircle(x, 30, 2);
-          }
-        }
-
-        enemyGraphics.generateTexture(type, 40, 50);
-        enemyGraphics.destroy();
-      });
-
-      // --- Create Raft Building Materials with better graphics ---
-      const materialTypes = ["wood_log", "rope"];
-      const materialColors = [0x8b4513, 0xdaa520];
-
-      materialTypes.forEach((type, index) => {
-        const materialGraphics = this.add.graphics();
-        const color = materialColors[index];
-
-        if (type === "wood_log") {
-          // Wood log - larger and clearer
-          materialGraphics.fillStyle(color, 1);
-          materialGraphics.fillRect(8, 15, 24, 10);
-
-          // Wood rings
-          materialGraphics.fillStyle(0x654321, 1);
-          materialGraphics.fillCircle(10, 20, 4);
-          materialGraphics.fillCircle(30, 20, 4);
-        } else if (type === "rope") {
-          // Rope coil - more visible
-          materialGraphics.fillStyle(color, 1);
-          materialGraphics.fillCircle(20, 20, 10);
-
-          // Rope texture
-          materialGraphics.fillStyle(0xb8860b, 1);
-          for (let i = 0; i < 4; i++) {
-            const angle = (i * Math.PI) / 2;
-            const x = 20 + Math.cos(angle) * 8;
-            const y = 20 + Math.sin(angle) * 8;
-            materialGraphics.fillCircle(x, y, 3);
-          }
-        }
-
-        // Glowing effect for all materials
-        materialGraphics.fillStyle(color, 0.3);
-        materialGraphics.fillCircle(20, 20, 25);
-
-        materialGraphics.generateTexture(type, 40, 40);
-        materialGraphics.destroy();
-      });
-
-      // Create other textures
-      this.add
-        .graphics()
-        .fillStyle(0x654321)
-        .fillRect(0, 0, 40, 40)
-        .generateTexture("jungle_wall", 40, 40);
-      this.add
-        .graphics()
-        .fillStyle(0x228b22)
-        .fillRect(0, 0, 800, 500)
-        .generateTexture("jungle_background", 800, 500);
-
-      // Build zone indicator - clearer
-      const buildZoneGraphics = this.add.graphics();
-      buildZoneGraphics.lineStyle(5, 0x00ff00, 0.8);
-      buildZoneGraphics.strokeCircle(70, 70, 68);
-      buildZoneGraphics.fillStyle(0x00ff00, 0.15);
-      buildZoneGraphics.fillCircle(70, 70, 68);
-
-      buildZoneGraphics.generateTexture("build_zone", 140, 140);
-      buildZoneGraphics.destroy();
     }
 
     function create() {
-      this.add.image(400, 250, "jungle_background");
+      // Texture Generation
+      const playerGraphics = this.add
+        .graphics()
+        .fillStyle(0x6d28d9, 1)
+        .fillCircle(16, 25, 14)
+        .fillRect(2, 15, 28, 20)
+        .fillStyle(0x7c3aed, 1)
+        .fillCircle(16, 12, 10)
+        .lineStyle(2, 0xfbbf24)
+        .strokeCircle(16, 12, 10)
+        .fillStyle(0xfbbf24, 1)
+        .fillCircle(16, 16, 6)
+        .fillStyle(0x000000, 1)
+        .fillCircle(13, 15, 1.5)
+        .fillCircle(19, 15, 1.5)
+        .lineStyle(4, 0x8b4513)
+        .beginPath()
+        .moveTo(26, 35)
+        .lineTo(28, 8)
+        .strokePath()
+        .fillStyle(0x22d3ee, 0.8)
+        .fillCircle(28, 6, 4)
+        .generateTexture("player", 32, 40)
+        .destroy();
+      const statueGraphics = this.add
+        .graphics()
+        .fillStyle(0x6b7280, 1)
+        .fillRect(5, 40, 20, 25)
+        .fillStyle(0x9ca3af, 1)
+        .fillCircle(15, 25, 8)
+        .fillRect(7, 30, 16, 15)
+        .fillStyle(0x22d3ee, 0.3)
+        .fillCircle(15, 25, 12)
+        .fillStyle(0x06b6d4, 1)
+        .fillCircle(12, 24, 2)
+        .fillCircle(18, 24, 2)
+        .generateTexture("statue", 30, 65)
+        .destroy();
+      const stoneGraphics = this.add
+        .graphics()
+        .fillStyle(0x374151, 1)
+        .fillCircle(12, 12, 10)
+        .fillStyle(0x22d3ee, 0.6)
+        .fillCircle(12, 12, 7)
+        .fillStyle(0x06b6d4, 1)
+        .fillCircle(12, 12, 3)
+        .generateTexture("spirit_stone", 24, 24)
+        .destroy();
+      const skillColors = {
+        Healer: 0x22c55e,
+        Hunter: 0xf59e0b,
+        Magician: 0x8b5cf6,
+        Scout: 0x06b6d4,
+      };
+      Object.keys(skillColors).forEach((skill) => {
+        this.add
+          .graphics()
+          .fillStyle(0x374151, 1)
+          .fillEllipse(25, 45, 40, 20)
+          .fillStyle(skillColors[skill], 0.8)
+          .fillRect(10, 15, 30, 30)
+          .fillEllipse(25, 15, 30, 15)
+          .fillStyle(skillColors[skill], 0.3)
+          .fillEllipse(25, 25, 50, 40)
+          .fillStyle(0xffffff, 1)
+          .fillCircle(25, 25, 8)
+          .fillStyle(skillColors[skill], 1)
+          .fillCircle(25, 25, 6)
+          .generateTexture(`urn_${skill.toLowerCase()}`, 50, 50)
+          .destroy();
+      });
+      const altarGraphics = this.add
+        .graphics()
+        .fillStyle(0x6b7280, 1)
+        .fillRect(0, 60, 80, 20)
+        .fillStyle(0x9ca3af, 1)
+        .fillRect(5, 40, 70, 25)
+        .lineStyle(2, 0x22d3ee)
+        .strokeCircle(40, 52, 15)
+        .strokeCircle(40, 52, 10)
+        .fillStyle(0x06b6d4, 0.8)
+        .fillCircle(40, 52, 8)
+        .generateTexture("altar", 80, 80)
+        .destroy();
+      this.add
+        .graphics()
+        .fillStyle(0x1f2937)
+        .fillRect(0, 0, 800, 500)
+        .generateTexture("temple_bg", 800, 500);
+      this.add
+        .graphics()
+        .fillStyle(0x22d3ee, 0.8)
+        .fillCircle(2, 2, 2)
+        .generateTexture("particle", 4, 4)
+        .destroy();
+
+      this.add.image(400, 250, "temple_bg");
+      this.add.graphics().fillStyle(0x374151, 0.3).fillRect(0, 0, 800, 500);
 
       walls = this.physics.add.staticGroup();
-      enemies = this.physics.add.group();
-      explorers = this.physics.add.group();
-      materials = this.physics.add.group();
+      statues = this.physics.add.group();
+      spiritStones = this.physics.add.group();
+      urns = this.physics.add.staticGroup();
 
-      player = this.physics.add.sprite(100, 250, "player");
-      player.setCollideWorldBounds(true).body.setSize(30, 40).setOffset(5, 5);
+      walls.create(0, 250, null).setSize(20, 500).setVisible(false);
+      walls.create(800, 250, null).setSize(20, 500).setVisible(false);
+      walls.create(400, 0, null).setSize(800, 20).setVisible(false);
+      walls.create(400, 500, null).setSize(800, 20).setVisible(false);
 
-      cursors = this.input.keyboard.createCursorKeys();
-      spaceKey = this.input.keyboard.addKey(
-        Phaser.Input.Keyboard.KeyCodes.SPACE
-      );
-      buildKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
+      player = this.physics.add
+        .sprite(400, 400, "player")
+        .setCollideWorldBounds(true)
+        .body.setSize(20, 25)
+        .setOffset(6, 10).gameObject;
 
-      this.physics.add.collider(player, walls);
-      this.physics.add.collider(enemies, walls);
-      this.physics.add.collider(explorers, walls);
-      this.physics.add.collider(materials, walls);
-      this.physics.add.collider(enemies, enemies);
-
-      this.physics.add.overlap(player, explorers, findExplorer, null, this);
-      this.physics.add.overlap(player, materials, collectMaterial, null, this);
-      this.physics.add.overlap(player, enemies, hitByEnemy, null, this);
-
-      // Add methods to scene
-      this.completeQuery = completeQuery;
-      this.showQueryInput = showQueryInput;
-
-      createLevel.call(this);
-      updateReactUI();
-    }
-
-    function createLevel() {
-      // Clear existing timer event
-      if (timerEvent) {
-        timerEvent.destroy();
-        timerEvent = null;
-      }
-
-      enemies.clear(true, true);
-      explorers.clear(true, true);
-      materials.clear(true, true);
-      walls.clear(true, true);
-
-      // Reset game state
-      gameState.health = 100;
-      gameState.explorersFound = 0;
-      gameState.raftProgress = 0;
-      gameState.raftMaterials = 0;
-      gameState.allExplorersFound = false;
-      gameState.queryComplete = false;
-      gameState.stormIntensity = 0;
-      gameState.timeRemaining = gameState.timeLimit;
-      gameState.explorersData = [];
-      gameState.isLevelComplete = false;
-      gameState.gameOverTriggered = false; // Reset the flag
-
-      // Create simpler jungle walls
-      createSimpleJungleWalls.call(this);
-
-      // Create fewer explorers
-      createExplorers.call(this);
-
-      // Create fewer, weaker enemies
-      createWeakerEnemies.call(this);
-
-      // Create fewer materials
-      createFewerMaterials.call(this);
-
-      // Create building zone
-      createBuildingZone.call(this);
-
-      // Start timer (longer now)
-      startTimer.call(this);
-
-      player.setPosition(100, 250).setVelocity(0, 0);
-      gameState.totalExplorers = explorers.children.entries.length;
-    }
-
-    function createSimpleJungleWalls() {
-      // Much simpler wall layout with clear paths
-      const wallPositions = [
-        // Outer walls only
-        [40, 40],
-        [120, 40],
-        [200, 40],
-        [280, 40],
-        [360, 40],
-        [440, 40],
-        [520, 40],
-        [600, 40],
-        [680, 40],
-        [760, 40],
-        [40, 460],
-        [120, 460],
-        [200, 460],
-        [280, 460],
-        [360, 460],
-        [440, 460],
-        [520, 460],
-        [600, 460],
-        [680, 460],
-        [760, 460],
-        [40, 120],
-        [40, 200],
-        [40, 280],
-        [40, 360],
-        [760, 120],
-        [760, 200],
-        [760, 280],
-        [760, 360],
-
-        // Only a few interior walls to create simple paths
-        [200, 150],
-        [200, 230],
-        [200, 310],
-        [200, 390],
-        [400, 120],
-        [400, 200],
-        [400, 280],
-        [400, 360],
-        [600, 150],
-        [600, 230],
-        [600, 310],
+      const statuePositions = [
+        { x: 150, y: 150 },
+        { x: 650, y: 150 },
+        { x: 100, y: 300 },
+        { x: 700, y: 300 },
+        { x: 200, y: 100 },
+        { x: 600, y: 100 },
+        { x: 150, y: 350 },
+        { x: 650, y: 350 },
+        { x: 100, y: 200 },
+        { x: 700, y: 200 },
+        { x: 250, y: 150 },
+        { x: 550, y: 150 },
       ];
-
-      wallPositions.forEach((pos) => {
-        const wall = walls.create(pos[0], pos[1], "jungle_wall");
-        wall.body.setSize(35, 35);
+      statuePositions.forEach((pos, index) => {
+        if (index < jungle_explorers.length) {
+          const statue = statues.create(pos.x, pos.y, "statue");
+          statue.body.setSize(25, 55).setOffset(2.5, 5);
+          statue.explorerData = jungle_explorers[index];
+          this.add.particles(pos.x, pos.y - 20, "particle", {
+            speed: { min: 10, max: 30 },
+            scale: { start: 0.3, end: 0 },
+            lifespan: 2000,
+            frequency: 200,
+            alpha: { start: 0.8, end: 0 },
+          });
+        }
       });
-    }
 
-    function createExplorers() {
-      const explorerData = [
-        // Artifact holders (TRUE) - 3 instead of 4
-        {
-          x: 150,
-          y: 180,
-          type: "artifact_holder",
-          artifact_found: true,
-          name: "Maya",
-        },
-        {
-          x: 320,
-          y: 140,
-          type: "artifact_holder",
-          artifact_found: true,
-          name: "Jin",
-        },
-        {
-          x: 480,
-          y: 200,
-          type: "artifact_holder",
-          artifact_found: true,
-          name: "Elena",
-        },
-
-        // Empty handed explorers (FALSE) - 3 decoys
-        {
-          x: 140,
-          y: 320,
-          type: "empty_handed",
-          artifact_found: false,
-          name: "Tom",
-        },
-        {
-          x: 350,
-          y: 280,
-          type: "empty_handed",
-          artifact_found: false,
-          name: "Sarah",
-        },
-        {
-          x: 500,
-          y: 340,
-          type: "empty_handed",
-          artifact_found: false,
-          name: "Mike",
-        },
+      const urnPositions = [
+        { skill: "Healer", x: 120, y: 80 },
+        { skill: "Hunter", x: 680, y: 80 },
+        { skill: "Magician", x: 120, y: 420 },
+        { skill: "Scout", x: 680, y: 420 },
       ];
-
-      explorerData.forEach((data) => {
-        const explorer = explorers.create(
-          data.x,
-          data.y,
-          `explorer_${data.type}`
+      urnPositions.forEach((urnData) => {
+        const urn = urns.create(
+          urnData.x,
+          urnData.y,
+          `urn_${urnData.skill.toLowerCase()}`
         );
-        explorer
-          .setCollideWorldBounds(true)
-          .body.setSize(30, 35)
-          .setOffset(5, 5);
-        explorer.explorerData = data;
-        explorer.found = false;
-        explorer.hasArtifact = data.artifact_found;
-
-        // Add floating animation
-        sceneRef.tweens.add({
-          targets: explorer,
-          y: explorer.y - 8,
-          duration: 2000 + Math.random() * 1000,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
-
-        // Add name text above explorer - more visible
-        const nameText = sceneRef.add
-          .text(data.x, data.y - 35, data.name, {
-            fontSize: "14px",
-            fontFamily: "Courier New",
-            color: data.artifact_found ? "#00ff00" : "#ff6666",
+        urn.body.setSize(40, 40).setOffset(5, 5);
+        urn.skillType = urnData.skill;
+        this.add
+          .text(urnData.x, urnData.y + 35, urnData.skill, {
+            fontSize: "12px",
+            fontFamily: "Arial",
+            color: "#ffffff",
             fontStyle: "bold",
-            backgroundColor: "#000000",
-            padding: { x: 4, y: 2 },
           })
           .setOrigin(0.5);
-
-        explorer.nameText = nameText;
-        gameState.explorersData.push(data);
       });
-    }
 
-    function createWeakerEnemies() {
-      // Only 4 enemies instead of 8, and weaker
-      const enemyPositions = [
-        { x: 180, y: 200, type: "storm_beast" },
-        { x: 320, y: 180, type: "wind_demon" },
-        { x: 280, y: 320, type: "storm_beast" },
-        { x: 450, y: 260, type: "wind_demon" },
-      ];
+      altar = this.physics.add
+        .sprite(400, 250, "altar")
+        .setCollideWorldBounds(true);
+      altar.body.setSize(60, 60).setOffset(10, 10);
 
-      enemyPositions.forEach((pos, index) => {
-        const enemy = enemies.create(pos.x, pos.y, pos.type);
-        enemy.setCollideWorldBounds(true).body.setSize(30, 40).setOffset(5, 5);
-        enemy.health = 60;
-        enemy.maxHealth = 60;
-        enemy.speed = 50;
-        enemy.attackDamage = 15;
-        enemy.patrolDistance = 80;
-        enemy.startX = pos.x;
-        enemy.startY = pos.y;
-        enemy.direction = 1;
-        enemy.monsterType = pos.type;
-        enemy.aggroRange = 80;
-
-        // Gentle animations
-        sceneRef.tweens.add({
-          targets: enemy,
-          scaleX: 1.05,
-          scaleY: 0.95,
-          duration: 1500 + index * 300,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
-      });
-    }
-
-    function createFewerMaterials() {
-      // Only 8 materials instead of 15, better positioned
-      const materialPositions = [
-        { x: 120, y: 160, type: "wood_log" },
-        { x: 160, y: 240, type: "rope" },
-        { x: 240, y: 180, type: "wood_log" },
-        { x: 280, y: 240, type: "rope" },
-        { x: 360, y: 160, type: "wood_log" },
-        { x: 420, y: 220, type: "rope" },
-        { x: 480, y: 300, type: "wood_log" },
-        { x: 520, y: 180, type: "rope" },
-      ];
-
-      materialPositions.forEach((pos) => {
-        const material = materials.create(pos.x, pos.y, pos.type);
-        material
-          .setCollideWorldBounds(true)
-          .body.setSize(30, 30)
-          .setOffset(5, 5);
-        material.materialType = pos.type;
-
-        // Floating animation
-        sceneRef.tweens.add({
-          targets: material,
-          y: material.y - 8,
-          duration: 1800 + Math.random() * 400,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
-
-        // Glowing effect
-        sceneRef.tweens.add({
-          targets: material,
-          alpha: 0.8,
-          scaleX: 1.1,
-          scaleY: 1.1,
-          duration: 1400,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
-      });
-    }
-
-    function createBuildingZone() {
-      const buildZone = sceneRef.add.image(
-        gameState.buildingZone.x,
-        gameState.buildingZone.y,
-        "build_zone"
+      cursors = this.input.keyboard.createCursorKeys();
+      interactKey = this.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.E
       );
-      buildZone.setAlpha(0.8);
 
-      // Pulsing animation
-      sceneRef.tweens.add({
-        targets: buildZone,
-        scaleX: 1.1,
-        scaleY: 1.1,
-        alpha: 0.6,
-        duration: 2500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
+      this.physics.add.collider(player, walls);
+      this.physics.add.collider(statues, walls);
+      this.physics.add.collider(spiritStones, walls);
 
-      // Add build zone text
-      const buildText = sceneRef.add
-        .text(
-          gameState.buildingZone.x,
-          gameState.buildingZone.y - 90,
-          "RAFT BUILDING ZONE\nPress B to Build",
-          {
-            fontSize: "14px",
-            fontFamily: "Courier New",
-            color: "#00ff00",
-            fontStyle: "bold",
-            align: "center",
-            backgroundColor: "#000000",
-            padding: { x: 8, y: 4 },
-          }
-        )
-        .setOrigin(0.5);
+      this.physics.add.overlap(player, statues, interactWithStatue, null, this);
+      this.physics.add.overlap(
+        player,
+        spiritStones,
+        pickupSpirit,
+        () => !heldSpirit,
+        this
+      );
+      this.physics.add.overlap(spiritStones, urns, placeInUrn, null, this);
+      this.physics.add.overlap(player, altar, interactWithAltar, null, this);
 
-      sceneRef.tweens.add({
-        targets: buildText,
-        alpha: 0.7,
-        duration: 2000,
-        yoyo: true,
-        repeat: -1,
-      });
-    }
+      this.completeLevel = completeLevel;
+      this.updateReactUI = updateReactUI;
 
-    function startTimer() {
-      // Clear any existing timer
-      if (timerEvent) {
-        timerEvent.destroy();
-      }
-
-      timerEvent = sceneRef.time.addEvent({
-        delay: 1000,
-        callback: () => {
-          if (gameState.isLevelComplete || gameState.gameOverTriggered) {
-            return; // Stop timer if level is complete or game over already triggered
-          }
-
-          gameState.timeRemaining -= 1000;
-          gameState.stormIntensity = Math.max(
-            0,
-            (gameState.timeLimit - gameState.timeRemaining) /
-              gameState.timeLimit
-          );
-
-          // Update UI with current time
-          updateReactUI();
-
-          if (gameState.timeRemaining <= 0 && !gameState.gameOverTriggered) {
-            gameState.gameOverTriggered = true; // Set flag to prevent multiple calls
-            if (timerEvent) {
-              timerEvent.destroy();
-              timerEvent = null;
-            }
-            gameOver("Time ran out! The storm has arrived!");
-          }
-        },
-        callbackScope: sceneRef,
-        loop: true,
-      });
+      updateReactUI();
+      showMessage(
+        "🏛️ Welcome! Press E near statues to collect spirit stones.",
+        4000
+      );
     }
 
     function update() {
-      if (gameState.isLevelComplete || gameState.gameOverTriggered) return;
+      if (gameState.isLevelComplete) return;
 
-      const currentMobileControls = getMobileControls();
-      const activeControls = Object.values(currentMobileControls).filter(
-        Boolean
-      ).length;
-      if (activeControls > 2) {
-        // Too many controls active, likely stuck - reset all
-        Object.keys(mobileControlsRef.current).forEach((key) => {
-          if (key !== "attack") mobileControlsRef.current[key] = false;
-        });
-      }
-
+      const speed = 160;
       player.setVelocity(0);
-      const speed = 200;
 
-      // Use the ref instead of state for game logic
-      if (cursors.left.isDown || mobileControlsRef.current.left) {
+      if (cursors.left.isDown || mobileControlsRef.current.left)
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
+      else if (cursors.right.isDown || mobileControlsRef.current.right)
         player.setVelocityX(speed);
-      }
 
-      if (cursors.up.isDown || mobileControlsRef.current.up) {
+      if (cursors.up.isDown || mobileControlsRef.current.up)
         player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
+      else if (cursors.down.isDown || mobileControlsRef.current.down)
         player.setVelocityY(speed);
+
+      // FIX 2: Make the held spirit continuously follow the player.
+      if (heldSpirit) {
+        heldSpirit.setPosition(player.x, player.y - 30);
       }
 
-      if (
-        (Phaser.Input.Keyboard.JustDown(spaceKey) ||
-          mobileControlsRef.current.attack) &&
-        gameState.canAttack
-      ) {
-        attack.call(this);
-      }
-
-      if (
-        (Phaser.Input.Keyboard.JustDown(buildKey) ||
-          mobileControlsRef.current.build) &&
-        gameState.canBuild
-      ) {
-        buildRaft.call(this);
-      }
-
-      // Update enemies with simpler AI
-      updateSimpleEnemies.call(this);
-
-      // Check if player is in building zone
-      const distanceToZone = Phaser.Math.Distance.Between(
-        player.x,
-        player.y,
-        gameState.buildingZone.x,
-        gameState.buildingZone.y
-      );
-
-      if (distanceToZone <= gameState.buildingZone.radius) {
-        player.setTint(0x90ee90);
-      } else {
-        player.clearTint();
-      }
-    }
-
-    function updateSimpleEnemies() {
-      enemies.children.entries.forEach((enemy) => {
-        if (!enemy.active) return;
-
-        const distanceToPlayer = Phaser.Math.Distance.Between(
-          enemy.x,
-          enemy.y,
-          player.x,
-          player.y
-        );
-
-        if (distanceToPlayer < enemy.aggroRange) {
-          // Simple chase
-          sceneRef.physics.moveTo(enemy, player.x, player.y, enemy.speed);
-          enemy.setTint(0xff8888);
-
-          // Attack if close enough
-          if (
-            distanceToPlayer < 35 &&
-            (!enemy.lastAttack || sceneRef.time.now - enemy.lastAttack > 2000)
-          ) {
-            enemy.lastAttack = sceneRef.time.now;
-            gameState.health -= enemy.attackDamage;
-
-            if (gameState.health <= 0 && !gameState.gameOverTriggered) {
-              gameState.gameOverTriggered = true;
-              gameOver("You were defeated by the storm monsters!");
-            }
-          }
-        } else {
-          // Simple patrol
-          enemy.clearTint();
-          const distanceFromStart = Phaser.Math.Distance.Between(
-            enemy.x,
-            enemy.startX,
-            enemy.y,
-            enemy.startY
-          );
-
-          if (distanceFromStart > enemy.patrolDistance) {
-            enemy.direction *= -1;
-          }
-
-          const angle = Phaser.Math.Angle.Between(
-            enemy.x,
-            enemy.y,
-            enemy.startX + enemy.direction * enemy.patrolDistance,
-            enemy.startY
-          );
-          enemy.setVelocity(
-            Math.cos(angle) * (enemy.speed * 0.4),
-            Math.sin(angle) * (enemy.speed * 0.4)
-          );
-        }
-      });
-    }
-
-    function attack() {
-      gameState.canAttack = false;
-
-      const attackRange = 100;
-
-      // Magical attack effects
-      const attackEffect = sceneRef.add.circle(
-        player.x,
-        player.y,
-        attackRange,
-        0x8b5cf6,
-        0.4
-      );
-      const innerEffect = sceneRef.add.circle(
-        player.x,
-        player.y,
-        attackRange * 0.6,
-        0xfbbf24,
-        0.5
-      );
-
-      sceneRef.tweens.add({
-        targets: attackEffect,
-        scaleX: 1.8,
-        scaleY: 1.8,
-        alpha: 0,
-        duration: 300,
-        onComplete: () => attackEffect.destroy(),
-      });
-
-      sceneRef.tweens.add({
-        targets: innerEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 250,
-        onComplete: () => innerEffect.destroy(),
-      });
-
-      enemies.children.entries.forEach((enemy) => {
-        if (!enemy.active) return;
-
-        const distance = Phaser.Math.Distance.Between(
-          player.x,
-          player.y,
-          enemy.x,
-          enemy.y
-        );
-        if (distance <= attackRange) {
-          enemy.health -= 80;
-
-          const angle = Phaser.Math.Angle.Between(
-            player.x,
-            player.y,
-            enemy.x,
-            enemy.y
-          );
-          enemy.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-
-          enemy.setTint(0x8b5cf6);
-          sceneRef.time.delayedCall(150, () => {
-            if (enemy.active) enemy.clearTint();
-          });
-
-          if (enemy.health <= 0) {
-            const explosion = sceneRef.add.circle(
-              enemy.x,
-              enemy.y,
-              35,
-              0xff6b6b
-            );
-            sceneRef.tweens.add({
-              targets: explosion,
-              scaleX: 4,
-              scaleY: 4,
-              alpha: 0,
-              duration: 500,
-              onComplete: () => explosion.destroy(),
-            });
-
-            enemy.destroy();
-          }
+      spiritStones.children.iterate((stone) => {
+        if (stone.active && !stone.isFollowing) {
+          stone.rotation += 0.02;
+          stone.y += Math.sin(sceneRef.time.now * 0.003 + stone.x * 0.01) * 0.2;
         }
       });
 
-      sceneRef.time.delayedCall(gameState.attackCooldown, () => {
-        gameState.canAttack = true;
-      });
+      if (altar.active)
+        altar.setTint(
+          Phaser.Display.Color.HSVToRGB(sceneRef.time.now * 0.001, 0.8, 1).color
+        );
     }
 
-    function buildRaft() {
-      const distanceToZone = Phaser.Math.Distance.Between(
-        player.x,
-        player.y,
-        gameState.buildingZone.x,
-        gameState.buildingZone.y
-      );
+    function interactWithStatue(player, statue) {
+      if (
+        !gameState.interactCooldown &&
+        (Phaser.Input.Keyboard.JustDown(interactKey) ||
+          mobileControlsRef.current.interact)
+      ) {
+        gameState.interactCooldown = true;
+        sceneRef.time.delayedCall(
+          500,
+          () => (gameState.interactCooldown = false)
+        );
 
-      if (distanceToZone > gameState.buildingZone.radius) {
+        const explorer = statue.explorerData;
+        setUiState((prev) => ({
+          ...prev,
+          showDialogue: true,
+          dialogueText: `I am ${explorer.name}, a ${explorer.skill}.`,
+          currentSpirit: explorer,
+        }));
+
+        const stone = spiritStones.create(
+          statue.x,
+          statue.y - 30,
+          "spirit_stone"
+        );
+        stone.body.setSize(20, 20).setOffset(2, 2);
+        stone.explorerData = explorer;
+
+        sceneRef.tweens.add({
+          targets: stone,
+          y: stone.y - 10,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+        });
+        statue.destroy();
+        gameState.spiritsCollected++;
+        updateReactUI();
         showMessage(
-          "You must be in the building zone to build the raft!",
+          `✨ Collected spirit of ${explorer.name} (${explorer.skill})`,
           2000
         );
-        return;
       }
+    }
 
-      if (!gameState.queryComplete) {
-        showQueryInput();
-        return;
-      }
+    function pickupSpirit(player, stone) {
+      if (heldSpirit) return; // Already holding one
+      heldSpirit = stone;
+      stone.isFollowing = true; // Set flag for the update loop
+      // Stop the floating tween
+      sceneRef.tweens.killTweensOf(stone);
+    }
 
-      if (gameState.raftMaterials < gameState.totalMaterials) {
+    function placeInUrn(stone, urn) {
+      if (heldSpirit !== stone) return; // Only place the spirit we are holding
+
+      if (stone.explorerData && urn.skillType === stone.explorerData.skill) {
+        gameState.urnCounts[urn.skillType]++;
+        gameState.spiritsGrouped++;
+        stone.destroy();
+        heldSpirit = null; // No longer holding a spirit
+        sceneRef.tweens.add({
+          targets: urn,
+          scaleX: 1.2,
+          scaleY: 1.2,
+          duration: 200,
+          yoyo: true,
+        });
+        updateReactUI();
         showMessage(
-          `You need ${
-            gameState.totalMaterials - gameState.raftMaterials
-          } more materials!`,
-          2000
-        );
-        return;
-      }
-
-      if (gameState.explorersFound < 3) {
-        showMessage(
-          `You need ${
-            3 - gameState.explorersFound
-          } more artifact holders to help!`,
-          2000
-        );
-        return;
-      }
-
-      gameState.canBuild = false;
-
-      // Build raft progress
-      gameState.raftProgress += 50;
-
-      if (gameState.raftProgress >= 100) {
-        showLevelComplete();
-      } else {
-        showMessage(
-          `Raft ${gameState.raftProgress}% complete! Keep building!`,
+          `✅ ${stone.explorerData.skill} spirit placed correctly!`,
           1500
         );
 
-        sceneRef.time.delayedCall(800, () => {
-          gameState.canBuild = true;
-        });
-      }
-
-      updateReactUI();
-    }
-
-    function findExplorer(player, explorer) {
-      if (explorer.found) return;
-
-      explorer.found = true;
-
-      if (explorer.hasArtifact) {
-        // Correct explorer (has artifact)
-        gameState.explorersFound++;
-
-        explorer.setTint(0x00ff00);
-        if (explorer.nameText) explorer.nameText.setColor("#00ff00");
-
-        // Success effect
-        const successEffect = sceneRef.add.circle(
-          explorer.x,
-          explorer.y,
-          50,
-          0x00ff00,
-          0.6
-        );
-        sceneRef.tweens.add({
-          targets: successEffect,
-          scaleX: 2.5,
-          scaleY: 2.5,
-          alpha: 0,
-          duration: 600,
-          onComplete: () => successEffect.destroy(),
-        });
-
-        showMessage(
-          `${explorer.explorerData.name} will help build the raft!`,
-          2000
-        );
-
-        sceneRef.time.delayedCall(1500, () => {
-          explorer.destroy();
-          if (explorer.nameText) explorer.nameText.destroy();
-        });
+        if (gameState.spiritsGrouped === jungle_explorers.length) {
+          gameState.gamePhase = "query";
+          showMessage("🏛️ All spirits grouped! Approach the altar!", 3000);
+        }
       } else {
-        // Wrong explorer (no artifact)
-        gameState.health -= 10;
-
-        explorer.setTint(0xff0000);
-        player.setTint(0xff0000);
-        sceneRef.time.delayedCall(200, () => {
-          if (player.active) player.clearTint();
-        });
-
         showMessage(
-          `${explorer.explorerData.name} cannot help - no artifact!`,
+          `❌ ${stone.explorerData.name} doesn't belong in the ${urn.skillType} urn!`,
           2000
         );
       }
-
-      updateReactUI();
     }
 
-    function collectMaterial(player, material) {
-      gameState.raftMaterials++;
+    function interactWithAltar(player, altar) {
+      if (
+        gameState.gamePhase === "query" &&
+        !gameState.interactCooldown &&
+        (Phaser.Input.Keyboard.JustDown(interactKey) ||
+          mobileControlsRef.current.interact)
+      ) {
+        gameState.interactCooldown = true;
+        sceneRef.time.delayedCall(
+          1000,
+          () => (gameState.interactCooldown = false)
+        );
 
-      // Visual collection effect
-      const collectEffect = sceneRef.add.circle(
-        material.x,
-        material.y,
-        40,
-        0xffd700,
-        0.8
-      );
-      sceneRef.tweens.add({
-        targets: collectEffect,
-        scaleX: 2.5,
-        scaleY: 2.5,
-        alpha: 0,
-        duration: 400,
-        onComplete: () => collectEffect.destroy(),
-      });
+        const isCorrect = Object.keys(expectedResult).every(
+          (skill) => gameState.urnCounts[skill] === expectedResult[skill]
+        );
 
-      material.destroy();
-      updateReactUI();
-    }
-
-    function showQueryInput() {
-      setUiState((prev) => ({ ...prev, showQueryInput: true }));
-    }
-
-    function completeQuery() {
-      gameState.queryComplete = true;
-      showMessage(
-        "Query executed! You can now build the raft with artifact holders!",
-        3000
-      );
-      updateReactUI();
-    }
-
-    function showMessage(text, duration) {
-      const messageText = sceneRef.add
-        .text(400, 80, text, {
-          fontSize: "16px",
-          fontFamily: "Courier New",
-          color: "#ffff00",
-          backgroundColor: "#000000",
-          align: "center",
-          padding: { x: 12, y: 6 },
-        })
-        .setOrigin(0.5)
-        .setDepth(1000);
-
-      sceneRef.time.delayedCall(duration, () => messageText.destroy());
-    }
-
-    function showLevelComplete() {
-      gameState.isLevelComplete = true;
-
-      // Clear timer when level is complete
-      if (timerEvent) {
-        timerEvent.destroy();
-        timerEvent = null;
+        if (isCorrect) {
+          showMessage("🎉 Perfect grouping! Now write your query!", 2000);
+          setUiState((prev) => ({ ...prev, showQueryInput: true }));
+        } else {
+          showMessage(
+            "❌ The spirits are misaligned. Check your grouping!",
+            3000
+          );
+          altar.setTint(0xff0000);
+          sceneRef.time.delayedCall(1000, () => altar.clearTint());
+        }
       }
+    }
 
+    function completeLevel() {
+      gameState.isLevelComplete = true;
       updateReactUI();
-
-      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
-      overlay.setDepth(1000);
-
-      const completionText = sceneRef.add
-        .text(400, 120, "🚤 Raft Built Successfully! 🚤", {
+      const overlay = sceneRef.add
+        .rectangle(400, 250, 800, 500, 0x000000, 0.8)
+        .setDepth(1000)
+        .setInteractive();
+      sceneRef.add
+        .text(400, 120, "🏛️ Temple Master! Quest Complete! 🏛️", {
           fontSize: "28px",
-          fontFamily: "Courier New",
-          color: "#00ff00",
+          fontFamily: "Arial",
+          color: "#22c55e",
           fontStyle: "bold",
         })
         .setOrigin(0.5)
         .setDepth(1001);
-
-      const queryText2 = sceneRef.add
+      sceneRef.add
         .text(
           400,
-          180,
-          "SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;",
-          {
-            fontSize: "14px",
-            fontFamily: "Courier New",
-            color: "#00ffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5)
-        .setDepth(1001);
-
-      const statsText = sceneRef.add
-        .text(
-          400,
-          250,
-          `🔨 Materials: ${gameState.raftMaterials}/${gameState.totalMaterials}\n👥 Helpers: ${gameState.explorersFound}/3`,
+          200,
+          `🔮 Spirits Collected: ${gameState.spiritsCollected}/${jungle_explorers.length}\n📊 GROUP BY Skills Mastered!\n⚡ Query Execution: Perfect!`,
           {
             fontSize: "16px",
-            fontFamily: "Courier New",
-            color: "#ffff00",
+            fontFamily: "Arial",
+            color: "#fbbf24",
             align: "center",
           }
         )
         .setOrigin(0.5)
         .setDepth(1001);
-
       const instructionText = sceneRef.add
-        .text(400, 350, "You escaped! Click to return to map", {
-          fontSize: "32px",
-          fontFamily: "Courier New",
+        .text(400, 420, "Click to continue your quest", {
+          fontSize: "24px",
+          fontFamily: "Arial",
           color: "#00ff00",
         })
         .setOrigin(0.5)
         .setDepth(1001);
 
-      overlay.setInteractive();
       overlay.on("pointerdown", () => {
-        onComplete();
+        onCompleteRef.current();
       });
 
       sceneRef.tweens.add({
@@ -1208,83 +614,30 @@ const Level4 = ({ onComplete }) => {
       });
     }
 
-    function hitByEnemy(player, enemy) {
-      if (enemy.lastPlayerHit && sceneRef.time.now - enemy.lastPlayerHit < 2000)
-        return;
-
-      enemy.lastPlayerHit = sceneRef.time.now;
-      gameState.health -= enemy.attackDamage;
-
-      player.setTint(0xff0000);
-      sceneRef.time.delayedCall(300, () => player.clearTint());
-
-      const angle = Phaser.Math.Angle.Between(
-        enemy.x,
-        enemy.y,
-        player.x,
-        player.y
-      );
-      player.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
-
-      if (gameState.health <= 0 && !gameState.gameOverTriggered) {
-        gameState.gameOverTriggered = true;
-        gameOver("You were defeated!");
-      }
-      updateReactUI();
-    }
-
-    function gameOver(message) {
-      gameState.gameOverTriggered = true;
-
-      // Clear timer
-      if (timerEvent) {
-        timerEvent.destroy();
-        timerEvent = null;
-      }
-
-      const gameOverText = sceneRef.add
-        .text(400, 250, message, {
-          fontSize: "22px",
-          fontFamily: "Courier New",
-          color: "#ff4444",
-          backgroundColor: "#000000",
-          align: "center",
-          padding: { x: 10, y: 6 },
-        })
-        .setOrigin(0.5);
-
-      sceneRef.cameras.main.flash(500, 255, 0, 0);
-
-      // Reset UI state
-      setUiState((prev) => ({
-        ...prev,
-        showQueryInput: false,
-        allExplorersFound: false,
-        timeRemaining: 180, // Reset to 3 minutes
-      }));
-      setSqlQuery("");
-      setQueryError("");
-      setQuerySuccess(false);
-
-      sceneRef.time.delayedCall(3000, () => {
-        gameOverText.destroy();
-        createLevel.call(sceneRef);
-        updateReactUI();
-      });
-    }
-
     function updateReactUI() {
       setUiState((prev) => ({
         ...prev,
-        health: Math.max(0, gameState.health),
-        isQueryComplete: gameState.isLevelComplete,
-        explorersFound: gameState.explorersFound,
-        totalExplorers: 3,
-        raftProgress: gameState.raftProgress,
-        raftMaterials: gameState.raftMaterials,
-        stormIntensity: Math.round(gameState.stormIntensity * 100),
-        timeRemaining: Math.max(0, Math.ceil(gameState.timeRemaining / 1000)), // Convert to seconds
+        health: gameState.health,
+        spiritsCollected: gameState.spiritsCollected,
+        spiritsGrouped: gameState.spiritsGrouped,
+        gamePhase: gameState.gamePhase,
+        urnCounts: { ...gameState.urnCounts },
       }));
+    }
+
+    function showMessage(text, duration) {
+      const messageText = sceneRef.add
+        .text(400, 50, text, {
+          fontSize: "14px",
+          fontFamily: "Arial",
+          color: "#ffffff",
+          backgroundColor: "#000000",
+          align: "center",
+          padding: { x: 12, y: 6 },
+        })
+        .setOrigin(0.5)
+        .setDepth(1000);
+      sceneRef.time.delayedCall(duration, () => messageText.destroy());
     }
 
     const config = {
@@ -1292,11 +645,15 @@ const Level4 = ({ onComplete }) => {
       width: 800,
       height: 500,
       parent: gameContainerRef.current,
-      physics: { default: "arcade", arcade: { gravity: { y: 0 } } },
+      physics: {
+        default: "arcade",
+        arcade: { gravity: { y: 0 }, debug: false },
+      },
       scene: { preload, create, update },
       scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
+        mode: Phaser.Scale.NONE,
+        width: 800,
+        height: 500,
       },
     };
 
@@ -1305,104 +662,229 @@ const Level4 = ({ onComplete }) => {
     return () => {
       gameInstance.current?.destroy(true);
     };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+  }, []); // <-- Dependency array is now empty for stability
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Display the game elements as reference */}
-      <div className="flex  items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
+      {/* Game Header */}
+      <div className="flex items-center flex-wrap justify-center gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-            <span className="text-xs text-yellow-300">🧙</span>
-          </div>
-          <span>Your Wizard</span>
+          <GiTempleGate size={20} color="#6d28d9" />
+          <span>Temple Explorer</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiTreasureMap size={20} color="#00ff00" />
-          <span>Artifact Holders</span>
+          <GiCrystalBall size={20} color="#22d3ee" />
+          <span>Spirit Collector</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiWoodBeam size={20} color="#8b4513" />
-          <span>Materials</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <GiSailboat size={20} color="#87ceeb" />
-          <span>Building Zone</span>
+          <GiMagicSwirl size={20} color="#f59e0b" />
+          <span>GROUP BY Master</span>
         </div>
       </div>
 
-      {/* Responsive game container */}
+      {/* Game Container */}
       <div className="w-full max-w-4xl">
         <div
           ref={gameContainerRef}
           className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
-          style={{ maxWidth: "800px" }}
+          style={{ background: "linear-gradient(45deg, #1f2937, #374151)" }}
         />
       </div>
 
-      <div className="w-full max-w-3xl grid grid-cols-2 gap-4 pixel-font text-sm">
-        <div>
-          Health: <span className="text-rose-400">{uiState.health}/100</span>
+      {/* Game Stats and other UI elements... */}
+      {/* Game Stats */}
+      <div className="w-full max-w-3xl grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div className="bg-slate-800/50 p-2 rounded border border-slate-600 text-center">
+          <div className="text-purple-400 font-bold">Spirits</div>
+          <div>
+            {uiState.spiritsCollected}/{uiState.totalSpirits}
+          </div>
         </div>
-        <div>
-          Time:{" "}
-          <span
-            className={`${
-              uiState.timeRemaining <= 30
-                ? "text-red-400 animate-pulse"
-                : "text-orange-400"
-            }`}
-          >
-            {formatTime(uiState.timeRemaining * 1000)}
-          </span>
+        <div className="bg-slate-800/50 p-2 rounded border border-slate-600 text-center">
+          <div className="text-cyan-400 font-bold">Grouped</div>
+          <div>
+            {uiState.spiritsGrouped}/{uiState.totalSpirits}
+          </div>
         </div>
-        <div>
-          Artifact Holders:{" "}
-          <span className="text-green-400">
-            {uiState.explorersFound}/{uiState.totalExplorers}
-          </span>
+        <div className="bg-slate-800/50 p-2 rounded border border-slate-600 text-center">
+          <div className="text-yellow-400 font-bold">Phase</div>
+          <div className="capitalize">{uiState.gamePhase}</div>
         </div>
-        <div>
-          Materials:{" "}
-          <span className="text-blue-400">
-            {uiState.raftMaterials}/{uiState.totalMaterials}
-          </span>
+        <div className="bg-slate-800/50 p-2 rounded border border-slate-600 text-center">
+          <div className="text-green-400 font-bold">Health</div>
+          <div>{uiState.health}/100</div>
         </div>
       </div>
+
+      {/* Urn Counts Display */}
+      <div className="w-full max-w-3xl bg-slate-800/50 p-4 rounded-lg border border-slate-600">
+        <div className="text-center text-slate-300 mb-3 font-bold">
+          🏺 Spirit Grouping Progress
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(uiState.urnCounts).map(([skill, count]) => (
+            <div key={skill} className="text-center">
+              <div
+                className={`p-2 rounded-lg border-2 ${
+                  skill === "Healer"
+                    ? "border-green-500 bg-green-900/30"
+                    : skill === "Hunter"
+                    ? "border-yellow-500 bg-yellow-900/30"
+                    : skill === "Magician"
+                    ? "border-purple-500 bg-purple-900/30"
+                    : "border-cyan-500 bg-cyan-900/30"
+                }`}
+              >
+                <div className="text-xs text-slate-400">{skill}</div>
+                <div className="text-lg font-bold">{count}</div>
+                <div className="text-xs text-slate-500">spirits</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Mobile Controls */}
+      <div className="block md:hidden w-full max-w-sm">
+        <div className="text-xs text-center text-yellow-300 mb-2">
+          📱 Move with D-pad • E to interact with statues & altar
+        </div>
+        <div className="flex justify-between items-center">
+          {/* D-Pad */}
+          <div className="relative">
+            <div className="grid grid-cols-3 gap-1 w-24 h-24">
+              <div></div>
+              <button
+                onTouchStart={() => handleMobileControlStart("up")}
+                onTouchEnd={() => handleMobileControlEnd("up")}
+                onMouseDown={() => handleMobileControlStart("up")}
+                onMouseUp={() => handleMobileControlEnd("up")}
+                className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center"
+              >
+                ↑
+              </button>
+              <div></div>
+              <button
+                onTouchStart={() => handleMobileControlStart("left")}
+                onTouchEnd={() => handleMobileControlEnd("left")}
+                onMouseDown={() => handleMobileControlStart("left")}
+                onMouseUp={() => handleMobileControlEnd("left")}
+                className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center"
+              >
+                ←
+              </button>
+              <div className="bg-slate-800 rounded"></div>
+              <button
+                onTouchStart={() => handleMobileControlStart("right")}
+                onTouchEnd={() => handleMobileControlEnd("right")}
+                onMouseDown={() => handleMobileControlStart("right")}
+                onMouseUp={() => handleMobileControlEnd("right")}
+                className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center"
+              >
+                →
+              </button>
+              <div></div>
+              <button
+                onTouchStart={() => handleMobileControlStart("down")}
+                onTouchEnd={() => handleMobileControlEnd("down")}
+                onMouseDown={() => handleMobileControlStart("down")}
+                onMouseUp={() => handleMobileControlEnd("down")}
+                className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center"
+              >
+                ↓
+              </button>
+              <div></div>
+            </div>
+          </div>
+          <button
+            onTouchStart={handleInteract}
+            onMouseDown={handleInteract}
+            className="w-16 h-16 bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full text-white font-bold text-lg flex items-center justify-center"
+          >
+            E
+          </button>
+        </div>
+      </div>
+
+      {/* Hint Button and Modals... */}
+      <button
+        onClick={showHint}
+        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-colors"
+      >
+        💡 Show Hint
+      </button>
+
+      {uiState.showDialogue && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="text-2xl mb-4">👻</div>
+              <div className="text-lg text-cyan-400 mb-4 font-bold">
+                Spirit Communication
+              </div>
+              <div className="text-slate-300 mb-6 text-lg">
+                "{uiState.dialogueText}"
+              </div>
+              <button
+                onClick={closeDialogue}
+                className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+              >
+                Collect Spirit Stone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SQL Query Input Modal */}
       {uiState.showQueryInput && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-md w-full mx-4">
-            <h3 className="pixel-font text-xl text-yellow-400 mb-4 text-center">
-              🚤 Build the Raft 🚤
-            </h3>
-            <p className="text-slate-300 mb-4 text-sm text-center">
-              Write the SQL query to find explorers who can help build the raft:
-            </p>
-
-            <textarea
-              value={sqlQuery}
-              onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="Enter your SQL query here..."
-              className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
-              rows={3}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-              }}
-              style={{ outline: "none" }}
-            />
-
-            {queryError && (
-              <div className="mt-2 p-2 bg-red-900/50 border border-red-600 rounded text-red-300 text-sm">
-                {queryError}
+            <div className="text-center">
+              <div className="text-2xl mb-4">📝</div>
+              <div className="text-lg text-cyan-400 mb-4 font-bold">
+                Write Your SQL Query
               </div>
-            )}
-
-            <div className="flex gap-2 mt-4">
+              <div className="text-slate-300 mb-4 text-sm">
+                <p className="mb-2">
+                  Write a SQL query to find how many explorers have each skill.
+                </p>
+                <p className="text-yellow-400 mb-2">💡 Hint: You need to:</p>
+                <ol className="text-left list-decimal pl-6 space-y-1 text-yellow-400/80">
+                  <li>SELECT the skill column and COUNT the explorers</li>
+                  <li>FROM the jungle_explorers table</li>
+                  <li>GROUP BY skill to count each skill type</li>
+                </ol>
+              </div>
+              <textarea
+                value={uiState.userQuery}
+                onChange={(e) =>
+                  setUiState((prev) => ({ ...prev, userQuery: e.target.value }))
+                }
+                onKeyDown={(e) => {
+                  // Prevent the game from handling these keyboard events
+                  e.stopPropagation();
+                }}
+                className="w-full h-32 p-3 bg-slate-900 text-white rounded-lg mb-4 font-mono text-sm"
+                placeholder={`Example query structure:
+SELECT column_name, COUNT(*)
+FROM table_name
+GROUP BY column_name;`}
+                spellCheck="false"
+                autoCapitalize="none"
+                autoComplete="off"
+                autoCorrect="off"
+              />
+              {uiState.showQueryResult && (
+                <div className="mb-4 text-sm">
+                  <pre className="text-left bg-slate-900 p-3 rounded whitespace-pre-wrap">
+                    {uiState.queryResult}
+                  </pre>
+                </div>
+              )}
               <button
-                onClick={handleQuerySubmit}
-                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold transition-colors"
+                onClick={executeQuery}
+                className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold transition-colors"
               >
                 Execute Query
               </button>
@@ -1410,78 +892,6 @@ const Level4 = ({ onComplete }) => {
           </div>
         </div>
       )}
-      {/* Mobile Controls - Custom for Level4 with Build button */}
-      <div className="block md:hidden">
-        <div className="flex flex-col items-center gap-4">
-          {/* Use the MobileControls component but add extra build functionality */}
-          <MobileControls
-            mobileControlsRef={mobileControlsRef}
-            setMobileControls={setMobileControls}
-          />
-
-          {/* Extra Build Button for Level4 - positioned separately */}
-          <button
-            className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full  text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              mobileControlsRef.current.build = true;
-              setMobileControls((prev) => ({ ...prev, build: true }));
-              setTimeout(() => {
-                mobileControlsRef.current.build = false;
-                setMobileControls((prev) => ({ ...prev, build: false }));
-              }, 50);
-            }}
-            style={{ touchAction: "none" }}
-          >
-            BUILD
-          </button>
-        </div>
-      </div>
-
-      <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">
-          SQL Query Challenge:
-        </div>
-        <div className="font-mono text-lg">
-          {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Query Completed Successfully!
-            </span>
-          ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-              Find explorers with artifacts to help build the raft
-            </span>
-          )}
-        </div>
-        <div className="text-bold text-slate-500 mt-2">
-          Collect all artifacts, and list from jungle_explorers where
-          artifact_found TRUE
-        </div>
-      </div>
-
-      {/* Use the reusable MobileControls component with custom buttons */}
-
-      {/* Desktop Controls */}
-      <div className="w-full max-w-3xl p-3 hidden  md:block bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="hidden md:block">
-          <div className="pixel-font text-slate-400 text-sm mb-2 text-center">
-            <strong>CONTROLS:</strong>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE : Attack</div>
-            <div>B : Build Raft</div>
-          </div>
-        </div>
-      </div>
-
-      <style jsx>{`
-        .pixel-font {
-          font-family: "Courier New", monospace;
-          text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
-        }
-      `}</style>
     </div>
   );
 };
