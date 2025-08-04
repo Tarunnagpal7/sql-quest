@@ -14,8 +14,7 @@ export const levels = [
     id: 2,
     title: "🌿 Jungle River Adventure",
     query: "SELECT * FROM jungle_explorers WHERE courage_level > 80;",
-    riddle:
-      " Find all explorers whose courage level is greater than 80.",
+    riddle: " Find all explorers whose courage level is greater than 80.",
     schema: `CREATE TABLE jungle_explorers (
   id INT,
   name VARCHAR,
@@ -26,39 +25,36 @@ export const levels = [
     completed: false,
     type: "basic",
   },
-  
+
   {
-  id: 3,
-  title: "Archery Castle Challenge",
-  query: "SELECT * FROM artifacts WHERE found_by IS NOT NULL AND category IN ('weapons','raft');",
-  riddle: " Use your crosshair to target the correct castle guardian. Only ONE castle contains artifacts with categories 'weapons' and 'raft'.",
-  schema: `CREATE TABLE artifacts (
+    id: 3,
+    title: "Archery Castle Challenge",
+    query:
+      "SELECT * FROM artifacts WHERE found_by IS NOT NULL AND category IN ('weapons','raft');",
+    riddle:
+      " Use your crosshair to target the correct castle guardian. Only ONE castle contains artifacts with categories 'weapons' and 'raft'.",
+    schema: `CREATE TABLE artifacts (
   id INT,
   name VARCHAR(255),
   found_by INT,
   category VARCHAR(255)
 );`,
-  unlocked: false,
-  completed: false,
-  type: "intermediate",
-}
-,
+    unlocked: false,
+    completed: false,
+    type: "intermediate",
+  },
   {
     id: 4,
     position: {
       desktop: { x: 70, y: 36 },
       mobile: { x: 85, y: 30 },
     },
-    title: "Build the Raft",
-    query: "SELECT * FROM jungle_explorers WHERE artifact_found = TRUE;",
+    title: "Group the Spirits",
+    query: "SELECT skill, COUNT(*) FROM jungle_explorers GROUP BY skill;",
     riddle:
-      "You must build a raft. Only those who have found artifacts can assist. Find them.",
-    schema: `CREATE TABLE jungle_explorers (
-  id INT,
-  name VARCHAR,
-  courage_level INT,
-  artifact_found BOOLEAN
-);`,
+      "Ancient spirits are lost within the temple. Awaken them from their statues and group them by their unique skill—Healer, Hunter, Magician, or Scout—to restore order.",
+    schema:
+      "CREATE TABLE jungle_explorers (\n  id INT,\n  name VARCHAR,\n  skill VARCHAR\n);",
     unlocked: false,
     completed: false,
     type: "intermediate",
@@ -217,4 +213,3 @@ CREATE TABLE potions (
     type: "legendary",
   },
 ];
-
