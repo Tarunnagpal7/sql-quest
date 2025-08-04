@@ -1,28 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Phaser from 'phaser';
-import { levels } from '../../assets/data/levels';
-import { AiFillBug } from "react-icons/ai";
-import { GiDragonHead, GiTreasureMap } from "react-icons/gi";
 import MobileControls from '../MobileControls'; // Import the component
 
 const Level2 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  const shootFunctionRef = useRef(null);
   const mobileControlsRef = useRef({
     up: false,
     down: false,
     left: false,
     right: false,
     attack: false,
+    interact: false // Added interact control for shooting
   });
   
   const [uiState, setUiState] = useState({
     health: 100,
+    collectedParts: [],
     isQueryComplete: false,
-    explorersCaptured: 0,
-    totalExplorers: 0,
-    dragonsDefeated: 0,
-    courageThreshold: 80
+    currentQuery: "SELECT * FROM jungle_explorers ___ courage_level ___ 80;"
+    // Removed xp from state
   });
 
   // Mobile controls state (for UI updates only)
@@ -31,26 +29,75 @@ const Level2 = ({ onComplete }) => {
     down: false,
     left: false,
     right: false,
-    attack: false
+    attack: false,
+    interact: false
   });
+
+  // Memoized mobile control handlers
+  const handleMobileControlStart = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = true;
+    setMobileControls((prev) => {
+      if (prev[direction]) return prev;
+      return { ...prev, [direction]: true };
+    });
+  }, []);
+
+  const handleMobileControlEnd = useCallback((direction) => {
+    // Update both ref and state
+    mobileControlsRef.current[direction] = false;
+    setMobileControls((prev) => {
+      if (!prev[direction]) return prev;
+      return { ...prev, [direction]: false };
+    });
+  }, []);
+
+  const handleAttack = useCallback(() => {
+    // Update both ref and state for shooting
+    mobileControlsRef.current.attack = true;
+    setMobileControls((prev) => ({ ...prev, attack: true }));
+    if (shootFunctionRef.current) shootFunctionRef.current();
+    setTimeout(() => {
+      mobileControlsRef.current.attack = false;
+      setMobileControls((prev) => ({ ...prev, attack: false }));
+    }, 50);
+  }, []);
+
+  const handleInteract = useCallback(() => {
+    // Alternative shooting method
+    mobileControlsRef.current.interact = true;
+    setMobileControls((prev) => ({ ...prev, interact: true }));
+    if (shootFunctionRef.current) shootFunctionRef.current();
+    setTimeout(() => {
+      mobileControlsRef.current.interact = false;
+      setMobileControls((prev) => ({ ...prev, interact: false }));
+    }, 50);
+  }, []);
 
   useEffect(() => {
     if (!gameContainerRef.current) return;
 
-    let player, dragons, explorers, courageOrbs, walls, treasureChests;
-    let cursors, spaceKey;
+    let player, floatingKeywords, ground;
+    let cursors, wasdKeys, spaceKey;
     
     const gameState = {
       health: 100,
       maxHealth: 100,
+      mistakes: 0,
       isLevelComplete: false,
-      canAttack: true,
-      attackCooldown: 400,
-      explorersCaptured: 0,
-      dragonsDefeated: 0,
-      totalExplorers: 0,
-      courageThreshold: 80,
-      explorersData: []
+      collectedParts: [],
+      expectedParts: ["WHERE", ">"], // Changed to match the jungle explorers query
+      wrongKeywords: ["=", "FROM", "SELECT", "jungle_explorers", "<", "ORDER", "GROUP", "AND", "OR"], // Updated wrong keywords
+      keywordSpawnDelay: 3000,
+      riverSpeed: 40,
+      canJump: true,
+      spawnEvent: null,
+      platforms: [],
+      projectiles: [],
+      canShoot: true,
+      shootCooldown: 500,
+      fishTextures: ['fish1', 'fish2', 'fish3'],
+      // Removed xp from gameState
     };
     
     let sceneRef;
@@ -58,641 +105,386 @@ const Level2 = ({ onComplete }) => {
     function preload() {
       sceneRef = this;
       
-      // --- Create Wizard Character (same as Level 1) ---
+      this.load.image('fish1', '/fish1.png');
+      this.load.image('fish2', '/fish2.png');
+      this.load.image('fish3', '/fish3.png');
+      
+      // Create wizard character (changed from explorer to wizard)
       const playerGraphics = this.add.graphics();
       
-      // Wizard robe (main body)
-      playerGraphics.fillStyle(0x1e3a8a, 1); // Dark blue robe
-      playerGraphics.fillCircle(16, 25, 14); // Body
-      playerGraphics.fillRect(2, 15, 28, 20); // Robe body
+      // Wizard robe
+      playerGraphics.fillStyle(0x4a148c, 1); // Purple robe
+      playerGraphics.fillCircle(16, 20, 12);
       
-      // Wizard hood
-      playerGraphics.fillStyle(0x1e40af, 1);
-      playerGraphics.fillCircle(16, 12, 10); // Hood
+      // Wizard hat
+      playerGraphics.fillStyle(0x1a237e, 1); // Dark blue hat
+      playerGraphics.fillRect(8, 8, 16, 16);
+      playerGraphics.fillCircle(16, 8, 8);
       
-      // Hood shadow/depth
-      playerGraphics.fillStyle(0x0f172a, 1);
-      playerGraphics.fillEllipse(16, 14, 18, 8);
+      // Wizard face
+      playerGraphics.fillStyle(0xfdbcb4, 1);
+      playerGraphics.fillCircle(16, 18, 8);
       
-      // Face
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillCircle(16, 16, 6);
-      
-      // Eyes with glow
-      playerGraphics.fillStyle(0x60a5fa, 0.7);
-      playerGraphics.fillCircle(13, 15, 2.5);
-      playerGraphics.fillCircle(19, 15, 2.5);
+      // Eyes
       playerGraphics.fillStyle(0x000000, 1);
-      playerGraphics.fillCircle(13, 15, 1.5);
-      playerGraphics.fillCircle(19, 15, 1.5);
+      playerGraphics.fillCircle(13, 17, 2);
+      playerGraphics.fillCircle(19, 17, 2);
       
-      // Robe details
-      playerGraphics.fillStyle(0xfbbf24, 1);
-      playerGraphics.fillRect(2, 20, 28, 2);
-      playerGraphics.fillRect(14, 15, 4, 25);
+      // Wizard beard
+      playerGraphics.fillStyle(0xffffff, 1);
+      playerGraphics.fillEllipse(16, 24, 8, 6);
       
-      // Magic staff
-      playerGraphics.lineStyle(3, 0x92400e);
-      playerGraphics.beginPath();
-      playerGraphics.moveTo(24, 35);
-      playerGraphics.lineTo(26, 18);
-      playerGraphics.strokePath();
-      playerGraphics.fillStyle(0x8b5cf6, 0.8);
-      playerGraphics.fillCircle(26, 16, 4);
-      
-      // Robe bottom
-      playerGraphics.fillStyle(0x1e3a8a, 1);
-      playerGraphics.beginPath();
-      playerGraphics.moveTo(5, 35);
-      playerGraphics.lineTo(8, 38);
-      playerGraphics.lineTo(12, 35);
-      playerGraphics.lineTo(16, 38);
-      playerGraphics.lineTo(20, 35);
-      playerGraphics.lineTo(24, 38);
-      playerGraphics.lineTo(27, 35);
-      playerGraphics.lineTo(27, 25);
-      playerGraphics.lineTo(5, 25);
-      playerGraphics.closePath();
-      playerGraphics.fillPath();
+      // Wizard staff (optional detail)
+      playerGraphics.fillStyle(0x8b4513, 1);
+      playerGraphics.fillRect(26, 10, 2, 20);
+      playerGraphics.fillStyle(0xffd700, 1);
+      playerGraphics.fillCircle(27, 8, 3);
       
       playerGraphics.generateTexture('player', 32, 40);
       playerGraphics.destroy();
       
-      // --- Create Dragon Enemies ---
-      const dragonColors = [0xff2d2d, 0x2dff2d, 0x2d2dff, 0xffff2d];
-      dragonColors.forEach((color, index) => {
-        const dragonGraphics = this.add.graphics();
-        
-        // Dragon body
-        dragonGraphics.fillStyle(color, 1);
-        dragonGraphics.fillEllipse(20, 25, 24, 16);
-        
-        // Dragon head
-        dragonGraphics.fillCircle(32, 20, 10);
-        
-        // Dragon wings
-        dragonGraphics.fillStyle(color, 0.7);
-        dragonGraphics.fillEllipse(12, 18, 16, 12);
-        dragonGraphics.fillEllipse(28, 18, 16, 12);
-        
-        // Dragon eyes
-        dragonGraphics.fillStyle(0xff0000, 1);
-        dragonGraphics.fillCircle(29, 18, 2);
-        dragonGraphics.fillCircle(35, 18, 2);
-        
-        // Dragon spikes
-        dragonGraphics.fillStyle(0x444444, 1);
-        for (let i = 0; i < 3; i++) {
-          const x = 15 + (i * 8);
-          dragonGraphics.fillTriangle(x, 15, x + 3, 10, x + 6, 15);
+      // Create jungle river background
+      const waterGraphics = this.add.graphics();
+      for (let i = 0; i < 250; i++) {
+        const color = Phaser.Display.Color.Interpolate.ColorWithColor(
+            Phaser.Display.Color.ValueToColor(0x2e7d32), // Jungle green
+            Phaser.Display.Color.ValueToColor(0x1b5e20), // Dark green
+            250, i
+        );
+        waterGraphics.fillStyle(color.color, 1);
+        waterGraphics.fillRect(0, i, 800, 1);
+      }
+      
+      // Add jungle river ripples
+      waterGraphics.lineStyle(2, 0x4caf50, 0.3);
+      for (let i = 0; i < 10; i++) {
+        const y = 20 + Math.random() * 80;
+        const startX = -100 + Math.random() * 200;
+        const amplitude = 5 + Math.random() * 5;
+        const period = 200 + Math.random() * 100;
+        waterGraphics.beginPath();
+        waterGraphics.moveTo(startX, y);
+        for (let x = startX; x < 800; x += 10) {
+          waterGraphics.lineTo(x, y + Math.sin(x / period) * amplitude);
         }
-        
-        dragonGraphics.generateTexture(`dragon${index}`, 45, 35);
-        dragonGraphics.destroy();
-      });
+        waterGraphics.strokePath();
+      }
+      waterGraphics.generateTexture('water', 800, 250);
+      waterGraphics.destroy();
       
-      // --- Create Explorer Characters ---
-      const explorerTypes = ['brave', 'coward', 'normal'];
-      const explorerColors = [0x00ff00, 0xff6666, 0xffaa00]; // Green for brave, red for coward, orange for normal
+      // Create jungle ground
+      const groundGraphics = this.add.graphics();
+      groundGraphics.fillStyle(0x3e2723, 1); // Jungle soil
+      groundGraphics.fillRect(0, 0, 800, 250);
       
-      explorerTypes.forEach((type, index) => {
-        const explorerGraphics = this.add.graphics();
-        const color = explorerColors[index];
-        
-        // Explorer body
-        explorerGraphics.fillStyle(0x8b4513, 1); // Brown clothing
-        explorerGraphics.fillRect(8, 20, 16, 15);
-        
-        // Explorer head
-        explorerGraphics.fillStyle(0xfdbcb4, 1); // Skin tone
-        explorerGraphics.fillCircle(16, 15, 8);
-        
-        // Explorer hair
-        explorerGraphics.fillStyle(0x4a4a4a, 1);
-        explorerGraphics.fillCircle(16, 10, 9);
-        
-        // Explorer eyes
-        explorerGraphics.fillStyle(0x000000, 1);
-        explorerGraphics.fillCircle(13, 14, 1);
-        explorerGraphics.fillCircle(19, 14, 1);
-        
-        // Courage indicator (glowing aura)
-        explorerGraphics.fillStyle(color, 0.4);
-        explorerGraphics.fillCircle(16, 20, 20);
-        
-        // Explorer equipment
-        explorerGraphics.fillStyle(0x666666, 1);
-        explorerGraphics.fillRect(6, 18, 3, 8); // Backpack
-        explorerGraphics.fillRect(22, 22, 8, 2); // Tool
-        
-        explorerGraphics.generateTexture(`explorer_${type}`, 32, 35);
-        explorerGraphics.destroy();
-      });
+      // Add jungle vegetation texture
+      groundGraphics.fillStyle(0x2e7d32, 0.5);
+      for (let i = 0; i < 15; i++) {
+        groundGraphics.fillRect(0, Math.random() * 250, 800, Math.random() * 20 + 5);
+      }
       
-      // --- Create Courage Orbs ---
-      const orbGraphics = this.add.graphics();
-      orbGraphics.fillStyle(0xffd700, 0.8); // Golden orb
-      orbGraphics.fillCircle(15, 15, 12);
-      orbGraphics.fillStyle(0xffff00, 0.6);
-      orbGraphics.fillCircle(15, 15, 8);
-      orbGraphics.fillStyle(0xffffff, 0.8);
-      orbGraphics.fillCircle(15, 15, 4);
-      orbGraphics.generateTexture('courage_orb', 30, 30);
-      orbGraphics.destroy();
+      // Add jungle debris
+      groundGraphics.fillStyle(0x5d4037, 0.7);
+      for (let i = 0; i < 600; i++) {
+        groundGraphics.fillCircle(Math.random() * 800, Math.random() * 250, Math.random() * 2 + 1);
+      }
+      groundGraphics.generateTexture('ground', 800, 250);
+      groundGraphics.destroy();
       
-      // --- Create Treasure Chest ---
-      const chestGraphics = this.add.graphics();
-      chestGraphics.fillStyle(0x8b4513, 1); // Brown chest
-      chestGraphics.fillRect(5, 15, 20, 15);
-      chestGraphics.fillStyle(0xffd700, 1); // Gold details
-      chestGraphics.fillRect(7, 17, 16, 2);
-      chestGraphics.fillRect(13, 20, 4, 8);
-      chestGraphics.fillCircle(15, 24, 2);
-      chestGraphics.generateTexture('treasure_chest', 30, 30);
-      chestGraphics.destroy();
-      
-      // Walls and background
-      this.add.graphics().fillStyle(0x444444).fillRect(0, 0, 40, 40).generateTexture('wall', 40, 40);
-      this.add.graphics().fillStyle(0x2a1810).fillRect(0, 0, 800, 500).generateTexture('background', 800, 500);
+      // Create magic projectile (wizard spell)
+      const projGraphics = this.add.graphics();
+      projGraphics.fillStyle(0x9c27b0, 1); // Purple magic
+      projGraphics.fillCircle(4, 4, 4);
+      projGraphics.fillStyle(0xffd700, 1); // Gold sparkle
+      projGraphics.fillCircle(4, 4, 2);
+      projGraphics.generateTexture('projectile', 8, 8);
+      projGraphics.destroy();
     }
 
     function create() {
-      this.add.image(400, 250, 'background');
+      this.add.image(400, 125, 'water');
+      this.add.image(400, 375, 'ground');
       
-      walls = this.physics.add.staticGroup();
-      dragons = this.physics.add.group();
-      explorers = this.physics.add.group();
-      courageOrbs = this.physics.add.group();
-      treasureChests = this.physics.add.staticGroup();
+      floatingKeywords = this.physics.add.group();
       
-      player = this.physics.add.sprite(100, 250, 'player');
-      player.setCollideWorldBounds(true).body.setSize(20, 25).setOffset(6, 10);
+      player = this.physics.add.sprite(400, 350, 'player');
+      player.setCollideWorldBounds(true);
+      player.setBounce(0.2);
+      player.setGravityY(600);
+      player.body.setSize(20, 25).setOffset(6, 10);
+      
+      const groundCollider = this.physics.add.staticGroup();
+      groundCollider.create(400, 470, null).setSize(800, 60).setVisible(false);
+      this.physics.add.collider(player, groundCollider);
       
       cursors = this.input.keyboard.createCursorKeys();
+      wasdKeys = this.input.keyboard.addKeys('W,S,A,D');
       spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+      this.input.keyboard.on('keydown-X', () => { shootProjectile(); });
       
-      this.physics.add.collider(player, walls);
-      this.physics.add.collider(dragons, walls);
-      this.physics.add.collider(explorers, walls);
-      this.physics.add.collider(dragons, dragons);
+      shootFunctionRef.current = shootProjectile;
       
-      this.physics.add.overlap(player, explorers, rescueExplorer, null, this);
-      this.physics.add.overlap(player, courageOrbs, collectCourageOrb, null, this);
-      this.physics.add.overlap(player, treasureChests, openTreasureChest, null, this);
-      this.physics.add.overlap(player, dragons, hitByDragon, null, this);
-      
-      createLevel.call(this);
+      startKeywordSpawning.call(this);
       updateReactUI();
     }
 
-    function createLevel() {
-      dragons.clear(true, true);
-      explorers.clear(true, true);
-      courageOrbs.clear(true, true);
-      treasureChests.clear(true, true);
-      walls.clear(true, true);
-      
-      gameState.explorersCaptured = 0;
-      gameState.dragonsDefeated = 0;
-      gameState.explorersData = [];
-      
-      // Create maze-like walls
-      const wallPositions = [
-        // Outer walls
-        [80, 80], [160, 80], [240, 80], [320, 80], [480, 80], [560, 80], [640, 80], [720, 80],
-        [80, 420], [160, 420], [240, 420], [320, 420], [480, 420], [560, 420], [640, 420], [720, 420],
-        [80, 160], [80, 240], [80, 340],
-        [720, 160], [720, 240], [720, 340],
-        
-        // Interior maze
-        [200, 160], [200, 240], [200, 320],
-        [400, 120], [400, 200], [400, 280], [400, 360],
-        [600, 160], [600, 240], [600, 320],
-        [320, 200], [480, 200],
-        [160, 300], [560, 300]
-      ];
-      wallPositions.forEach(pos => walls.create(pos[0], pos[1], 'wall'));
-      
-      // Create explorers with different courage levels
-      createExplorers.call(this);
-      
-      // Create dragons guarding different areas
-      createDragons.call(this);
-      
-      // Create courage orbs (power-ups)
-      createCourageOrbs.call(this);
-      
-      // Create treasure chest at the end
-      treasureChests.create(700, 250, 'treasure_chest');
-      
-      player.setPosition(100, 250).setVelocity(0, 0);
-      gameState.totalExplorers = explorers.children.entries.length;
-    }
-    
-    function createExplorers() {
-      const explorerPositions = [
-        { x: 250, y: 200, courage: 90, type: 'brave' },
-        { x: 150, y: 350, courage: 85, type: 'brave' },
-        { x: 450, y: 150, courage: 95, type: 'brave' },
-        { x: 650, y: 200, courage: 88, type: 'brave' },
-        { x: 550, y: 350, courage: 92, type: 'brave' },
-        // Decoy explorers with low courage
-        { x: 180, y: 180, courage: 45, type: 'coward' },
-        { x: 350, y: 250, courage: 60, type: 'normal' },
-        { x: 520, y: 180, courage: 30, type: 'coward' },
-        { x: 380, y: 350, courage: 55, type: 'normal' }
-      ];
-      
-      explorerPositions.forEach(pos => {
-        const explorer = explorers.create(pos.x, pos.y, `explorer_${pos.type}`);
-        explorer.setCollideWorldBounds(true).body.setSize(25, 30).setOffset(3, 2);
-        explorer.courage = pos.courage;
-        explorer.explorerType = pos.type;
-        explorer.rescued = false;
-        
-        // Add floating animation
-        sceneRef.tweens.add({
-          targets: explorer,
-          y: explorer.y - 5,
-          duration: 2000 + (pos.courage * 10),
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-        
-        // Add courage level text above explorer
-        const courageText = sceneRef.add.text(pos.x, pos.y - 20, pos.courage.toString(), {
-          fontSize: '12px',
-          fontFamily: 'Courier New',
-          color: pos.courage > gameState.courageThreshold ? '#00ff00' : '#ff6666',
-          fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        explorer.courageText = courageText;
-        gameState.explorersData.push(pos);
+    function startKeywordSpawning() {
+      spawnKeyword.call(this);
+      gameState.spawnEvent = this.time.addEvent({
+        delay: gameState.keywordSpawnDelay,
+        callback: spawnKeyword,
+        callbackScope: this,
+        loop: true
       });
     }
-    
-    function createDragons() {
-      const dragonPositions = [
-        { x: 300, y: 180 },
-        { x: 500, y: 280 },
-        { x: 350, y: 350 },
-        { x: 600, y: 180 }
-      ];
+
+    function spawnKeyword() {
+      if (gameState.isLevelComplete) return;
       
-      dragonPositions.forEach((pos, index) => {
-        const dragon = dragons.create(pos.x, pos.y, `dragon${index % 4}`);
-        dragon.setCollideWorldBounds(true).body.setSize(35, 25).setOffset(5, 5);
-        dragon.health = 100;
-        dragon.speed = 40;
-        dragon.patrolDistance = 80;
-        dragon.startX = pos.x;
-        dragon.startY = pos.y;
-        dragon.direction = 1;
-        
-        // Add wing flapping animation
-        sceneRef.tweens.add({
-          targets: dragon,
-          scaleX: 1.1,
-          scaleY: 0.9,
-          duration: 800,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
+      const needsCorrectKeyword = gameState.collectedParts.length < gameState.expectedParts.length;
+      const shouldSpawnCorrect = needsCorrectKeyword && Math.random() < 0.5;
+      
+      let keywordText;
+      let isCorrect = false;
+      
+      if (shouldSpawnCorrect) {
+        keywordText = gameState.expectedParts[gameState.collectedParts.length];
+        isCorrect = true;
+      } else {
+        keywordText = gameState.wrongKeywords[Phaser.Math.Between(0, gameState.wrongKeywords.length - 1)];
+      }
+      
+      const fishType = gameState.fishTextures[Phaser.Math.Between(0, gameState.fishTextures.length - 1)];
+      const startY = Phaser.Math.Between(120, 200);
+      const fish = sceneRef.add.sprite(850, startY, fishType);
+      
+      // Make fish smaller
+      fish.setScale(0.3);
+      
+      fish.keywordText = keywordText;
+      fish.isCorrect = isCorrect;
+      fish.textObject = null;
+      fish.speed = gameState.riverSpeed + (Math.random() * 20 - 10);
+      
+      // Make keyword box positioned a little above the fish
+      const text = sceneRef.add.text(fish.x, fish.y - 25, keywordText, {
+        fontSize: '14px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+        padding: { x: 10, y: 5 },
+        strokeThickness: 2,
+        shadow: { color: '#000000', fill: true, offsetX: 1, offsetY: 1, blur: 3 }
+      }).setOrigin(0.5);
+      
+      fish.textObject = text;
+      
+      sceneRef.tweens.add({
+        targets: [fish, text],
+        y: `+=${(Math.random() * 10 + 5)}`,
+        duration: 2000 + Math.random() * 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inOut'
       });
+      
+      if (!gameState.platforms) {
+        gameState.platforms = [];
+      }
+      gameState.platforms.push(fish);
     }
-    
-    function createCourageOrbs() {
-      const orbPositions = [
-        { x: 140, y: 280 },
-        { x: 460, y: 320 },
-        { x: 280, y: 300 },
-        { x: 580, y: 250 }
-      ];
+
+    function shootProjectile() {
+      if (!gameState.canShoot || gameState.isLevelComplete) return;
       
-      orbPositions.forEach(pos => {
-        const orb = courageOrbs.create(pos.x, pos.y, 'courage_orb');
-        orb.body.setCircle(12);
-        
-        // Glowing animation
-        sceneRef.tweens.add({
-          targets: orb,
-          scaleX: 1.2,
-          scaleY: 1.2,
-          alpha: 0.7,
-          duration: 1000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
+      const projectile = sceneRef.add.sprite(player.x, player.y - 10, 'projectile');
+      projectile.speed = 300;
+      projectile.active = true;
+      
+      gameState.projectiles.push(projectile);
+      
+      gameState.canShoot = false;
+      sceneRef.time.delayedCall(gameState.shootCooldown, () => {
+        gameState.canShoot = true;
       });
+      
+      player.setTint(0x9c27b0); // Purple wizard magic tint
+      sceneRef.time.delayedCall(100, () => player.clearTint());
     }
 
     function update() {
       if (gameState.isLevelComplete) return;
       
-      player.setVelocity(0);
       const speed = 180;
+      player.setVelocityX(0);
       
       // Use the ref instead of state for game logic
-      if (cursors.left.isDown || mobileControlsRef.current.left) {
+      if (cursors.left.isDown || wasdKeys.A.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
-      } else if (cursors.right.isDown || mobileControlsRef.current.right) {
+      } else if (cursors.right.isDown || wasdKeys.D.isDown || mobileControlsRef.current.right) {
         player.setVelocityX(speed);
       }
       
-      if (cursors.up.isDown || mobileControlsRef.current.up) {
-        player.setVelocityY(-speed);
-      } else if (cursors.down.isDown || mobileControlsRef.current.down) {
-        player.setVelocityY(speed);
+      if ((cursors.up.isDown || wasdKeys.W.isDown || Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.up) 
+          && player.body.touching.down && gameState.canJump) {
+        player.setVelocityY(-450);
+        gameState.canJump = false;
+        sceneRef.time.delayedCall(500, () => { gameState.canJump = true; });
       }
-
-      if ((Phaser.Input.Keyboard.JustDown(spaceKey) || mobileControlsRef.current.attack) && gameState.canAttack) {
-        attack.call(this);
+      
+      for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+        const projectile = gameState.projectiles[i];
+        if (projectile.active) {
+          projectile.y -= projectile.speed * sceneRef.game.loop.delta / 1000;
+          let hitPlatform = false;
+          for (let j = gameState.platforms.length - 1; j >= 0; j--) {
+            const platform = gameState.platforms[j];
+            if (platform.active && Phaser.Geom.Rectangle.Overlaps(projectile.getBounds(), platform.getBounds())) {
+              const keywordText = platform.keywordText;
+              const isCorrect = platform.isCorrect;
+              if (isCorrect && gameState.collectedParts.length < gameState.expectedParts.length) {
+                const expectedKeyword = gameState.expectedParts[gameState.collectedParts.length];
+                if (keywordText === expectedKeyword) {
+                  gameState.collectedParts.push(keywordText);
+                  // Removed xp += 10
+                  sceneRef.cameras.main.flash(150, 0, 255, 0);
+                  if (platform.textObject && platform.textObject.active) {
+                    platform.textObject.destroy();
+                  }
+                  platform.destroy();
+                  gameState.platforms.splice(j, 1);
+                  checkLevelCompletion();
+                } else { handleMistake(); }
+              } else { handleMistake(); }
+              hitPlatform = true;
+              break;
+            }
+          }
+          if (hitPlatform || projectile.y < -10) {
+            projectile.destroy();
+            gameState.projectiles.splice(i, 1);
+          }
+        } else {
+          gameState.projectiles.splice(i, 1);
+        }
       }
-
-      // Dragon AI - patrol behavior
-      dragons.children.entries.forEach(dragon => {
-        if (!dragon.active) return;
-        
-        // Simple patrol AI
-        const distanceFromStart = Phaser.Math.Distance.Between(dragon.x, dragon.startX, dragon.y, dragon.startY);
-        
-        if (distanceFromStart > dragon.patrolDistance) {
-          dragon.direction *= -1;
-        }
-        
-        const angle = Phaser.Math.Angle.Between(dragon.x, dragon.y, dragon.startX + (dragon.direction * dragon.patrolDistance), dragon.startY);
-        dragon.setVelocity(Math.cos(angle) * dragon.speed, Math.sin(angle) * dragon.speed);
-        
-        // If player is nearby, chase instead
-        const distanceToPlayer = Phaser.Math.Distance.Between(dragon.x, dragon.y, player.x, player.y);
-        if (distanceToPlayer < 120) {
-          sceneRef.physics.moveTo(dragon, player.x, player.y, dragon.speed * 1.5);
-        }
-      });
-    }
-
-    function attack() {
-      gameState.canAttack = false;
       
-      const attackRange = 90;
-      
-      // Magical attack effects
-      const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0x8b5cf6, 0.3);
-      const innerEffect = sceneRef.add.circle(player.x, player.y, attackRange * 0.6, 0xfbbf24, 0.4);
-      
-      sceneRef.tweens.add({
-        targets: attackEffect,
-        scaleX: 1.8,
-        scaleY: 1.8,
-        alpha: 0,
-        duration: 250,
-        onComplete: () => attackEffect.destroy()
-      });
-      
-      sceneRef.tweens.add({
-        targets: innerEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => innerEffect.destroy()
-      });
-      
-      dragons.children.entries.forEach(dragon => {
-        if (!dragon.active) return;
-        
-        const distance = Phaser.Math.Distance.Between(player.x, player.y, dragon.x, dragon.y);
-        if (distance <= attackRange) {
-          dragon.health -= 50;
-          
-          const angle = Phaser.Math.Angle.Between(player.x, player.y, dragon.x, dragon.y);
-          dragon.setVelocity(Math.cos(angle) * 400, Math.sin(angle) * 400);
-          
-          dragon.setTint(0x8b5cf6);
-          sceneRef.time.delayedCall(150, () => {
-            if (dragon.active) dragon.clearTint();
-          });
-          
-          if (dragon.health <= 0) {
-            gameState.dragonsDefeated++;
-            
-            const explosion = sceneRef.add.circle(dragon.x, dragon.y, 30, 0xff6b6b);
-            sceneRef.tweens.add({
-              targets: explosion,
-              scaleX: 4,
-              scaleY: 4,
-              alpha: 0,
-              duration: 400,
-              onComplete: () => explosion.destroy()
-            });
-            
-            dragon.destroy();
+      if (gameState.platforms) {
+        for (let i = gameState.platforms.length - 1; i >= 0; i--) {
+          const platform = gameState.platforms[i];
+          if (platform.active) {
+            platform.x -= platform.speed * sceneRef.game.loop.delta / 1000;
+            if (platform.textObject && platform.textObject.active) {
+              platform.textObject.x = platform.x;
+              platform.textObject.y = platform.y - 25;
+            }
+            if (platform.x < -100) {
+              if (platform.textObject && platform.textObject.active) {
+                platform.textObject.destroy();
+              }
+              platform.destroy();
+              gameState.platforms.splice(i, 1);
+            }
+          } else {
+            gameState.platforms.splice(i, 1);
           }
         }
-      });
-      
-      sceneRef.time.delayedCall(gameState.attackCooldown, () => {
-        gameState.canAttack = true;
-      });
+      }
     }
 
-    function rescueExplorer(player, explorer) {
-      if (explorer.rescued) return;
-      
-      explorer.rescued = true;
-      
-      if (explorer.courage > gameState.courageThreshold) {
-        // Correct explorer (brave)
-        gameState.explorersCaptured++;
-        
-        explorer.setTint(0x00ff00);
-        explorer.courageText.setColor('#00ff00');
-        
-        // Success effect
-        const successEffect = sceneRef.add.circle(explorer.x, explorer.y, 40, 0x00ff00, 0.5);
-        sceneRef.tweens.add({
-          targets: successEffect,
-          scaleX: 2,
-          scaleY: 2,
-          alpha: 0,
-          duration: 500,
-          onComplete: () => successEffect.destroy()
-        });
-        
-        sceneRef.time.delayedCall(1000, () => {
-          explorer.destroy();
-          explorer.courageText.destroy();
-        });
-        
-      } else {
-        // Wrong explorer (not brave enough)
-        gameState.health -= 20;
-        
-        explorer.setTint(0xff0000);
-        player.setTint(0xff0000);
-        sceneRef.time.delayedCall(200, () => {
-          if (player.active) player.clearTint();
-        });
-        
-        // Mistake effect
-        const mistakeEffect = sceneRef.add.circle(explorer.x, explorer.y, 40, 0xff0000, 0.5);
-        sceneRef.tweens.add({
-          targets: mistakeEffect,
-          scaleX: 2,
-          scaleY: 2,
-          alpha: 0,
-          duration: 500,
-          onComplete: () => mistakeEffect.destroy()
-        });
-      }
-      
-      // Check win condition
-      const braveExplorersCount = gameState.explorersData.filter(e => e.courage > gameState.courageThreshold).length;
-      if (gameState.explorersCaptured >= braveExplorersCount) {
+    function handleMistake() {
+      gameState.mistakes++;
+      gameState.health -= 20;
+      sceneRef.cameras.main.flash(200, 255, 0, 0);
+      updateReactUI();
+      if (gameState.health <= 0) { restartLevel(); }
+    }
+
+    function checkLevelCompletion() {
+      if (gameState.collectedParts.length === gameState.expectedParts.length) {
+        gameState.isLevelComplete = true;
+        // Removed xp += 20
         showLevelComplete();
       }
-      
       updateReactUI();
-    }
-    
-    function collectCourageOrb(player, orb) {
-      orb.destroy();
-      
-      // Heal player
-      gameState.health = Math.min(gameState.maxHealth, gameState.health + 25);
-      
-      // Visual effect
-      const healEffect = sceneRef.add.circle(player.x, player.y, 30, 0xffd700, 0.7);
-      sceneRef.tweens.add({
-        targets: healEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 300,
-        onComplete: () => healEffect.destroy()
-      });
-      
-      updateReactUI();
-    }
-    
-    function openTreasureChest(player, chest) {
-      if (gameState.explorersCaptured < gameState.explorersData.filter(e => e.courage > gameState.courageThreshold).length) {
-        // Show message that they need to rescue all brave explorers first
-        const messageText = sceneRef.add.text(chest.x, chest.y - 50, 'Find all brave explorers first!', {
-          fontSize: '14px',
-          fontFamily: 'Courier New',
-          color: '#ffff00',
-          backgroundColor: '#000000'
-        }).setOrigin(0.5);
-        
-        sceneRef.time.delayedCall(2000, () => messageText.destroy());
-        return;
-      }
-      
-      showLevelComplete();
     }
 
     function showLevelComplete() {
-      gameState.isLevelComplete = true;
-      updateReactUI();
+      if (gameState.spawnEvent) { gameState.spawnEvent.remove(); }
       
-      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
-      overlay.setDepth(1000);
-      
-      const completionText = sceneRef.add.text(400, 180, '🐉 Dragons Defeated! 🐉', {
-        fontSize: '28px',
-        fontFamily: 'Courier New',
-        color: '#00ff00',
-        fontStyle: 'bold'
+      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8).setDepth(1000);
+      const completionText = sceneRef.add.text(400, 180, '🌿 Jungle River Conquered! 🌿', { 
+        fontSize: '28px', 
+        fontFamily: 'Courier New', 
+        color: '#4caf50', 
+        fontStyle: 'bold' 
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText = sceneRef.add.text(400, 220, 'SELECT * FROM jungle_explorers', {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#00ffff'
+      const instructionText = sceneRef.add.text(400, 320, 'Tap anywhere to continue your jungle adventure', { 
+        fontSize: '18px', 
+        fontFamily: 'Courier New', 
+        color: '#ffffff' 
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText2 = sceneRef.add.text(400, 240, 'WHERE courage_level > 80;', {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#00ffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const statsText = sceneRef.add.text(400, 280, `Brave Explorers Rescued: ${gameState.explorersCaptured}`, {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#ffff00'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const instructionText = sceneRef.add.text(400, 320, 'Click to return to map', {
-        fontSize: '32px',
-        fontFamily: 'Courier New',
-        color: '#00ff00'
-      }).setOrigin(0.5).setDepth(1001);
-      
+      // FIXED: Make overlay interactive and call onComplete
       overlay.setInteractive();
       overlay.on('pointerdown', () => {
         onComplete();
       });
       
-      sceneRef.tweens.add({
-        targets: instructionText,
-        alpha: 0.5,
-        duration: 800,
-        yoyo: true,
-        repeat: -1
+      sceneRef.tweens.add({ 
+        targets: instructionText, 
+        alpha: 0.5, 
+        duration: 800, 
+        yoyo: true, 
+        repeat: -1 
       });
     }
 
-    function hitByDragon(player, dragon) {
-      if (dragon.lastAttack && sceneRef.time.now - dragon.lastAttack < 1500) return;
-      
-      dragon.lastAttack = sceneRef.time.now;
-      gameState.health -= 25;
-      
-      player.setTint(0xff0000);
-      sceneRef.time.delayedCall(300, () => player.clearTint());
-      
-      const angle = Phaser.Math.Angle.Between(dragon.x, dragon.y, player.x, player.y);
-      player.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250);
-      
-      if (gameState.health <= 0) {
-        restartLevel();
-      }
-      updateReactUI();
-    }
-    
     function restartLevel() {
-      const restartText = sceneRef.add.text(400, 250, 'The dragons have won... Try Again!', {
-        fontSize: '24px',
-        fontFamily: 'Courier New',
-        color: '#ff4444',
-        backgroundColor: '#000000'
+      const restartText = sceneRef.add.text(400, 250, 'Try Again, Wizard!', { 
+        fontSize: '24px', 
+        fontFamily: 'Courier New', 
+        color: '#ff4444', 
+        backgroundColor: '#000000' 
       }).setOrigin(0.5);
       
-      sceneRef.cameras.main.flash(500, 255, 0, 0);
       gameState.health = 100;
+      gameState.mistakes = 0;
+      gameState.collectedParts = [];
+      gameState.isLevelComplete = false;
       
-      sceneRef.time.delayedCall(2000, () => {
+      if (gameState.spawnEvent) { gameState.spawnEvent.remove(); }
+      
+      gameState.platforms.forEach(platform => {
+        if (platform.textObject) platform.textObject.destroy();
+        platform.destroy();
+      });
+      gameState.platforms = [];
+      
+      gameState.projectiles.forEach(projectile => projectile.destroy());
+      gameState.projectiles = [];
+      
+      sceneRef.time.delayedCall(1500, () => {
         restartText.destroy();
-        createLevel.call(sceneRef);
+        startKeywordSpawning.call(sceneRef);
         updateReactUI();
       });
     }
 
     function updateReactUI() {
+      let queryDisplay = "SELECT * FROM jungle_explorers ";
+      queryDisplay += (gameState.collectedParts[0] || "___") + " ";
+      queryDisplay += "courage_level ";
+      queryDisplay += (gameState.collectedParts[1] || "___") + " ";
+      queryDisplay += "80;";
+      
       setUiState({
         health: Math.max(0, gameState.health),
-        isQueryComplete: gameState.isLevelComplete,
-        explorersCaptured: gameState.explorersCaptured,
-        totalExplorers: gameState.explorersData.filter(e => e.courage > gameState.courageThreshold).length,
-        dragonsDefeated: gameState.dragonsDefeated,
-        courageThreshold: gameState.courageThreshold
+        // Removed xp from state update
+        collectedParts: [...gameState.collectedParts],
+        isQueryComplete: gameState.collectedParts.length === gameState.expectedParts.length,
+        currentQuery: queryDisplay
       });
     }
 
@@ -701,84 +493,122 @@ const Level2 = ({ onComplete }) => {
       width: 800,
       height: 500,
       parent: gameContainerRef.current,
-      physics: { default: 'arcade', arcade: { gravity: { y: 0 }}},
+      physics: { default: 'arcade', arcade: { gravity: { y: 600 }, debug: false } },
       scene: { preload, create, update },
-      scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-      }
+      scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
     };
 
     gameInstance.current = new Phaser.Game(config);
 
-    return () => { gameInstance.current?.destroy(true); };
+    return () => { if (gameInstance.current) { gameInstance.current.destroy(true); } };
   }, [onComplete]); // REMOVED mobileControls from dependency array
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Display the game elements as reference */}
-      <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-            <span className="text-xs text-yellow-300">🧙</span>
-          </div>
-          <span>Your Wizard</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <GiDragonHead size={20} color="#ff4444" />
-          <span>Dragons</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <GiTreasureMap size={20} color="#00ff00" />
-          <span>Brave Explorers (80+ courage)</span>
-        </div>
+      <div className="text-center mb-2">
+        <p className="text-sm text-slate-400">Help the wizard shoot magic spells at the correct SQL keywords floating on the fish!</p>
       </div>
 
-      {/* Responsive game container */}
       <div className="w-full max-w-4xl">
         <div 
           ref={gameContainerRef} 
-          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-purple-500 shadow-lg mx-auto"
+          className="w-full aspect-[8/5] rounded-lg overflow-hidden border-2 border-green-500 shadow-xl mx-auto bg-gradient-to-b from-green-600 to-green-800"
           style={{ maxWidth: '800px' }}
         />
       </div>
       
-      <div className="w-full max-w-3xl grid grid-cols-2 gap-4 pixel-font text-sm">
+      <div className="w-full max-w-3xl flex justify-between items-center pixel-font text-lg">
         <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
-        <div>Dragons Defeated: <span className="text-red-400">{uiState.dragonsDefeated}</span></div>
-        <div>Brave Explorers: <span className="text-green-400">{uiState.explorersCaptured}/{uiState.totalExplorers}</span></div>
-        <div>Courage Needed: <span className="text-yellow-400">&gt; {uiState.courageThreshold}</span></div>
+        {/* Removed XP display */}
       </div>
 
-      <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
-        <div className="pixel-font text-slate-300 mb-2">SQL Query Challenge:</div>
-        <div className="font-mono text-lg">
-          <span>SELECT * FROM jungle_explorers </span>
-          {uiState.isQueryComplete ? (
-            <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              WHERE courage_level &gt; 80;
+      <div className="block md:hidden">
+        <div className="flex flex-col items-center gap-4">
+          {/* Use the MobileControls component */}
+          <MobileControls 
+            mobileControlsRef={mobileControlsRef}
+            setMobileControls={setMobileControls}
+          />
+          
+          {/* Extra Shoot Button for Level2 - positioned separately */}
+          <button
+            className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 active:from-purple-400 active:to-purple-500 rounded-xl w-24 h-16 text-white font-bold text-sm flex items-center justify-center select-none transition-all duration-150 border-2 border-purple-500 shadow-lg"
+            onPointerDown={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation();
+              handleAttack();
+            }}
+            style={{ touchAction: 'none' }}
+          >
+            🪄 Shoot
+          </button>
+        </div>
+      </div>
+
+      <div className="w-full max-w-3xl p-4 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-lg border border-green-500/50 text-center backdrop-blur-sm">
+        <div className="pixel-font text-green-300 mb-3 text-lg">🎯 Complete the SQL Query:</div>
+        <div className="font-mono text-xl bg-black/40 rounded-lg p-4 border border-slate-600">
+          <span className="text-blue-300">SELECT</span> <span className="text-purple-300">*</span> <span className="text-blue-300">FROM</span> <span className="text-green-300">jungle_explorers</span>{' '}
+          {uiState.collectedParts.length >= 1 ? (
+            <span className="text-green-400 font-bold bg-green-900/70 px-3 py-1 rounded-md mx-1 border border-green-500 shadow-lg animate-pulse">
+              {uiState.collectedParts[0]}
             </span>
           ) : (
-            <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-              WHERE courage_level ___?___
+            <span className="text-green-400 font-bold bg-green-900/50 px-3 py-1 rounded-md animate-pulse mx-1 border border-green-400 border-dashed">
+              ___
             </span>
           )}
+          <span className="text-green-300">courage_level</span>{' '}
+          {uiState.collectedParts.length >= 2 ? (
+            <span className="text-green-400 font-bold bg-green-900/70 px-3 py-1 rounded-md mx-1 border border-green-500 shadow-lg animate-pulse">
+              {uiState.collectedParts[1]}
+            </span>
+          ) : (
+            <span className="text-green-400 font-bold bg-green-900/50 px-3 py-1 rounded-md animate-pulse mx-1 border border-green-400 border-dashed">
+              ___
+            </span>
+          )}
+          <span className="text-yellow-300">80</span><span className="text-slate-300">;</span>
         </div>
-        <div className="text-xs text-slate-500 mt-2">
-          Rescue only the brave explorers (courage &gt; 80) and avoid the cowards!
+        
+        {uiState.isQueryComplete && (
+          <div className="mt-4 text-green-400 text-lg bg-green-900/30 rounded-lg p-3 border border-green-500">
+            ✅ Perfect! This query finds brave jungle explorers with courage level greater than 80.
+            <div className="text-sm text-green-300 mt-1">The WHERE clause filters records based on conditions!</div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop controls */}
+      <div className="w-full max-w-3xl p-4 hidden md:block bg-gradient-to-br from-slate-800/60 to-slate-900/60 rounded-lg border border-slate-500 backdrop-blur-sm">
+        <div className="text-slate-300 text-lg mb-3 text-center">
+        <strong>Controls : </strong>
+        </div>
+        
+        <div className="hidden md:block">
+          <div className="grid grid-cols-2 gap-4 text-sm text-slate-300 text-center">
+            <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+              <div className="text-green-400 font-bold mb-1">Movement</div>
+              <div>← → Move • ↑ SPACE Jump</div>
+            </div>
+            <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+              <div className="text-purple-400 font-bold mb-1">Magic</div>
+              <div>X : Cast Magic Spell</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Use the reusable MobileControls component */}
-      <MobileControls 
-        mobileControlsRef={mobileControlsRef}
-        setMobileControls={setMobileControls}
-      />
-
       <style jsx>{`
-        .pixel-font {
-          font-family: 'Courier New', monospace;
-          text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
+        .pixel-font { 
+          font-family: 'Courier New', monospace; 
+          text-shadow: 2px 2px 0px rgba(0,0,0,0.8); 
+        }
+        button { 
+          user-select: none; 
+          -webkit-user-select: none; 
+          -webkit-touch-callout: none; 
+          -webkit-tap-highlight-color: transparent; 
         }
       `}</style>
     </div>

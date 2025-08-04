@@ -1,10 +1,6 @@
 export const levels = [
   {
     id: 1,
-    position: {
-      desktop: { x: 70,y: 65 },
-      mobile: { x: 83, y: 45 },
-    },
     title: "Path to the Hidden Map",
     query: "SELECT * FROM map",
     riddle:
@@ -16,14 +12,10 @@ export const levels = [
   },
   {
     id: 2,
-    position: {
-      desktop: { x: 43, y: 65 },
-      mobile: { x: 41, y: 45 },
-    },
-    title: "The Brave Shall Pass",
+    title: "🌿 Jungle River Adventure",
     query: "SELECT * FROM jungle_explorers WHERE courage_level > 80;",
     riddle:
-      "The dragons only fear the brave. Find all explorers whose courage level is greater than 80.",
+      " Find all explorers whose courage level is greater than 80.",
     schema: `CREATE TABLE jungle_explorers (
   id INT,
   name VARCHAR,
@@ -34,29 +26,23 @@ export const levels = [
     completed: false,
     type: "basic",
   },
+  
   {
-    id: 3,
-    position: {
-      desktop: { x: 61, y: 45 },
-      mobile: { x: 70, y: 33 },
-    },
-    title: "Open the Temple Gates",
-    query: "SELECT * FROM artifacts WHERE found_by IS NOT NULL;",
-    riddle:
-      "Open the temple door by finding all artifacts discovered by NOT NULL.",
-    schema: `CREATE TABLE artifacts (
+  id: 3,
+  title: "Archery Castle Challenge",
+  query: "SELECT * FROM artifacts WHERE found_by IS NOT NULL AND category IN ('weapons','raft');",
+  riddle: " Use your crosshair to target the correct castle guardian. Only ONE castle contains artifacts with categories 'weapons' and 'raft'.",
+  schema: `CREATE TABLE artifacts (
   id INT,
-  name VARCHAR,
-  found_by INT
-);
-CREATE TABLE jungle_explorers (
-  id INT,
-  name VARCHAR
+  name VARCHAR(255),
+  found_by INT,
+  category VARCHAR(255)
 );`,
-    unlocked: false,
-    completed: false,
-    type: "intermediate",
-  },
+  unlocked: false,
+  completed: false,
+  type: "intermediate",
+}
+,
   {
     id: 4,
     position: {
@@ -70,6 +56,7 @@ CREATE TABLE jungle_explorers (
     schema: `CREATE TABLE jungle_explorers (
   id INT,
   name VARCHAR,
+  courage_level INT,
   artifact_found BOOLEAN
 );`,
     unlocked: false,
