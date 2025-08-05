@@ -799,17 +799,17 @@ const Level4 = ({ onComplete }) => {
           <div className="text-xs text-center text-yellow-300 mb-2">
             📱 D-pad moves • E interacts with statues & altar
           </div>
-          <div className="flex justify-between items-center w-full max-w-sm px-4">
+          <div className="">
             {/* D-Pad */}
             <div className="relative">
-              <div className="grid grid-cols-3 gap-1 w-20 h-20">
+              <div className="grid grid-cols-3 gap-1 w-36 h-36">
                 <div></div>
                 <button
                   onTouchStart={() => handleMobileControlStart("up")}
                   onTouchEnd={() => handleMobileControlEnd("up")}
                   onMouseDown={() => handleMobileControlStart("up")}
                   onMouseUp={() => handleMobileControlEnd("up")}
-                  className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center touch-none"
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
                 >
                   ↑
                 </button>
@@ -819,17 +819,24 @@ const Level4 = ({ onComplete }) => {
                   onTouchEnd={() => handleMobileControlEnd("left")}
                   onMouseDown={() => handleMobileControlStart("left")}
                   onMouseUp={() => handleMobileControlEnd("left")}
-                  className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center touch-none"
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
                 >
                   ←
                 </button>
-                <div className="bg-slate-800 rounded"></div>
+
+                <button
+                  onTouchStart={handleInteract}
+                  onMouseDown={handleInteract}
+                  className="bg-blue-600 hover:bg-red-500 active:bg-red-400 rounded-full text-white font-bold text-lg flex items-center justify-center select-none transition-colors"
+                >
+                  E
+                </button>
                 <button
                   onTouchStart={() => handleMobileControlStart("right")}
                   onTouchEnd={() => handleMobileControlEnd("right")}
                   onMouseDown={() => handleMobileControlStart("right")}
                   onMouseUp={() => handleMobileControlEnd("right")}
-                  className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center touch-none"
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
                 >
                   →
                 </button>
@@ -839,20 +846,13 @@ const Level4 = ({ onComplete }) => {
                   onTouchEnd={() => handleMobileControlEnd("down")}
                   onMouseDown={() => handleMobileControlStart("down")}
                   onMouseUp={() => handleMobileControlEnd("down")}
-                  className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded text-white text-xs font-bold flex items-center justify-center touch-none"
+                  className="bg-slate-600 hover:bg-slate-500 active:bg-slate-400 rounded text-white font-bold text-xl flex items-center justify-center select-none transition-colors"
                 >
                   ↓
                 </button>
                 <div></div>
               </div>
             </div>
-            <button
-              onTouchStart={handleInteract}
-              onMouseDown={handleInteract}
-              className="w-14 h-14 bg-purple-600 hover:bg-purple-500 active:bg-purple-400 rounded-full text-white font-bold text-lg flex items-center justify-center touch-none"
-            >
-              E
-            </button>
           </div>
         </div>
       </div>
