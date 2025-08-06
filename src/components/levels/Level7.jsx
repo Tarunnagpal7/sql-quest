@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiCrossedSwords, GiVolcano } from "react-icons/gi";
 import { FaExclamationTriangle } from "react-icons/fa";
-import MobileControls from '../MobileControls'; // Import the component
+import MobileControls from '../MobileControls';
 
 const Level7 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
@@ -14,7 +14,7 @@ const Level7 = ({ onComplete }) => {
     left: false,
     right: false,
     attack: false,
-    interact: false // Added interact control
+    interact: false
   });
   
   const [uiState, setUiState] = useState({
@@ -22,10 +22,10 @@ const Level7 = ({ onComplete }) => {
     isQueryComplete: false,
     explorersFound: 0,
     totalExplorers: 4,
-    weaponsFound: 0,
-    totalWeapons: 3,
-    armedHeroes: 0,
-    totalArmedHeroes: 3,
+    spellsFound: 0,
+    totalSpells: 4,
+    armedExplorers: 0,
+    totalArmedExplorers: 4,
     showQueryInput: false,
     evacuationComplete: false,
     timeRemaining: 120
@@ -48,7 +48,6 @@ const Level7 = ({ onComplete }) => {
 
   // Memoized mobile control handlers
   const handleMobileControlStart = useCallback((direction) => {
-    // Update both ref and state
     mobileControlsRef.current[direction] = true;
     setMobileControls((prev) => {
       if (prev[direction]) return prev;
@@ -57,7 +56,6 @@ const Level7 = ({ onComplete }) => {
   }, []);
 
   const handleMobileControlEnd = useCallback((direction) => {
-    // Update both ref and state
     mobileControlsRef.current[direction] = false;
     setMobileControls((prev) => {
       if (!prev[direction]) return prev;
@@ -66,7 +64,6 @@ const Level7 = ({ onComplete }) => {
   }, []);
 
   const handleAttack = useCallback(() => {
-    // Update both ref and state
     mobileControlsRef.current.attack = true;
     setMobileControls((prev) => ({ ...prev, attack: true }));
     setTimeout(() => {
@@ -76,7 +73,6 @@ const Level7 = ({ onComplete }) => {
   }, []);
 
   const handleInteract = useCallback(() => {
-    // Update both ref and state
     mobileControlsRef.current.interact = true;
     setMobileControls((prev) => ({ ...prev, interact: true }));
     setTimeout(() => {
@@ -85,16 +81,15 @@ const Level7 = ({ onComplete }) => {
     }, 50);
   }, []);
 
-  // Expected correct queries
+  // Expected correct queries - now using your provided query structure
   const correctQueries = [
-    "SELECT e.name, w.weapon_name FROM jungle_explorers e JOIN weapons w ON e.id = w.owner_id;",
-    "select e.name, w.weapon_name from jungle_explorers e join weapons w on e.id = w.owner_id;",
-    "SELECT e.name, w.weapon_name FROM jungle_explorers e JOIN weapons w ON e.id = w.owner_id",
-    "select e.name, w.weapon_name from jungle_explorers e join weapons w on e.id = w.owner_id"
+    "SELECT jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element FROM jungle_explorers JOIN spells ON jungle_explorers.id = spells.id;",
+    "select jungle_explorers.name as explorer_name, jungle_explorers.skill, spells.name as spell_name, spells.element from jungle_explorers join spells on jungle_explorers.id = spells.id;",
+    "SELECT jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element FROM jungle_explorers JOIN spells ON jungle_explorers.id = spells.id",
+    "select jungle_explorers.name as explorer_name, jungle_explorers.skill, spells.name as spell_name, spells.element from jungle_explorers join spells on jungle_explorers.id = spells.id"
   ];
 
   const handleQuerySubmit = () => {
-    // Check if there's still time
     if (gameInstance.current?.scene?.scenes[0]?.gameState?.timeRemaining <= 0) {
       setQueryError('Time expired! Level restarting...');
       return;
@@ -110,12 +105,11 @@ const Level7 = ({ onComplete }) => {
       setQueryError('');
       setUiState(prev => ({ ...prev, showQueryInput: false }));
       
-      // Signal to game that query is complete
       if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
         gameInstance.current.scene.scenes[0].completeQuery();
       }
     } else {
-      setQueryError('Query failed! Use JOIN to find which explorers have weapons.');
+      setQueryError('Query failed! Use JOIN to match explorers with their spells.');
       setTimeout(() => setQueryError(''), 3000);
     }
   };
@@ -123,7 +117,7 @@ const Level7 = ({ onComplete }) => {
   useEffect(() => {
     if (!gameContainerRef.current) return;
 
-    let player, explorers, weapons, volcanoMonsters, walls, evacuationZone;
+    let player, explorers, spells, volcanoMonsters, walls, evacuationZone;
     let cursors, spaceKey, interactKey;
     
     const gameState = {
@@ -135,24 +129,25 @@ const Level7 = ({ onComplete }) => {
       attackCooldown: 400,
       explorersFound: 0,
       totalExplorers: 4,
-      weaponsFound: 0,
-      totalWeapons: 3,
-      armedHeroes: 0,
-      totalArmedHeroes: 3,
+      spellsFound: 0,
+      totalSpells: 4,
+      armedExplorers: 0,
+      totalArmedExplorers: 4,
       queryComplete: false,
       evacuationComplete: false,
       timeRemaining: 120,
       timeLimit: 120,
       explorersData: [
-        { id: 1, name: 'Maya', courage_level: 85, found: false, hasWeapon: true, weaponName: 'Fire Sword' },
-        { id: 2, name: 'Jin', courage_level: 75, found: false, hasWeapon: true, weaponName: 'Ice Bow' },
-        { id: 3, name: 'Alex', courage_level: 90, found: false, hasWeapon: true, weaponName: 'Lightning Staff' },
-        { id: 4, name: 'Tom', courage_level: 60, found: false, hasWeapon: false, weaponName: null }
+        { id: 1, name: 'Maya', skill: 'Fire Magic', found: false, hasSpell: true, spellName: 'Fireball', element: 'Fire' },
+        { id: 2, name: 'Jin', skill: 'Ice Magic', found: false, hasSpell: true, spellName: 'Frost Bolt', element: 'Ice' },
+        { id: 3, name: 'Alex', skill: 'Lightning Magic', found: false, hasSpell: true, spellName: 'Thunder Strike', element: 'Electric' },
+        { id: 4, name: 'Tom', skill: 'Earth Magic', found: false, hasSpell: true, spellName: 'Stone Shield', element: 'Earth' }
       ],
-      weaponsData: [
-        { id: 1, weapon_name: 'Fire Sword', owner_id: 1, found: false },
-        { id: 2, weapon_name: 'Ice Bow', owner_id: 2, found: false },
-        { id: 3, weapon_name: 'Lightning Staff', owner_id: 3, found: false }
+      spellsData: [
+        { id: 1, name: 'Fireball', element: 'Fire', found: false },
+        { id: 2, name: 'Frost Bolt', element: 'Ice', found: false },
+        { id: 3, name: 'Thunder Strike', element: 'Electric', found: false },
+        { id: 4, name: 'Stone Shield', element: 'Earth', found: false }
       ]
     };
     
@@ -220,122 +215,94 @@ const Level7 = ({ onComplete }) => {
         explorerGraphics.fillCircle(13, 14, 2);
         explorerGraphics.fillCircle(19, 14, 2);
         
-        // Visual indicator if they have weapon
-        if (explorer.hasWeapon) {
-          // Green glow for armed explorers
-          explorerGraphics.fillStyle(0x00ff00, 0.4);
-          explorerGraphics.fillCircle(16, 20, 25);
-          
-          // Weapon silhouette
-          explorerGraphics.fillStyle(0xc0c0c0, 1);
-          if (explorer.weaponName === 'Fire Sword') {
-            explorerGraphics.fillRect(25, 12, 2, 16);
-            explorerGraphics.fillRect(23, 12, 6, 3);
-          } else if (explorer.weaponName === 'Ice Bow') {
-            explorerGraphics.lineStyle(2, 0xc0c0c0);
-            explorerGraphics.beginPath();
-            explorerGraphics.arc(26, 18, 6, 0, Math.PI);
-            explorerGraphics.strokePath();
-            explorerGraphics.fillRect(25, 18, 1, 8);
-          } else if (explorer.weaponName === 'Lightning Staff') {
-            explorerGraphics.fillRect(25, 16, 2, 12);
-            explorerGraphics.fillCircle(26, 14, 3);
-          }
-        } else {
-          // Red glow for unarmed explorer
-          explorerGraphics.fillStyle(0xff6666, 0.4);
-          explorerGraphics.fillCircle(16, 20, 25);
-        }
+        // Visual indicator based on element
+        let elementColor = 0x00ff00;
+        if (explorer.element === 'Fire') elementColor = 0xff4500;
+        else if (explorer.element === 'Ice') elementColor = 0x87ceeb;
+        else if (explorer.element === 'Electric') elementColor = 0xffff00;
+        else if (explorer.element === 'Earth') elementColor = 0x8b4513;
+        
+        explorerGraphics.fillStyle(elementColor, 0.4);
+        explorerGraphics.fillCircle(16, 20, 25);
+        
+        // Magic aura effect
+        explorerGraphics.fillStyle(elementColor, 0.8);
+        explorerGraphics.fillCircle(16, 10, 4);
         
         explorerGraphics.generateTexture(`explorer_${explorer.name.toLowerCase()}`, 40, 45);
         explorerGraphics.destroy();
       });
       
-      // --- Create Weapon Crates ---
-      const weaponTypes = ['fire_sword', 'ice_bow', 'lightning_staff'];
-      const weaponColors = [0xff4500, 0x87ceeb, 0xffff00];
-      
-      weaponTypes.forEach((type, index) => {
-        const weaponGraphics = this.add.graphics();
-        const color = weaponColors[index];
+      // --- Create Spell Crystals ---
+      gameState.spellsData.forEach(spell => {
+        const spellGraphics = this.add.graphics();
         
-        // Weapon crate
-        weaponGraphics.fillStyle(0x8b4513, 1);
-        weaponGraphics.fillRect(8, 12, 16, 16);
+        let elementColor = 0x00ff00;
+        if (spell.element === 'Fire') elementColor = 0xff4500;
+        else if (spell.element === 'Ice') elementColor = 0x87ceeb;
+        else if (spell.element === 'Electric') elementColor = 0xffff00;
+        else if (spell.element === 'Earth') elementColor = 0x8b4513;
         
-        // Crate details
-        weaponGraphics.fillStyle(0x654321, 1);
-        weaponGraphics.fillRect(8, 16, 16, 2);
-        weaponGraphics.fillRect(14, 12, 4, 16);
+        // Crystal base
+        spellGraphics.fillStyle(elementColor, 0.9);
+        spellGraphics.beginPath();
+        spellGraphics.moveTo(16, 8);
+        spellGraphics.lineTo(12, 16);
+        spellGraphics.lineTo(16, 32);
+        spellGraphics.lineTo(20, 16);
+        spellGraphics.closePath();
+        spellGraphics.fillPath();
         
-        // Weapon inside crate
-        weaponGraphics.fillStyle(color, 0.8);
-        if (type === 'fire_sword') {
-          weaponGraphics.fillRect(14, 14, 2, 10);
-          weaponGraphics.fillRect(12, 14, 6, 2);
-          // Fire effect
-          weaponGraphics.fillStyle(0xff0000, 0.6);
-          weaponGraphics.fillCircle(16, 16, 12);
-        } else if (type === 'ice_bow') {
-          weaponGraphics.lineStyle(2, color);
-          weaponGraphics.beginPath();
-          weaponGraphics.arc(16, 18, 4, 0, Math.PI);
-          weaponGraphics.strokePath();
-          weaponGraphics.fillRect(15, 18, 1, 6);
-          // Ice effect
-          weaponGraphics.fillStyle(0x00ffff, 0.6);
-          weaponGraphics.fillCircle(16, 16, 12);
-        } else if (type === 'lightning_staff') {
-          weaponGraphics.fillRect(15, 16, 2, 8);
-          weaponGraphics.fillCircle(16, 14, 2);
-          // Lightning effect
-          weaponGraphics.fillStyle(0xffff00, 0.6);
-          weaponGraphics.fillCircle(16, 16, 12);
-        }
+        // Crystal glow
+        spellGraphics.fillStyle(elementColor, 0.5);
+        spellGraphics.fillCircle(16, 20, 25);
         
-        // Magical aura
-        weaponGraphics.fillStyle(color, 0.3);
-        weaponGraphics.fillCircle(16, 16, 20);
+        // Inner light
+        spellGraphics.fillStyle(0xffffff, 0.8);
+        spellGraphics.fillCircle(16, 18, 6);
         
-        weaponGraphics.generateTexture(type, 32, 32);
-        weaponGraphics.destroy();
+        spellGraphics.generateTexture(`spell_${spell.name.toLowerCase().replace(' ', '_')}`, 40, 45);
+        spellGraphics.destroy();
       });
       
       // --- Create Volcano Monsters ---
-      const monsterTypes = ['lava_beast', 'fire_elemental'];
-      const monsterColors = [0x8b0000, 0xff4500];
+      const monsterTypes = ['lava_beast', 'fire_elemental', 'magma_golem'];
+      const monsterColors = [0x8b0000, 0xff4500, 0x654321];
       
       monsterTypes.forEach((type, index) => {
         const monsterGraphics = this.add.graphics();
         const color = monsterColors[index];
         
         if (type === 'lava_beast') {
-          // Lava Beast
           monsterGraphics.fillStyle(color, 1);
           monsterGraphics.fillEllipse(20, 25, 24, 20);
           monsterGraphics.fillCircle(30, 18, 10);
           
-          // Lava glow
           monsterGraphics.fillStyle(0xff6347, 0.8);
           monsterGraphics.fillCircle(20, 25, 30);
           
-          // Glowing eyes
           monsterGraphics.fillStyle(0xffff00, 1);
           monsterGraphics.fillCircle(27, 16, 3);
           monsterGraphics.fillCircle(33, 16, 3);
           
         } else if (type === 'fire_elemental') {
-          // Fire Elemental
           monsterGraphics.fillStyle(color, 0.8);
           monsterGraphics.fillRect(8, 18, 16, 20);
           
-          // Fire effects
           monsterGraphics.fillStyle(0xff0000, 0.9);
           monsterGraphics.fillCircle(16, 20, 25);
           monsterGraphics.fillStyle(0xffa500, 0.7);
           monsterGraphics.fillCircle(16, 20, 18);
           monsterGraphics.fillStyle(0xffff00, 0.5);
           monsterGraphics.fillCircle(16, 20, 12);
+        } else if (type === 'magma_golem') {
+          monsterGraphics.fillStyle(color, 1);
+          monsterGraphics.fillRect(10, 15, 20, 25);
+          monsterGraphics.fillRect(15, 10, 10, 15);
+          
+          monsterGraphics.fillStyle(0xff4500, 0.9);
+          monsterGraphics.fillRect(12, 20, 16, 2);
+          monsterGraphics.fillRect(18, 15, 2, 20);
         }
         
         monsterGraphics.generateTexture(type, 40, 45);
@@ -345,17 +312,14 @@ const Level7 = ({ onComplete }) => {
       // --- Create Evacuation Zone ---
       const evacuationGraphics = this.add.graphics();
       
-      // Safe zone platform
       evacuationGraphics.fillStyle(0x00ff00, 0.6);
       evacuationGraphics.fillCircle(40, 40, 35);
       
-      // Portal effect
       evacuationGraphics.fillStyle(0x87ceeb, 0.8);
       evacuationGraphics.fillCircle(40, 40, 25);
       evacuationGraphics.fillStyle(0x000080, 0.6);
       evacuationGraphics.fillCircle(40, 40, 15);
       
-      // Portal energy rings
       for (let i = 0; i < 6; i++) {
         const angle = (i * Math.PI * 2) / 6;
         const x = 40 + Math.cos(angle) * 20;
@@ -373,21 +337,18 @@ const Level7 = ({ onComplete }) => {
     }
 
     function create() {
-      // Create volcanic background
       this.add.image(400, 250, 'volcanic_background');
       
-      // Add volcanic atmosphere
       createVolcanicAtmosphere.call(this);
       
       walls = this.physics.add.staticGroup();
       explorers = this.physics.add.group();
-      weapons = this.physics.add.group();
+      spells = this.physics.add.group();
       volcanoMonsters = this.physics.add.group();
       
       player = this.physics.add.sprite(100, 450, 'player');
       player.setCollideWorldBounds(true).body.setSize(35, 40).setOffset(5, 5);
       
-      // Create evacuation zone
       evacuationZone = this.physics.add.sprite(700, 100, 'evacuation_zone');
       evacuationZone.setImmovable(true);
       
@@ -400,59 +361,46 @@ const Level7 = ({ onComplete }) => {
       this.physics.add.collider(volcanoMonsters, volcanoMonsters);
       
       this.physics.add.overlap(player, explorers, findExplorer, null, this);
-      this.physics.add.overlap(player, weapons, findWeapon, null, this);
+      this.physics.add.overlap(player, spells, findSpell, null, this);
       this.physics.add.overlap(player, evacuationZone, reachEvacuation, null, this);
       this.physics.add.overlap(player, volcanoMonsters, hitByMonster, null, this);
       
-      // Add methods to scene
       this.completeQuery = completeQuery;
       this.showQueryInput = showQueryInput;
       
       createLevel.call(this);
       updateReactUI();
       
-      // Start countdown timer
       startCountdownTimer.call(this);
     }
 
     function createLevel() {
       explorers.clear(true, true);
-      weapons.clear(true, true);
+      spells.clear(true, true);
       volcanoMonsters.clear(true, true);
       walls.clear(true, true);
       
       gameState.explorersFound = 0;
-      gameState.weaponsFound = 0;
-      gameState.armedHeroes = 0;
+      gameState.spellsFound = 0;
+      gameState.armedExplorers = 0;
       gameState.queryComplete = false;
       gameState.evacuationComplete = false;
       gameState.timeRemaining = 120;
       gameState.isLevelComplete = false;
       
-      // Reset data
       gameState.explorersData.forEach(explorer => explorer.found = false);
-      gameState.weaponsData.forEach(weapon => weapon.found = false);
+      gameState.spellsData.forEach(spell => spell.found = false);
       
-      // Create volcanic environment
       createVolcanicWalls.call(this);
-      
-      // Spawn explorers
       spawnExplorers.call(this);
-      
-      // Spawn weapon crates
-      spawnWeapons.call(this);
-      
-      // Spawn volcano monsters
+      spawnSpells.call(this);
       spawnVolcanoMonsters.call(this);
-      
-      // Create UI display
       createGameDisplay.call(this);
       
       player.setPosition(100, 450).setVelocity(0, 0);
     }
     
     function createVolcanicAtmosphere() {
-      // Create lava bubbles and fire particles
       for (let i = 0; i < 15; i++) {
         const particle = sceneRef.add.circle(
           Math.random() * 800,
@@ -472,7 +420,6 @@ const Level7 = ({ onComplete }) => {
         });
       }
       
-      // Create heat waves
       for (let i = 0; i < 4; i++) {
         const heatWave = sceneRef.add.rectangle(
           i * 200,
@@ -496,15 +443,12 @@ const Level7 = ({ onComplete }) => {
     }
     
     function createVolcanicWalls() {
-      // Simple volcanic cave layout
       const wallPositions = [
-        // Outer walls
         [40, 40], [80, 40], [120, 40], [680, 40], [720, 40], [760, 40],
         [40, 460], [80, 460], [720, 460], [760, 460],
         [40, 80], [40, 120], [40, 160], [40, 200], [40, 240], [40, 280], [40, 320], [40, 360], [40, 400],
         [760, 80], [760, 120], [760, 160], [760, 200], [760, 240], [760, 280], [760, 320], [760, 360], [760, 400],
         
-        // Simple interior formations
         [200, 120], [200, 200], [200, 280], [200, 360],
         [400, 80], [400, 160], [400, 240], [400, 320], [400, 400],
         [600, 120], [600, 200], [600, 280], [600, 360]
@@ -531,7 +475,6 @@ const Level7 = ({ onComplete }) => {
         explorer.setCollideWorldBounds(true).body.setSize(30, 35).setOffset(5, 5);
         explorer.explorerData = explorerData;
         
-        // Floating animation
         sceneRef.tweens.add({
           targets: explorer,
           y: explorer.y - 8,
@@ -541,19 +484,19 @@ const Level7 = ({ onComplete }) => {
           ease: 'Sine.easeInOut'
         });
         
-        // Name and info display
-        const infoText = sceneRef.add.text(pos.x, pos.y - 30, `${explorerData.name}\nCourage: ${explorerData.courage_level}\nWeapon: ${explorerData.weaponName || 'None'}`, {
-          fontSize: '10px',
+        // LARGER TEXT as requested
+        const infoText = sceneRef.add.text(pos.x, pos.y - 40, `${explorerData.name}\nSkill: ${explorerData.skill}`, {
+          fontSize: '10px', // Increased from 10px to 16px
           fontFamily: 'Courier New',
-          color: explorerData.hasWeapon ? '#00ff00' : '#ff6666',
+          color: '#00ff00',
           backgroundColor: '#000000',
-          padding: { x: 4, y: 2 },
-          align: 'center'
+          padding: { x: 6, y: 4 }, // Increased padding
+          align: 'center',
+          fontStyle: 'bold' // Added bold
         }).setOrigin(0.5);
         
         explorer.infoText = infoText;
         
-        // Floating text animation
         sceneRef.tweens.add({
           targets: infoText,
           y: infoText.y - 5,
@@ -565,32 +508,31 @@ const Level7 = ({ onComplete }) => {
       });
     }
     
-    function spawnWeapons() {
-      const weaponPositions = [
-        { x: 180, y: 120, type: 'fire_sword', owner_id: 1 },
-        { x: 350, y: 140, type: 'ice_bow', owner_id: 2 },
-        { x: 520, y: 120, type: 'lightning_staff', owner_id: 3 }
+    function spawnSpells() {
+      const spellPositions = [
+        { x: 180, y: 120, name: 'Fireball' },
+        { x: 350, y: 140, name: 'Frost Bolt' },
+        { x: 520, y: 120, name: 'Thunder Strike' },
+        { x: 280, y: 320, name: 'Stone Shield' }
       ];
       
-      weaponPositions.forEach(pos => {
-        const weaponData = gameState.weaponsData.find(w => w.owner_id === pos.owner_id);
-        const weapon = weapons.create(pos.x, pos.y, pos.type);
-        weapon.setCollideWorldBounds(true).body.setSize(25, 25).setOffset(3, 3);
-        weapon.weaponData = weaponData;
+      spellPositions.forEach(pos => {
+        const spellData = gameState.spellsData.find(s => s.name === pos.name);
+        const spell = spells.create(pos.x, pos.y, `spell_${spellData.name.toLowerCase().replace(' ', '_')}`);
+        spell.setCollideWorldBounds(true).body.setSize(30, 35).setOffset(5, 5);
+        spell.spellData = spellData;
         
-        // Floating animation
         sceneRef.tweens.add({
-          targets: weapon,
-          y: weapon.y - 10,
+          targets: spell,
+          y: spell.y - 10,
           duration: 1800 + Math.random() * 400,
           yoyo: true,
           repeat: -1,
           ease: 'Sine.easeInOut'
         });
         
-        // Pulsing effect
         sceneRef.tweens.add({
-          targets: weapon,
+          targets: spell,
           scaleX: 1.2,
           scaleY: 1.2,
           duration: 1500,
@@ -599,21 +541,22 @@ const Level7 = ({ onComplete }) => {
           ease: 'Sine.easeInOut'
         });
         
-        // Weapon info
-        const weaponText = sceneRef.add.text(pos.x, pos.y - 25, weaponData.weapon_name, {
-          fontSize: '12px',
+        // LARGER SPELL TEXT as requested
+        const spellText = sceneRef.add.text(pos.x, pos.y - 35, `${spellData.name}\nElement: ${spellData.element}`, {
+          fontSize: '12px', // Increased from 12px to 18px
           fontFamily: 'Courier New',
           color: '#ffd700',
           backgroundColor: '#000000',
-          padding: { x: 4, y: 2 }
+          padding: { x: 8, y: 5 }, // Increased padding
+          align: 'center',
+          fontStyle: 'bold' // Added bold
         }).setOrigin(0.5);
         
-        weapon.weaponText = weaponText;
+        spell.spellText = spellText;
         
-        // Floating text animation
         sceneRef.tweens.add({
-          targets: weaponText,
-          y: weaponText.y - 5,
+          targets: spellText,
+          y: spellText.y - 5,
           duration: 1800 + Math.random() * 400,
           yoyo: true,
           repeat: -1,
@@ -626,11 +569,12 @@ const Level7 = ({ onComplete }) => {
       const monsterPositions = [
         { x: 280, y: 160, type: 'lava_beast' },
         { x: 420, y: 200, type: 'fire_elemental' },
-        { x: 300, y: 300, type: 'lava_beast' },
-        { x: 500, y: 280, type: 'fire_elemental' }
+        { x: 300, y: 300, type: 'magma_golem' },
+        { x: 500, y: 280, type: 'fire_elemental' },
+        { x: 350, y: 120, type: 'lava_beast' }
       ];
       
-      monsterPositions.forEach((pos, index) => {
+      monsterPositions.forEach(pos => {
         const monster = volcanoMonsters.create(pos.x, pos.y, pos.type);
         monster.setCollideWorldBounds(true).body.setSize(30, 35).setOffset(5, 5);
         monster.health = 60;
@@ -642,7 +586,6 @@ const Level7 = ({ onComplete }) => {
         monster.startY = pos.y;
         monster.patrolDirection = 1;
         
-        // Monster animations
         if (pos.type === 'fire_elemental') {
           sceneRef.tweens.add({
             targets: monster,
@@ -659,7 +602,6 @@ const Level7 = ({ onComplete }) => {
     }
     
     function createGameDisplay() {
-      // Create info display
       const infoText = sceneRef.add.text(20, 20, '', {
         fontSize: '14px',
         fontFamily: 'Courier New',
@@ -669,7 +611,6 @@ const Level7 = ({ onComplete }) => {
       });
       sceneRef.infoText = infoText;
       
-      // Countdown timer
       const timerText = sceneRef.add.text(400, 20, '', {
         fontSize: '16px',
         fontFamily: 'Courier New',
@@ -685,7 +626,7 @@ const Level7 = ({ onComplete }) => {
     
     function updateGameDisplay() {
       if (sceneRef.infoText) {
-        sceneRef.infoText.setText(`Explorers: ${gameState.explorersFound}/${gameState.totalExplorers}\nWeapons: ${gameState.weaponsFound}/${gameState.totalWeapons}\nArmed Heroes: ${gameState.armedHeroes}/${gameState.totalArmedHeroes}`);
+        sceneRef.infoText.setText(`Explorers: ${gameState.explorersFound}/${gameState.totalExplorers}\nSpells: ${gameState.spellsFound}/${gameState.totalSpells}\nArmed Explorers: ${gameState.armedExplorers}/${gameState.totalArmedExplorers}`);
       }
       
       if (sceneRef.timerText) {
@@ -693,11 +634,9 @@ const Level7 = ({ onComplete }) => {
         const seconds = gameState.timeRemaining % 60;
         sceneRef.timerText.setText(`⏰ ${minutes}:${seconds.toString().padStart(2, '0')}`);
         
-        // Timer color and effects based on urgency
         if (gameState.timeRemaining <= 20) {
           sceneRef.timerText.setBackgroundColor('#ff0000');
           sceneRef.timerText.setFontSize('20px');
-          // Pulsing effect for last 20 seconds
           sceneRef.tweens.add({
             targets: sceneRef.timerText,
             scaleX: 1.2,
@@ -722,16 +661,13 @@ const Level7 = ({ onComplete }) => {
         callback: () => {
           gameState.timeRemaining--;
           
-          // Time pressure increases as time runs out
           if (gameState.timeRemaining <= 30) {
-            // Last 30 seconds - screen effects
             if (gameState.timeRemaining % 2 === 0) {
               sceneRef.cameras.main.flash(100, 255, 0, 0, true);
             }
           }
           
           if (gameState.timeRemaining <= 0) {
-            // Time's up! Restart level
             timeExpired();
           }
           
@@ -744,19 +680,15 @@ const Level7 = ({ onComplete }) => {
     }
     
     function timeExpired() {
-      // Stop all game activity
       gameState.isLevelComplete = true;
       
-      // Close query modal if open
       setUiState(prev => ({ ...prev, showQueryInput: false }));
       setSqlQuery('');
       setQueryError('');
       
-      // Screen effects
       sceneRef.cameras.main.flash(1000, 255, 0, 0);
       sceneRef.cameras.main.shake(500, 0.02);
       
-      // Show time expired message
       const timeUpText = sceneRef.add.text(400, 250, '⏰ TIME EXPIRED! ⏰\n\nYou ran out of time!\nRestarting level...', {
         fontSize: '24px',
         fontFamily: 'Courier New',
@@ -767,7 +699,6 @@ const Level7 = ({ onComplete }) => {
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(2000);
       
-      // Restart after 3 seconds
       sceneRef.time.delayedCall(3000, () => {
         timeUpText.destroy();
         restartLevel();
@@ -775,28 +706,25 @@ const Level7 = ({ onComplete }) => {
     }
     
     function restartLevel() {
-      // Reset all game state
       gameState.health = 100;
       gameState.timeRemaining = 120;
       gameState.explorersFound = 0;
-      gameState.weaponsFound = 0;
-      gameState.armedHeroes = 0;
+      gameState.spellsFound = 0;
+      gameState.armedExplorers = 0;
       gameState.queryComplete = false;
       gameState.evacuationComplete = false;
       gameState.isLevelComplete = false;
       
-      // Reset data
       gameState.explorersData.forEach(explorer => explorer.found = false);
-      gameState.weaponsData.forEach(weapon => weapon.found = false);
+      gameState.spellsData.forEach(spell => spell.found = false);
       
-      // Reset UI state
       setUiState(prev => ({
         ...prev,
         health: 100,
         showQueryInput: false,
         explorersFound: 0,
-        weaponsFound: 0,
-        armedHeroes: 0,
+        spellsFound: 0,
+        armedExplorers: 0,
         timeRemaining: 120,
         evacuationComplete: false,
         isQueryComplete: false
@@ -805,7 +733,6 @@ const Level7 = ({ onComplete }) => {
       setQueryError('');
       setQuerySuccess(false);
       
-      // Recreate the level
       createLevel.call(sceneRef);
       updateReactUI();
     }
@@ -816,7 +743,6 @@ const Level7 = ({ onComplete }) => {
       player.setVelocity(0);
       const speed = 180;
       
-      // Use the ref instead of state for game logic
       if (cursors.left.isDown || mobileControlsRef.current.left) {
         player.setVelocityX(-speed);
       } else if (cursors.right.isDown || mobileControlsRef.current.right) {
@@ -834,14 +760,12 @@ const Level7 = ({ onComplete }) => {
       }
       
       if ((Phaser.Input.Keyboard.JustDown(interactKey) || mobileControlsRef.current.interact) && gameState.canInteract) {
-        // Check if near evacuation zone
         const distanceToEvacuation = Phaser.Math.Distance.Between(player.x, player.y, evacuationZone.x, evacuationZone.y);
         if (distanceToEvacuation <= 80) {
           reachEvacuation();
         }
       }
       
-      // Update volcano monsters
       updateVolcanoMonsters.call(this);
     }
     
@@ -852,11 +776,9 @@ const Level7 = ({ onComplete }) => {
         const distanceToPlayer = Phaser.Math.Distance.Between(monster.x, monster.y, player.x, player.y);
         
         if (distanceToPlayer < monster.aggroRange) {
-          // Chase player
           sceneRef.physics.moveTo(monster, player.x, player.y, monster.speed);
           monster.setTint(0xff4444);
         } else {
-          // Simple patrol
           monster.clearTint();
           
           const distanceFromStart = Math.abs(monster.x - monster.startX);
@@ -874,7 +796,6 @@ const Level7 = ({ onComplete }) => {
       
       const attackRange = 100;
       
-      // Fire magic attack effects
       const attackEffect = sceneRef.add.circle(player.x, player.y, attackRange, 0xff4500, 0.6);
       const innerEffect = sceneRef.add.circle(player.x, player.y, attackRange * 0.6, 0xffa500, 0.8);
       
@@ -896,7 +817,6 @@ const Level7 = ({ onComplete }) => {
         onComplete: () => innerEffect.destroy()
       });
       
-      // Attack volcano monsters
       volcanoMonsters.children.entries.forEach(monster => {
         if (!monster.active) return;
         
@@ -939,7 +859,6 @@ const Level7 = ({ onComplete }) => {
       explorer.explorerData.found = true;
       gameState.explorersFound++;
       
-      // Visual effect
       const findEffect = sceneRef.add.circle(explorer.x, explorer.y, 50, 0x00ff00, 0.8);
       sceneRef.tweens.add({
         targets: findEffect,
@@ -950,7 +869,7 @@ const Level7 = ({ onComplete }) => {
         onComplete: () => findEffect.destroy()
       });
       
-      showMessage(`${explorer.explorerData.name} found! Courage: ${explorer.explorerData.courage_level}`, 2000);
+      showMessage(`${explorer.explorerData.name} found! Skill: ${explorer.explorerData.skill}`, 2000);
       
       explorer.destroy();
       if (explorer.infoText) explorer.infoText.destroy();
@@ -959,14 +878,13 @@ const Level7 = ({ onComplete }) => {
       updateReactUI();
     }
 
-    function findWeapon(player, weapon) {
-      if (weapon.weaponData.found) return;
+    function findSpell(player, spell) {
+      if (spell.spellData.found) return;
       
-      weapon.weaponData.found = true;
-      gameState.weaponsFound++;
+      spell.spellData.found = true;
+      gameState.spellsFound++;
       
-      // Visual effect
-      const findEffect = sceneRef.add.circle(weapon.x, weapon.y, 50, 0xffd700, 0.8);
+      const findEffect = sceneRef.add.circle(spell.x, spell.y, 50, 0xffd700, 0.8);
       sceneRef.tweens.add({
         targets: findEffect,
         scaleX: 2.5,
@@ -976,10 +894,10 @@ const Level7 = ({ onComplete }) => {
         onComplete: () => findEffect.destroy()
       });
       
-      showMessage(`${weapon.weaponData.weapon_name} found!`, 2000);
+      showMessage(`${spell.spellData.name} found! Element: ${spell.spellData.element}`, 2000);
       
-      weapon.destroy();
-      if (weapon.weaponText) weapon.weaponText.destroy();
+      spell.destroy();
+      if (spell.spellText) spell.spellText.destroy();
       
       updateGameDisplay();
       updateReactUI();
@@ -1004,8 +922,8 @@ const Level7 = ({ onComplete }) => {
     }
     
     function reachEvacuation() {
-      if (gameState.explorersFound < gameState.totalExplorers || gameState.weaponsFound < gameState.totalWeapons) {
-        showMessage('Find all explorers and weapons before evacuating!', 2500);
+      if (gameState.explorersFound < gameState.totalExplorers || gameState.spellsFound < gameState.totalSpells) {
+        showMessage('Find all explorers and spells before evacuating!', 2500);
         return;
       }
       
@@ -1014,8 +932,7 @@ const Level7 = ({ onComplete }) => {
         return;
       }
       
-      // Start evacuation sequence
-      evacuateHeroes();
+      evacuateExplorers();
     }
     
     function showQueryInput() {
@@ -1024,13 +941,10 @@ const Level7 = ({ onComplete }) => {
     
     function completeQuery() {
       gameState.queryComplete = true;
+      gameState.armedExplorers = gameState.totalExplorers; // All explorers have matching spells
       
-      // Calculate armed heroes from JOIN result
-      gameState.armedHeroes = gameState.weaponsData.length; // All weapons have owners
+      showMessage('JOIN query executed! Explorer-Spell combinations identified!', 3000);
       
-      showMessage('JOIN query executed! Armed heroes identified for evacuation!', 3000);
-      
-      // Make evacuation zone glow
       evacuationZone.setTint(0x00ff00);
       sceneRef.tweens.add({
         targets: evacuationZone,
@@ -1044,14 +958,12 @@ const Level7 = ({ onComplete }) => {
       updateReactUI();
     }
     
-    function evacuateHeroes() {
+    function evacuateExplorers() {
       gameState.evacuationComplete = true;
       
-      // Evacuation sequence
       evacuationZone.setTint(0x87ceeb);
       evacuationZone.setScale(1.5);
       
-      // Success effects
       for (let i = 0; i < 8; i++) {
         sceneRef.time.delayedCall(i * 200, () => {
           const effect = sceneRef.add.circle(
@@ -1116,7 +1028,7 @@ const Level7 = ({ onComplete }) => {
       const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
       overlay.setDepth(1000);
       
-      const completionText = sceneRef.add.text(400, 80, '⚔️ Heroes Successfully Armed & Evacuated! ⚔️', {
+      const completionText = sceneRef.add.text(400, 80, '✨ Explorers & Spells Successfully Matched! ✨', {
         fontSize: '24px',
         fontFamily: 'Courier New',
         color: '#00ff00',
@@ -1129,49 +1041,23 @@ const Level7 = ({ onComplete }) => {
         color: '#00ffff'
       }).setOrigin(0.5).setDepth(1001);
       
-      const queryText2 = sceneRef.add.text(400, 140, 'SELECT e.name, w.weapon_name FROM jungle_explorers e JOIN weapons w ON e.id = w.owner_id;', {
-        fontSize: '11px',
+      const queryText2 = sceneRef.add.text(400, 140, 'SELECT jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element FROM jungle_explorers JOIN spells ON jungle_explorers.id = spells.id;', {
+        fontSize: '9px',
         fontFamily: 'Courier New',
         color: '#00ffff',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(1001);
       
-      // Show JOIN results
-      const resultText = sceneRef.add.text(400, 180, 'Armed Heroes (Explorer-Weapon Pairs):', {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#ffff00'
-      }).setOrigin(0.5).setDepth(1001);
       
-      const joinResults = [
-        'Maya | Fire Sword',
-        'Jin | Ice Bow',
-        'Alex | Lightning Staff'
-      ];
-      
-      const resultsList = sceneRef.add.text(400, 220, joinResults.join('\n'), {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#90ee90',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const unarmedText = sceneRef.add.text(400, 280, 'Unarmed Explorer (No JOIN match):\nTom | (No weapon)', {
-        fontSize: '12px',
-        fontFamily: 'Courier New',
-        color: '#ff8888',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const statsText = sceneRef.add.text(400, 340, `👥 Explorers Found: ${gameState.explorersFound}/${gameState.totalExplorers}\n⚔️ Weapons Found: ${gameState.weaponsFound}/${gameState.totalWeapons}\n🛡️ Armed Heroes: ${gameState.armedHeroes}/${gameState.totalArmedHeroes}\n⏰ Time Remaining: ${gameState.timeRemaining}s`, {
+      const statsText = sceneRef.add.text(400, 320, `👥 Explorers Found: ${gameState.explorersFound}/${gameState.totalExplorers}\n✨ Spells Found: ${gameState.spellsFound}/${gameState.totalSpells}\n🔮 Armed Explorers: ${gameState.armedExplorers}/${gameState.totalArmedExplorers}\n⏰ Time Remaining: ${gameState.timeRemaining}s`, {
         fontSize: '13px',
         fontFamily: 'Courier New',
         color: '#ffff00',
         align: 'center'
       }).setOrigin(0.5).setDepth(1001);
       
-      const instructionText = sceneRef.add.text(400, 420, 'The evacuation route is secure! Click to return to map', {
-        fontSize: '22px',
+      const instructionText = sceneRef.add.text(400, 420, 'Perfect JOIN execution! Click to return to map', {
+        fontSize: '24px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1196,8 +1082,8 @@ const Level7 = ({ onComplete }) => {
         health: Math.max(0, gameState.health),
         isQueryComplete: gameState.isLevelComplete,
         explorersFound: gameState.explorersFound,
-        weaponsFound: gameState.weaponsFound,
-        armedHeroes: gameState.armedHeroes,
+        spellsFound: gameState.spellsFound,
+        armedExplorers: gameState.armedExplorers,
         evacuationComplete: gameState.evacuationComplete,
         timeRemaining: gameState.timeRemaining
       }));
@@ -1219,11 +1105,10 @@ const Level7 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+  }, [onComplete]);
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
-      {/* Display the game elements as reference */}
       <div className="flex items-center justify-center flex-wrap gap-4 text-sm text-slate-400 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-gradient-to-b from-red-600 to-red-800 rounded-full flex items-center justify-center">
@@ -1232,12 +1117,12 @@ const Level7 = ({ onComplete }) => {
           <span>Fire Wizard</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-lg">📦</span>
-          <span>Weapon Crates</span>
+          <span className="text-lg">👥</span>
+          <span>Explorers</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-lg">⚔️</span>
-          <span>Armed Explorers</span>
+          <span className="text-lg">✨</span>
+          <span>Magic Spells</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-lg">🌋</span>
@@ -1245,7 +1130,6 @@ const Level7 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Responsive game container */}
       <div className="w-full max-w-4xl">
         <div 
           ref={gameContainerRef} 
@@ -1258,16 +1142,15 @@ const Level7 = ({ onComplete }) => {
         <div>Health: <span className="text-rose-400">{uiState.health}/100</span></div>
         <div>Time: <span className={`${uiState.timeRemaining <= 20 ? 'text-red-400 animate-pulse' : uiState.timeRemaining <= 60 ? 'text-yellow-400' : 'text-green-400'}`}>{Math.floor(uiState.timeRemaining / 60)}:{(uiState.timeRemaining % 60).toString().padStart(2, '0')}</span></div>
         <div>Explorers: <span className="text-blue-400">{uiState.explorersFound}/{uiState.totalExplorers}</span></div>
-        <div>Armed Heroes: <span className="text-green-400">{uiState.armedHeroes}/{uiState.totalArmedHeroes}</span></div>
+        <div>Spells: <span className="text-purple-400">{uiState.spellsFound}/{uiState.totalSpells}</span></div>
       </div>
 
       {/* SQL Query Input Modal */}
       {uiState.showQueryInput && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-lg w-full mx-4">
-            <h3 className="pixel-font text-xl text-red-400 mb-4 text-center">⚔️ Arm the Heroes ⚔️</h3>
+          <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-2xl w-full mx-4">
+            <h3 className="pixel-font text-xl text-red-400 mb-4 text-center">✨ Match Explorers with Spells ✨</h3>
             
-            {/* Show remaining time in query modal */}
             <div className="text-center mb-4">
               <span className={`pixel-font text-lg font-bold ${uiState.timeRemaining <= 20 ? 'text-red-400 animate-pulse' : uiState.timeRemaining <= 60 ? 'text-yellow-400' : 'text-green-400'}`}>
                 ⏰ {Math.floor(uiState.timeRemaining / 60)}:{(uiState.timeRemaining % 60).toString().padStart(2, '0')} remaining
@@ -1275,22 +1158,20 @@ const Level7 = ({ onComplete }) => {
             </div>
             
             <p className="text-slate-300 mb-4 text-sm text-center">
-              Write the JOIN query to match explorers with their weapons:
+              Write the JOIN query to match explorers with their spells using the exact format:
             </p>
             
             <div className="bg-black p-3 rounded border mb-4">
-              <p className="text-green-400 text-xs font-mono">
-                JOIN jungle_explorers as e with weapons as w on this condition explorer.id = weapon.owner_id
-              </p>
+
               <p className="text-yellow-400 text-xs font-mono mt-1">
-                Result: Show explorer name and their weapon name
+                Result: Show explorer name, skill, spell name and element, Join on the jungle_explorers Id and spells Id
               </p>
             </div>
             
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="Enter your SQL query here..."
+              placeholder="SELECT jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element...."
               className="w-full p-3 bg-slate-700 text-white rounded border border-slate-600 resize-none font-mono text-sm"
               rows={4}
               onKeyDown={(e) => {
@@ -1316,61 +1197,42 @@ const Level7 = ({ onComplete }) => {
           </div>
         </div>
       )}
-        {/* Mobile Controls - Custom for Level7 with Evacuate button */}
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component but add extra evacuate functionality */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-            {/* Extra Evacuate Button for Level7 - positioned separately */}
-            <button
-              className="bg-green-600 hover:bg-green-500 active:bg-green-400 rounded-full text-white font-bold text-sm flex items-center justify-center select-none transition-colors"
-              onPointerDown={(e) => { 
-                e.preventDefault(); 
-                e.stopPropagation();
-                handleInteract();
-              }}
-              style={{ touchAction: 'none' }}
-            >
-              Evacuate
-            </button>
-          </div>
+
+      {/* Mobile Controls */}
+      <div className="block md:hidden">
+        <div className="flex flex-col items-center gap-4">
+          <MobileControls 
+            mobileControlsRef={mobileControlsRef}
+            setMobileControls={setMobileControls}
+          />
         </div>
+      </div>
 
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">Advanced SQL Challenge - JOIN Tables:</div>
         <div className="font-mono text-lg">
           {uiState.isQueryComplete ? (
             <span className="text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">
-              Heroes Armed & Ready for Evacuation!
+              Explorers & Spells Successfully Matched!
             </span>
           ) : (
             <span className="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded animate-pulse">
-              Find all explorers and weapons • Write JOIN query to match them • 2 minutes total!
+              Find all explorers and spells • Write JOIN query • 2 minutes total!
             </span>
           )}
         </div>
         <div className="text-xs text-slate-500 mt-2">
-          Connect explorers table with weapons table • Show who has what weapon
+          Connect jungle_explorers table with spells table • Show explorer skills and spell elements
         </div>
       </div>
 
-      {/* Use the reusable MobileControls component with custom Evacuate button */}
+      {/* Desktop Controls */}
       <div className="w-full hidden md:block max-w-3xl p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-        
-        {/* Desktop Controls */}
-        <div className="hidden md:block">
         <div className="pixel-font text-slate-400 text-sm mb-2 text-center"><strong>CONTROLS:</strong></div>
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Move</div>
-            <div>SPACE: Attack</div>
-            <div>E : Evacuate</div>
-          </div>
+        <div className="grid grid-cols-2 gap-2 text-sm text-slate-300 text-center">
+          <div>↑↓←→ Move</div>
+          <div>SPACE: Attack</div>
         </div>
-
       </div>
 
       <style jsx>{`

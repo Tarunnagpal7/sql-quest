@@ -830,7 +830,7 @@ const Level5 = ({ onComplete }) => {
         <div className="text-lg">
           {uiState.gamePhase === 'running' ? (
             <span className="text-red-400 font-bold animate-pulse">
-              🏃 Navigate the jungle maze! One relentless beast is constantly chasing you!
+              🏃 Navigate to the monkey cage! One relentless beast is constantly chasing you!
             </span>
           ) : uiState.gamePhase === 'safe' ? (
             <span className="text-yellow-400 font-bold">

@@ -88,7 +88,7 @@ const FinalCTA = () => {
         <div className="flex items-center space-x-2">
           <span className="text-2xl w-8">
             <img 
-             src= "./rock.png"
+             src= "./rock.webp"
             />
           </span>
           <div className="tracking-widest font-semibold text-base md:text-lg text-white drop-shadow-sm">

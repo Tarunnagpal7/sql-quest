@@ -35,7 +35,7 @@ const StoryIntroVideo = ({ onEnd, onSkip }) => {
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
-        src="/Story.mp4"
+        src="/Story.webm"
         autoPlay
         playsInline
         preload="auto"

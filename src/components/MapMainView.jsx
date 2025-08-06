@@ -6,8 +6,72 @@ import { levels } from "../assets/data/levels";
 
 // Asset URLs
 const ASSETS = {
-  wizard: "/wizard-character.png",
+   wizard: "/wiz_vid.webm",
   bgMap: "/jungle_map_bg.png",
+};
+
+// Enhanced Progress Bar Component
+const GameProgressBar = ({ currentLevel, completedLevels, totalLevels }) => {
+  const progressPercentage = (completedLevels.length / totalLevels) * 100;
+  
+  const getLevelIcon = (levelNum) => {
+    const level = levels.find(l => l.id === levelNum);
+    if (!level) return "🗡️";
+    
+    switch (level.type) {
+      case "basic": return "🌱";
+      case "intermediate": return "⚔️";
+      case "advanced": return "🔥";
+      case "expert": return "💀";
+      case "legendary": return "👑";
+      default: return "🗡️";
+    }
+  };
+
+  return (
+    <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-green-500/30">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-white font-bold text-sm">
+          Progress: {completedLevels.length}/{totalLevels}
+        </div>
+        <div className="text-green-400 text-xs">
+          {Math.round(progressPercentage)}%
+        </div>
+      </div>
+      
+      {/* Progress Bar */}
+      <div className="relative w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-500"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+      
+      {/* Level Dots */}
+      <div className="flex justify-between mt-1 md:m-2">
+        {[...Array(Math.min(totalLevels, 10))].map((_, index) => {
+          const levelNum = index + 1;
+          const isCompleted = completedLevels.includes(levelNum);
+          const isCurrent = levelNum === currentLevel;
+          
+          return (
+            <div
+              key={levelNum}
+              className={`w-4 h-4 md:m-1  rounded-full flex items-center justify-center text-xs transition-all ${
+                isCompleted 
+                  ? "bg-green-500 text-white" 
+                  : isCurrent 
+                  ? "bg-yellow-500 text-white animate-pulse" 
+                  : "bg-gray-600 text-gray-400"
+              }`}
+            >
+              {getLevelIcon(levelNum)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 // Wizard dialogue system
@@ -29,60 +93,60 @@ const getWizardDialogue = (currentLevel, isNewUser, hasJustCompleted, isGameWon)
     };
   }
 
-  const levelDialogues = {
-    1: {
-      message: isNewUser 
-        ? "👋 Hey! I'm Arin, your SQL wizard guide. I need your help to solve mystical SQL quests and escape this enchanted realm. Ready to start?"
-        : "🗺️ Welcome back, brave adventurer! Let's uncover the hidden jungle map together!",
-      type: "welcome",
-      emoji: "🌟"
-    },
-    2: {
-      message: "⚔️ Great progress! Now we face the Dragon's Trial. We're trapped and need to find brave explorers to help us escape!",
-      type: "challenge",
-      emoji: "🐉"
-    },
-    3: {
-      message: "🏛️ The temple gates block our path! We need to find artifacts to unlock the ancient doors and continue our escape.",
-      type: "mystery",
-      emoji: "🗝️"
-    },
-    4: {
-      message: "🚣 We're trapped by the raging river! Help me build a magical raft using explorers who have found artifacts.",
-      type: "adventure",
-      emoji: "🌊"
-    },
-    5: {
-      message: "🐒 A sacred beast holds the key to our freedom! Only the most courageous can free it from the stone curse.",
-      type: "rescue",
-      emoji: "⛰️"
-    },
-    6: {
-      message: "💎 The Memory Crystal is our escape route! We need explorers with specific powers to repair it.",
-      type: "mystical",
-      emoji: "🔮"
-    },
-    7: {
-      message: "🌋 Volcano eruption! We're trapped! Quick, find explorers with weapons to clear our escape path!",
-      type: "urgent",
-      emoji: "⚡"
-    },
-    8: {
-      message: "🏁 Time for the Speed Circuit! Calculate courage levels to power our escape raft!",
-      type: "race",
-      emoji: "🏎️"
-    },
-    9: {
-      message: "⚔️ Final battle! Face the guardian in epic wizard combat to unlock our freedom!",
-      type: "battle",
-      emoji: "🔥"
-    },
-    10: {
-      message: "🏆 The final quest awaits! Open the Ancient Temple door and claim our freedom!",
-      type: "final",
-      emoji: "👑"
-    }
-  };
+ const levelDialogues = {
+  1: {
+    message: isNewUser
+      ? "👋 Hey! I'm Arin, your SQL wizard guide. Help me uncover the hidden jungle map lost in ancient data. Ready for your first quest?"
+      : "🗺️ Welcome back! Let's reveal the hidden jungle paths together. Adventure awaits!",
+    type: "welcome",
+    emoji: "🌟"
+  },
+  2: {
+    message: "🌿 We're trapped near the Jungle River! Only the bravest explorers can help us cross. Find them, quick!",
+    type: "challenge",
+    emoji: "🚨"
+  },
+  3: {
+    message: "🏹 Guardians block the ancient castle! Aim well and identify the artifacts to pass through.",
+    type: "mystery",
+    emoji: "🏰"
+  },
+  4: {
+    message: "🪵 The enemy approaches! Build a raft using ancient knowledge to cross the river before they reach us.",
+    type: "adventure",
+    emoji: "🛶"
+  },
+  5: {
+    message: "🐒 A sacred monkey is turned to stone! Use the strongest weapon to shatter the curse and free it!",
+    type: "rescue",
+    emoji: "🗿"
+  },
+  6: {
+    message: "🌀 The floor is filled with traps! Step only where truth repeats. Follow the patterns or fall!",
+    type: "puzzle",
+    emoji: "🐾"
+  },
+  7: {
+    message: "🔥 The volcano erupts! Arm the heroes with powerful spells and weapons to defend our people!",
+    type: "urgent",
+    emoji: "🌋"
+  },
+  8: {
+    message: "🚤 A river race begins! Calculate the average courage to match the speed needed to win the rescue challenge!",
+    type: "race",
+    emoji: "🏁"
+  },
+  9: {
+    message: "🔓 The Ancient Temple stands before us. Use SQL magic to unlock the golden gates to the final arena!",
+    type: "quest",
+    emoji: "🏯"
+  },
+  10: {
+    message: "🔥 The Final SQL Battle Arena! Cast powerful spells to defeat the ultimate enemy and win your freedom!",
+    type: "legendary",
+    emoji: "⚔️"
+  }
+};
 
   return levelDialogues[currentLevel] || {
     message: "🧙‍♂️ Ready for your next adventure?",
@@ -224,14 +288,14 @@ const MapMainView = () => {
       <div 
         className="fixed inset-0 w-screen h-screen bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url(/mapbg.png)`,
+          backgroundImage: `url(/mapbg.webp)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundColor: '#1e293b',
         }}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-blue-900/30 via-green-900/20 to-black/50" />
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-900/30 to-black/50" />
 
       {/* Header Stats */}
       <div className="fixed top-0 left-0 right-0 z-50 p-4">
@@ -259,42 +323,22 @@ const MapMainView = () => {
               )}
             </div>
           ) : (
-            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-orange-500/30">
+            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-2 py-1 border border-orange-500/30">
               <button
                 onClick={handleResetClick}
-                className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95"
+                className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-1 px-2 rounded-lg transition-all transform hover:scale-105 active:scale-95"
               >
                 🔄 Reset Game
               </button>
             </div>
           )}
 
-          {/* Level Info */}
-          <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-blue-500/30">
-            <div className="text-white font-bold text-center">
-              Level {gameState.currentLevel}
-            </div>
-            {currentLevel && (
-              <div className="text-xs text-center mt-1">
-                <span className={`px-2 py-1 rounded-full text-white font-bold ${
-                  currentLevel.type === "basic" ? "bg-green-600"
-                  : currentLevel.type === "intermediate" ? "bg-blue-600"
-                  : currentLevel.type === "advanced" ? "bg-purple-600"
-                  : currentLevel.type === "expert" ? "bg-red-600"
-                  : "bg-yellow-600"
-                }`}>
-                  {currentLevel.type.charAt(0).toUpperCase() + currentLevel.type.slice(1)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Progress */}
-          <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-green-500/30">
-            <div className="text-white font-bold text-sm">
-              Progress: {gameState.progress.length}/{levels.length}
-            </div>
-          </div>
+          {/* Enhanced Progress Bar */}
+          <GameProgressBar
+            currentLevel={gameState.currentLevel}
+            completedLevels={gameState.progress}
+            totalLevels={levels.length}
+          />
         </div>
       </div>
 
@@ -328,7 +372,7 @@ const MapMainView = () => {
       )}
 
       {/* Main Game Area - Flex Container */}
-      <div className="flex items-center justify-center min-h-screen pt-20 pb-8 px-4">
+      <div className="flex items-center justify-center mt-6 md:mt-0 min-h-screen pt-20 pb-8 px-4">
         <div className="max-w-6xl mx-auto w-full">
           
           {/* Flex Container for Wizard and Level Info */}
@@ -384,11 +428,15 @@ const MapMainView = () => {
                     : "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 animate-pulse"
                 }`} />
                 
-                <div className="relative w-64 h-64 md:w-80 md:h-80">
-                  <img
-                    src={ASSETS.wizard}
+                  <div className="relative w-64 h-64 md:w-80 md:h-80">
+                  <video
+                    src={ASSETS.wizard} // make sure this points to your .gif file
                     alt="Arin the SQL Wizard"
-                    className="w-full h-full object-contain drop-shadow-2xl cursor-pointer transition-transform hover:scale-105"
+                    className="w-full h-full rounded-full object-contain drop-shadow-2xl cursor-pointer transition-transform hover:scale-105"
+                    muted
+                    autoPlay
+                    loop
+                    playsInline
                     onClick={() => setShowSpeechBubble(true)}
                     onError={(e) => {
                       e.target.style.display = "none";
@@ -396,8 +444,11 @@ const MapMainView = () => {
                     }}
                   />
                   {/* Fallback */}
-                  <div className="w-full h-full bg-gradient-to-br from-blue-800 to-purple-800 rounded-full border-4 border-white shadow-2xl hidden items-center justify-center cursor-pointer"
-                       onClick={() => setShowSpeechBubble(true)}>
+                   {/* Fallback */}
+                  <div
+                    className="w-full h-full bg-gradient-to-br from-blue-800 to-purple-800 rounded-full border-4 border-white shadow-2xl hidden items-center justify-center cursor-pointer"
+                    onClick={() => setShowSpeechBubble(true)}
+                  >
                     <div className="text-8xl">🧙‍♂️</div>
                   </div>
                 </div>
@@ -405,7 +456,7 @@ const MapMainView = () => {
                 {/* Stage Image - Fixed positioning */}
                 <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 z-0">
                   <img
-                    src="/stage.png"
+                    src="/stage.webp"
                     alt="Stage"
                     className="w-32 h-16 md:w-40 md:h-20 object-contain opacity-80"
                   />
@@ -422,17 +473,17 @@ const MapMainView = () => {
               </div>
             </div>
                   
-                                        {showTransition && (
-                                          <div className="fixed inset-0 z-50 bg-black flex items-center ">
-                                            <video
-                                              src="/transition.mp4" // put this in your public/videos folder
-                                              autoPlay
-                                              muted
-                                              playsInline
-                                              className="w-full h-full object-cover"
-                                            />
-                                          </div>
-                                        )}
+            {showTransition && (
+              <div className="fixed inset-0 z-50 bg-black flex items-center ">
+                <video
+                  src="/transition.webm" // put this in your public/videos folder
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             {/* Right Side - Level Information Panel or Champion Card */}
             <div className="flex-1 w-full max-w-lg">

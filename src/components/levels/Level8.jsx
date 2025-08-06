@@ -1,24 +1,23 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { levels } from '../../assets/data/levels';
 import { GiBoatFishing, GiTrophy } from "react-icons/gi";
 import { FaPlay, FaPause, FaWater } from "react-icons/fa";
-import MobileControls from '../MobileControls'; // Import the component
+import MobileControls from '../MobileControls'; // Import your component
 
 const Level8 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
+  
+  // Add mobile controls ref for immediate access in game loop
   const mobileControlsRef = useRef({
     up: false,
     down: false,
     left: false,
     right: false,
-    attack: false,
-    query1: false, // Added query controls
-    query2: false,
-    query3: false
+    attack: false
   });
-  
+
   const [uiState, setUiState] = useState({
     health: 100,
     raceStarted: false,
@@ -42,82 +41,13 @@ const Level8 = ({ onComplete }) => {
   const [queryError, setQueryError] = useState('');
   const [querySuccess, setQuerySuccess] = useState(false);
 
-  // Mobile controls state (for UI updates only)
   const [mobileControls, setMobileControls] = useState({
     up: false,
     down: false,
     left: false,
     right: false,
-    attack: false,
-    query1: false,
-    query2: false,
-    query3: false
+    attack: false
   });
-
-  // Memoized mobile control handlers
-  const handleMobileControlStart = useCallback((direction) => {
-    // Update both ref and state
-    mobileControlsRef.current[direction] = true;
-    setMobileControls((prev) => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
-  }, []);
-
-  const handleMobileControlEnd = useCallback((direction) => {
-    // Update both ref and state
-    mobileControlsRef.current[direction] = false;
-    setMobileControls((prev) => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
-  }, []);
-
-  const handleAttack = useCallback(() => {
-    // Update both ref and state
-    mobileControlsRef.current.attack = true;
-    setMobileControls((prev) => ({ ...prev, attack: true }));
-    setTimeout(() => {
-      mobileControlsRef.current.attack = false;
-      setMobileControls((prev) => ({ ...prev, attack: false }));
-    }, 50);
-  }, []);
-
-  const handleQuery1 = useCallback(() => {
-    // Slow opponents query
-    if (!uiState.slowQueryUsed && uiState.raceStarted && !uiState.raceFinished) {
-      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        const scene = gameInstance.current.scene.scenes[0];
-        scene.gameState.racePaused = true;
-        scene.forceStopAllRafts();
-      }
-      setUiState(prev => ({ ...prev, showQueryInput: true, queryType: 'slow' }));
-    }
-  }, [uiState.slowQueryUsed, uiState.raceStarted, uiState.raceFinished]);
-
-  const handleQuery2 = useCallback(() => {
-    // Speed boost query
-    if (!uiState.fastQueryUsed && uiState.raceStarted && !uiState.raceFinished) {
-      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        const scene = gameInstance.current.scene.scenes[0];
-        scene.gameState.racePaused = true;
-        scene.forceStopAllRafts();
-      }
-      setUiState(prev => ({ ...prev, showQueryInput: true, queryType: 'fast' }));
-    }
-  }, [uiState.fastQueryUsed, uiState.raceStarted, uiState.raceFinished]);
-
-  const handleQuery3 = useCallback(() => {
-    // Average query
-    if (!uiState.avgQueryComplete && uiState.raceFinished) {
-      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-        const scene = gameInstance.current.scene.scenes[0];
-        scene.gameState.racePaused = true;
-        scene.forceStopAllRafts();
-      }
-      setUiState(prev => ({ ...prev, showQueryInput: true, queryType: 'avg' }));
-    }
-  }, [uiState.avgQueryComplete, uiState.raceFinished]);
 
   const queryTypes = {
     slow: {
@@ -169,7 +99,7 @@ const Level8 = ({ onComplete }) => {
         gameInstance.current.scene.scenes[0].completeQuery(uiState.queryType);
       }
     } else {
-      setQueryError(`Query failed! ${queryTypes[uiState.queryType].description}`);
+      setQueryError(`Query failed! `);
       setTimeout(() => setQueryError(''), 3000);
     }
   };
@@ -220,9 +150,9 @@ const Level8 = ({ onComplete }) => {
         { id: 8, name: 'Lisa', courage_level: 73 }
       ],
       opponents: [
-        { name: 'River Runner', position: 1, speed: 70, color: 0xff0000, progress: 0, currentLap: 0 },
-        { name: 'Rapids Master', position: 2, speed: 65, color: 0x00ff00, progress: 0, currentLap: 0 },
-        { name: 'Current Rider', position: 3, speed: 68, color: 0xffff00, progress: 0, currentLap: 0 }
+        { name: 'River Runner', position: 1, speed: 70, color: 0xff0000, progress: 0 },
+        { name: 'Rapids Master', position: 2, speed: 65, color: 0x00ff00, progress: 0 },
+        { name: 'Current Rider', position: 3, speed: 68, color: 0xffff00, progress: 0 }
       ],
       riverLength: 1500,
       lapLength: 500
@@ -361,7 +291,6 @@ const Level8 = ({ onComplete }) => {
       this.physics.add.overlap(player, checkpoints, passCheckpoint, null, this);
       this.physics.add.overlap(player, finishLine, crossFinishLine, null, this);
       
-      // Register scene methods
       this.startRace = startRace;
       this.completeQuery = completeQuery;
       this.showQueryInput = showQueryInput;
@@ -457,175 +386,100 @@ const Level8 = ({ onComplete }) => {
         checkpoint.setAlpha(0.8);
       }
     }
-
-    function passCheckpoint(player, checkpoint) {
-      if (!gameState.raceStarted || gameState.racePaused) return;
+    
+    function spawnOpponents() {
+      if (!gameState.raceStarted) return;
       
-      // Mark checkpoint as passed
-      checkpoint.passed = true;
+      const startPositions = [
+        { x: 300, y: 440 },
+        { x: 500, y: 445 },
+        { x: 350, y: 435 }
+      ];
       
-      // Visual feedback
-      const passEffect = sceneRef.add.circle(checkpoint.x, checkpoint.y, 30, 0x00ff00, 0.8);
-      sceneRef.tweens.add({
-        targets: passEffect,
-        scaleX: 2,
-        scaleY: 2,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => passEffect.destroy()
-      });
-      
-      showMessage(`Checkpoint ${checkpoint.checkpointIndex} passed!`, 1500);
-    }
-
-    function crossFinishLine() {
-      if (!gameState.raceStarted || gameState.racePaused) return;
-      
-      gameState.currentLap++;
-      
-      if (gameState.currentLap >= gameState.totalLaps) {
-        // Race finished
-        gameState.raceFinished = true;
-        gameState.raceStarted = false;
-        
-        // Calculate final position
-        updateRacePosition();
-        
-        const finishEffect = sceneRef.add.circle(player.x, player.y, 50, 0xffd700, 0.8);
-        sceneRef.tweens.add({
-          targets: finishEffect,
-          scaleX: 3,
-          scaleY: 3,
-          alpha: 0,
-          duration: 1000,
-          onComplete: () => finishEffect.destroy()
-        });
-        
-        showMessage(`Race finished! Position: ${gameState.racePosition}/${gameState.totalRacers}`, 3000);
-        
-        if (gameState.racePosition === 1) {
-          showMessage('🏆 You won! Complete AVG query to finish level!', 4000);
-        } else {
-          showMessage('⏰ Auto-restart in 10 seconds...', 3000);
-          gameState.autoResetTimer = sceneRef.time.delayedCall(10000, () => {
-            createRace.call(sceneRef);
-            updateReactUI();
-          });
-        }
-      } else {
-        // Next lap
-        showMessage(`Lap ${gameState.currentLap}/${gameState.totalLaps} completed!`, 2000);
-      }
-      
-      updateReactUI();
-    }
-
-    function updateOpponents() {
-      opponents.children.entries.forEach((opponent, index) => {
-        if (!opponent.active) return;
-        
+      startPositions.forEach((pos, index) => {
         const opponentData = gameState.opponents[index];
-        if (!opponentData) return;
-        
-        if (gameState.raceStarted && !gameState.racePaused) {
-          // Move opponent forward
-          const baseSpeed = opponentData.speed * gameState.opponentSlowdown;
-          opponent.setVelocityY(-baseSpeed);
-          
-          // Update progress
-          opponentData.progress += baseSpeed * 0.016; // Approximate delta time
-          
-          // Check for lap completion
-          if (opponent.y <= 50 && !opponent.lapCompleting) {
-            opponent.lapCompleting = true;
-            opponentData.currentLap++;
-            
-            if (opponentData.currentLap >= gameState.totalLaps) {
-              // Opponent finished
-              opponent.setVelocity(0);
-              opponent.setTint(0x00ff00);
-            } else {
-              // Reset for next lap
-              sceneRef.time.delayedCall(100, () => {
-                opponent.y = 450;
-                opponent.lapCompleting = false;
-              });
-            }
-          }
-        } else {
-          opponent.setVelocity(0);
-        }
+        const opponent = opponents.create(pos.x, pos.y, `opponent_raft_${index}`);
+        opponent.setCollideWorldBounds(true).body.setSize(35, 55).setOffset(5, 5);
+        opponent.opponentData = opponentData;
+        opponent.baseSpeed = opponentData.speed;
+        opponent.currentSpeed = opponentData.speed * gameState.opponentSlowdown;
+        opponent.progress = 0;
+        opponent.currentLap = 0;
+        opponent.aiState = 'racing';
       });
     }
-
+    
     function createRacingUI() {
-      // Create race info display
-      const raceInfoText = sceneRef.add.text(20, 80, '', {
+      const controlsInfo = sceneRef.add.text(20, 20, '', {
         fontSize: '14px',
         fontFamily: 'Courier New',
         color: '#ffffff',
         backgroundColor: '#000000',
         padding: { x: 8, y: 4 }
       });
-      sceneRef.raceInfoText = raceInfoText;
+      sceneRef.controlsInfo = controlsInfo;
+      
+      const timerText = sceneRef.add.text(400, 30, '', {
+        fontSize: '18px',
+        fontFamily: 'Courier New',
+        color: '#ffffff',
+        backgroundColor: '#1976d2',
+        padding: { x: 8, y: 4 },
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      sceneRef.timerText = timerText;
+      
+      const positionDisplay = sceneRef.add.text(700, 30, '', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffff00',
+        backgroundColor: '#000000',
+        padding: { x: 8, y: 4 },
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      sceneRef.positionDisplay = positionDisplay;
       
       updateRacingUI();
     }
-
+    
     function updateRacingUI() {
-      if (sceneRef.raceInfoText) {
-        sceneRef.raceInfoText.setText(
-          `Position: ${gameState.racePosition}/${gameState.totalRacers}\n` +
-          `Lap: ${gameState.currentLap}/${gameState.totalLaps}\n` +
-          `Speed: ${Math.round(gameState.raftSpeed)} km/h`
-        );
+      if (sceneRef.controlsInfo) {
+        let controls = 'Controls:\n';
+        controls += '↑↓←→ Navigate | ';
+        if (!gameState.slowQueryUsed) controls += '1 Slow Others | ';
+        if (!gameState.fastQueryUsed) controls += '2 Speed Boost | ';
+        if (gameState.raceFinished && !gameState.avgQueryComplete) controls += '3 Average Query (Required!)';
+        
+        sceneRef.controlsInfo.setText(controls);
+      }
+      
+      if (sceneRef.timerText) {
+        const minutes = Math.floor(gameState.raceTime / 60);
+        const seconds = gameState.raceTime % 60;
+        const status = gameState.raceStarted ? (gameState.racePaused ? 'PAUSED' : 'RACING') : 'WAITING';
+        sceneRef.timerText.setText(`${status} | Time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }
+      
+      if (sceneRef.positionDisplay) {
+        const positionText = ['1st', '2nd', '3rd', '4th'][gameState.racePosition - 1];
+        sceneRef.positionDisplay.setText(`${positionText} | Lap: ${gameState.currentLap}/3`);
       }
     }
-
-    function updateRacePosition() {
-      // Simple position calculation based on progress and lap
-      let playerScore = gameState.currentLap * 1000 + (450 - player.y);
-      let position = 1;
-      
-      gameState.opponents.forEach(opponent => {
-        let opponentScore = (opponent.currentLap || 0) * 1000 + (450 - (opponents.children.entries.find(o => o.active)?.y || 450));
-        if (opponentScore > playerScore) {
-          position++;
-        }
-      });
-      
-      gameState.racePosition = position;
-    }
-
+    
     function startRace() {
+      if (gameState.raceStarted) return;
+      
       gameState.raceStarted = true;
       gameState.racePaused = false;
-      gameState.raceFinished = false;
-      gameState.raceTime = 0;
       
-      // Reset all positions
-      player.setPosition(400, 450);
+      spawnOpponents();
       
-      // Create and position opponents
-      opponents.clear(true, true);
-      gameState.opponents.forEach((oppData, index) => {
-        const opponent = opponents.create(350 + (index * 50), 450, `opponent_raft_${index}`);
-        opponent.setCollideWorldBounds(true);
-        opponent.body.setSize(35, 55);
-        opponent.currentLap = 0;
-        opponent.lapCompleting = false;
-        oppData.currentLap = 0;
-        oppData.progress = 0;
-      });
-      
-      showMessage('🏁 Race Started! Navigate with arrow keys!', 3000);
-      
-      // Start race timer
       sceneRef.time.addEvent({
         delay: 1000,
         callback: () => {
-          if (gameState.raceStarted && !gameState.racePaused) {
+          if (gameState.raceStarted && !gameState.racePaused && !gameState.raceFinished) {
             gameState.raceTime++;
+            updateRacingUI();
             updateReactUI();
           }
         },
@@ -633,143 +487,26 @@ const Level8 = ({ onComplete }) => {
         loop: true
       });
       
-      updateReactUI();
-    }
-
-    function showMessage(text, duration) {
-      const messageText = sceneRef.add.text(400, 100, text, {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#ffff00',
-        backgroundColor: '#000000',
-        align: 'center',
-        padding: { x: 12, y: 6 }
-      }).setOrigin(0.5).setDepth(1000);
-      
-      sceneRef.time.delayedCall(duration, () => messageText.destroy());
-    }
-
-    function showQueryInput(queryType) {
-      gameState.racePaused = true;
-      forceStopAllRafts();
-      setUiState(prev => ({ 
-        ...prev, 
-        showQueryInput: true, 
-        queryType: queryType,
-        gameState: 'paused'
-      }));
-    }
-
-    function completeQuery(queryType) {
-      gameState.racePaused = false;
-      
-      if (queryType === 'slow') {
-        gameState.slowQueryUsed = true;
-        gameState.opponentSlowdown = 0.7; // Slow opponents by 30%
-        showMessage('MIN query executed! Opponents slowed down!', 2000);
-      } else if (queryType === 'fast') {
-        gameState.fastQueryUsed = true;
-        gameState.speedBoost = 1.5; // Boost player speed by 50%
-        showMessage('MAX query executed! Speed boosted!', 2000);
-      } else if (queryType === 'avg') {
-        gameState.avgQueryComplete = true;
-        showMessage('AVG query executed! Checking race completion...', 2000);
-        
-        // Check if player won
-        if (gameState.racePosition === 1) {
-          sceneRef.time.delayedCall(2000, () => {
-            showLevelComplete();
-          });
-        } else {
-          showMessage('Need 1st place to complete level! Restarting...', 3000);
-          sceneRef.time.delayedCall(3000, () => {
-            createRace.call(sceneRef);
-            updateReactUI();
-          });
-        }
-      }
-      
-      setUiState(prev => ({ 
-        ...prev, 
-        gameState: 'racing',
-        slowQueryUsed: gameState.slowQueryUsed,
-        fastQueryUsed: gameState.fastQueryUsed,
-        avgQueryComplete: gameState.avgQueryComplete
-      }));
-      
+      showMessage('🏁 RACE STARTED! Navigate with arrow keys, use number keys for SQL queries!', 3000);
       updateReactUI();
     }
 
     function forceStopAllRafts() {
-      // Stop player
-      player.setVelocity(0);
+      // Force stop player
+      if (player && player.active) {
+        player.setVelocity(0, 0);
+        player.body.setVelocity(0, 0);
+      }
       
-      // Stop all opponents
-      opponents.children.entries.forEach(opponent => {
-        if (opponent.active) {
-          opponent.setVelocity(0);
-        }
-      });
-    }
-
-    function showLevelComplete() {
-      gameState.isLevelComplete = true;
-      updateReactUI();
-      
-      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
-      overlay.setDepth(1000);
-      
-      const completionText = sceneRef.add.text(400, 100, '🏆 River Race Champion! 🏆', {
-        fontSize: '28px',
-        fontFamily: 'Courier New',
-        color: '#ffd700',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const queryText = sceneRef.add.text(400, 140, 'All SQL Aggregate Queries Completed:', {
-        fontSize: '16px',
-        fontFamily: 'Courier New',
-        color: '#00ffff'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const queriesList = sceneRef.add.text(400, 180, 
-        'MIN(courage_level) - Slowed opponents\n' +
-        'MAX(courage_level) - Boosted speed\n' +
-        'AVG(courage_level) - Calculated average', {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#90ee90',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const statsText = sceneRef.add.text(400, 250, 
-        `🏁 Final Position: ${gameState.racePosition}/${gameState.totalRacers}\n` +
-        `⏱️ Race Time: ${Math.floor(gameState.raceTime / 60)}:${(gameState.raceTime % 60).toString().padStart(2, '0')}\n` +
-        `📊 Queries Used: ${[gameState.slowQueryUsed && 'MIN', gameState.fastQueryUsed && 'MAX', gameState.avgQueryComplete && 'AVG'].filter(Boolean).join(', ')}`, {
-        fontSize: '14px',
-        fontFamily: 'Courier New',
-        color: '#ffff00',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      const instructionText = sceneRef.add.text(400, 350, 'You mastered SQL aggregates! Click to return to map', {
-        fontSize: '22px',
-        fontFamily: 'Courier New',
-        color: '#00ff00'
-      }).setOrigin(0.5).setDepth(1001);
-      
-      overlay.setInteractive();
-      overlay.on('pointerdown', () => {
-        onComplete();
-      });
-      
-      sceneRef.tweens.add({
-        targets: instructionText,
-        alpha: 0.5,
-        duration: 800,
-        yoyo: true,
-        repeat: -1
-      });
+      // Force stop all opponents
+      if (opponents && opponents.children) {
+        opponents.children.entries.forEach(opponent => {
+          if (opponent.active) {
+            opponent.setVelocity(0, 0);
+            opponent.body.setVelocity(0, 0);
+          }
+        });
+      }
     }
 
     function update() {
@@ -793,11 +530,10 @@ const Level8 = ({ onComplete }) => {
         return; // Don't process any movement
       }
       
-      // Player raft movement (only when race is active)
+      // Player raft movement (only when race is active) - USE REF INSTEAD OF STATE
       player.setVelocity(0);
       const baseSpeed = gameState.baseSpeed * gameState.speedBoost;
       
-      // Use the ref instead of state for game logic
       if (cursors.up.isDown || mobileControlsRef.current.up) {
         player.setVelocityY(-baseSpeed);
         gameState.raftSpeed = baseSpeed;
@@ -837,6 +573,260 @@ const Level8 = ({ onComplete }) => {
       updateRacePosition();
       updateRacingUI();
     }
+    
+    function updateOpponents() {
+      // Don't update opponents when race is paused or finished
+      if (gameState.racePaused || !gameState.raceStarted || gameState.raceFinished) {
+        opponents.children.entries.forEach(opponent => {
+          if (opponent.active) {
+            opponent.setVelocity(0, 0);
+          }
+        });
+        return;
+      }
+      
+      // Normal opponent movement (only when race is active)
+      opponents.children.entries.forEach(opponent => {
+        if (!opponent.active) return;
+        
+        const speed = opponent.currentSpeed;
+        opponent.setVelocityY(-speed);
+        
+        if (Math.random() < 0.02) {
+          const steerDirection = (Math.random() - 0.5) * speed * 0.3;
+          opponent.setVelocityX(steerDirection);
+        }
+        
+        opponent.progress = (450 - opponent.y) / 400;
+        if (opponent.progress < 0) opponent.progress = 0;
+        
+        if (opponent.y <= 60 && opponent.currentLap < 3) {
+          opponent.currentLap++;
+          opponent.setPosition(400 + (Math.random() - 0.5) * 100, 440);
+          opponent.progress = 0;
+        }
+      });
+    }
+    
+    function updateRacePosition() {
+      const playerTotal = gameState.currentLap + gameState.playerProgress;
+      let position = 1;
+      
+      opponents.children.entries.forEach(opponent => {
+        if (opponent.active) {
+          const opponentTotal = opponent.currentLap + opponent.progress;
+          if (opponentTotal > playerTotal) {
+            position++;
+          }
+        }
+      });
+      
+      gameState.racePosition = position;
+    }
+
+    function passCheckpoint(player, checkpoint) {
+    
+      
+      showMessage(`Checkpoint ${checkpoint.checkpointIndex} passed!`, 1500);
+    }
+    
+    function crossFinishLine(player, finishLine) {
+      if (gameState.currentLap >= gameState.totalLaps) {
+        // Race finished
+        gameState.raceFinished = true;
+        
+        // Stop all opponent movement immediately
+        opponents.children.entries.forEach(opponent => {
+          if (opponent.active) {
+            opponent.setVelocity(0, 0);
+          }
+        });
+        
+        showMessage('🏁 RACE FINISHED! Use AVG query to complete the level!', 4000);
+        
+        // Auto-reset if user doesn't complete AVG query within 15 seconds
+        gameState.autoResetTimer = sceneRef.time.delayedCall(15000, () => {
+          if (!gameState.avgQueryComplete) {
+            showMessage('Time expired! Auto-restarting race...', 2000);
+            sceneRef.time.delayedCall(2000, () => {
+              createRace.call(sceneRef);
+              updateReactUI();
+            });
+          }
+        });
+        
+        updateReactUI();
+      } else {
+        gameState.currentLap++;
+        showMessage(`Lap ${gameState.currentLap} completed!`, 2000);
+        player.setPosition(400, 440);
+      }
+    }
+    
+    function showQueryInput(type) {
+      // IMMEDIATELY pause and stop all movement
+      gameState.racePaused = true;
+      
+      // Stop player immediately
+      if (player && player.active) {
+        player.setVelocity(0, 0);
+      }
+      
+      // Stop all opponents immediately
+      if (opponents && opponents.children) {
+        opponents.children.entries.forEach(opponent => {
+          if (opponent.active) {
+            opponent.setVelocity(0, 0);
+          }
+        });
+      }
+      
+      setUiState(prev => ({ 
+        ...prev, 
+        showQueryInput: true, 
+        queryType: type,
+        gameState: 'paused'
+      }));
+    }
+    
+    function completeQuery(type) {
+      gameState.racePaused = false; // Resume race
+      
+      if (type === 'slow') {
+        gameState.slowQueryUsed = true;
+        gameState.opponentSlowdown = 0.7;
+        
+        opponents.children.entries.forEach(opponent => {
+          if (opponent.active) {
+            opponent.currentSpeed = opponent.baseSpeed * gameState.opponentSlowdown;
+          }
+        });
+        
+        showMessage('🐌 MIN() Query Complete! Opponents slowed down by 30%!', 3000);
+        
+      } else if (type === 'fast') {
+        gameState.fastQueryUsed = true;
+        gameState.speedBoost = 1.5;
+        
+        showMessage('🚀 MAX() Query Complete! Your raft speed boosted by 50%!', 3000);
+        
+      } else if (type === 'avg') {
+        gameState.avgQueryComplete = true;
+        
+        // Clear auto-reset timer
+        if (gameState.autoResetTimer) {
+          sceneRef.time.removeEvent(gameState.autoResetTimer);
+          gameState.autoResetTimer = null;
+        }
+        
+        showMessage('📊 AVG() Query Complete! Average courage: 78.5', 3000);
+        
+        // Check if level can be completed
+        sceneRef.time.delayedCall(1000, () => {
+          if (gameState.racePosition === 1 && gameState.avgQueryComplete) {
+            showLevelComplete();
+          } else {
+            showRaceFailedMessage();
+          }
+        });
+      }
+      
+      updateReactUI();
+    }
+    
+    function showRaceFailedMessage() {
+      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
+      overlay.setDepth(1000);
+      
+      const failMessage = sceneRef.add.text(400, 200, `🏁 RACE COMPLETED BUT LEVEL FAILED! 🏁\n\nYou finished in ${gameState.racePosition}${['st','nd','rd','th'][gameState.racePosition-1]} place.\nTo complete this level you need 1st place!\n\nAuto-restarting in 5 seconds...`, {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ff6666',
+        backgroundColor: '#000000',
+        align: 'center',
+        padding: { x: 15, y: 10 },
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(1001);
+      
+      // Auto-restart after 5 seconds
+      sceneRef.time.delayedCall(5000, () => {
+        overlay.destroy();
+        failMessage.destroy();
+        createRace.call(sceneRef);
+        updateReactUI();
+      });
+    }
+
+    function showMessage(text, duration) {
+      const messageText = sceneRef.add.text(400, 150, text, {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ffff00',
+        backgroundColor: '#000000',
+        align: 'center',
+        padding: { x: 12, y: 6 }
+      }).setOrigin(0.5).setDepth(1000);
+      
+      sceneRef.time.delayedCall(duration, () => messageText.destroy());
+    }
+
+    function showLevelComplete() {
+      // Only call this if player got 1st place AND completed AVG query
+      if (gameState.racePosition !== 1 || !gameState.avgQueryComplete) {
+        return;
+      }
+      
+      gameState.isLevelComplete = true;
+      updateReactUI();
+      
+      const overlay = sceneRef.add.rectangle(400, 250, 800, 500, 0x000000, 0.8);
+      overlay.setDepth(1000);
+      
+      const completionText = sceneRef.add.text(400, 80, '🏆🥇 CHAMPION! LEVEL COMPLETE! 🥇🏆', {
+        fontSize: '24px',
+        fontFamily: 'Courier New',
+        color: '#ffd700',
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(1001);
+      
+      const achievementText = sceneRef.add.text(400, 130, 'Perfect Performance!\n🥇 1st Place + 📊 AVG Query Complete', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#00ff00',
+        align: 'center'
+      }).setOrigin(0.5).setDepth(1001);
+      
+      const queryText = sceneRef.add.text(400, 180, 'SQL Queries Used:', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#00ffff'
+      }).setOrigin(0.5).setDepth(1001);
+      
+      let queriesUsed = '';
+      if (gameState.slowQueryUsed) queriesUsed += '🐌 MIN(courage_level) → Slowed opponents\n';
+      if (gameState.fastQueryUsed) queriesUsed += '🚀 MAX(courage_level) → Speed boost\n';
+      if (gameState.avgQueryComplete) queriesUsed += '📊 AVG(courage_level) → Race completion (78.5)';
+      
+      
+      const instructionText = sceneRef.add.text(400, 420, 'You mastered the Jungle River Race! Click to return to map', {
+        fontSize: '24px',
+        fontFamily: 'Courier New',
+        color: '#00ff00'
+      }).setOrigin(0.5).setDepth(1001);
+      
+      overlay.setInteractive();
+      overlay.on('pointerdown', () => {
+        onComplete();
+      });
+      
+      sceneRef.tweens.add({
+        targets: instructionText,
+        alpha: 0.5,
+        duration: 800,
+        yoyo: true,
+        repeat: -1
+      });
+    }
 
     function updateReactUI() {
       setUiState(prev => ({
@@ -847,11 +837,11 @@ const Level8 = ({ onComplete }) => {
         racePosition: gameState.racePosition,
         currentLap: gameState.currentLap,
         raftSpeed: Math.round(gameState.raftSpeed),
-        gameState: gameState.racePaused ? 'paused' : gameState.raceStarted ? 'racing' : 'waiting',
         raceTime: gameState.raceTime,
         slowQueryUsed: gameState.slowQueryUsed,
         fastQueryUsed: gameState.fastQueryUsed,
-        avgQueryComplete: gameState.avgQueryComplete
+        avgQueryComplete: gameState.avgQueryComplete,
+        gameState: gameState.racePaused ? 'paused' : gameState.raceStarted ? 'racing' : 'waiting'
       }));
     }
 
@@ -871,7 +861,7 @@ const Level8 = ({ onComplete }) => {
     gameInstance.current = new Phaser.Game(config);
 
     return () => { gameInstance.current?.destroy(true); };
-  }, [onComplete]); // REMOVED mobileControls from dependency array
+  }, [onComplete]);
 
   return (
     <div className="w-full flex flex-col items-center gap-4 text-white">
@@ -882,7 +872,7 @@ const Level8 = ({ onComplete }) => {
         </div>
         <div className="flex items-center gap-2">
           <FaWater size={20} color="#0277bd" />
-          <span>Speed: {uiState.raftSpeed} km/h</span>
+          <span>River Speed: {uiState.raftSpeed} km/h</span>
         </div>
         <div className="flex items-center gap-2">
           <GiTrophy size={20} color="#ffd700" />
@@ -907,7 +897,7 @@ const Level8 = ({ onComplete }) => {
           <button
             onClick={startRace}
             className="bg-green-600 hover:bg-green-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors flex items-center gap-2"
-          >
+            >
             <FaPlay /> START RACE
           </button>
         )}
@@ -925,7 +915,7 @@ const Level8 = ({ onComplete }) => {
                   setUiState(prev => ({ ...prev, showQueryInput: true, queryType: 'slow' }));
                 }}
                 className="bg-red-600 hover:bg-red-500 text-white py-2 px-4 rounded font-bold text-sm transition-colors"
-              >
+                >
                 1️⃣ SLOW OTHERS (MIN)
               </button>
             )}
@@ -959,7 +949,7 @@ const Level8 = ({ onComplete }) => {
               setUiState(prev => ({ ...prev, showQueryInput: true, queryType: 'avg' }));
             }}
             className="bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded font-bold text-sm transition-colors animate-pulse"
-          >
+            >
             3️⃣ FINISH RACE (AVG) - REQUIRED!
           </button>
         )}
@@ -972,7 +962,11 @@ const Level8 = ({ onComplete }) => {
         <div>Status: <span className="text-orange-400">{uiState.raceFinished ? 'FINISHED' : 'RACING'}</span></div>
       </div>
 
-      {/* SQL Query Input Modal */}
+      <MobileControls 
+        mobileControlsRef={mobileControlsRef}
+        setMobileControls={setMobileControls}
+        className="w-full max-w-3xl"
+      />
       {uiState.showQueryInput && uiState.queryType && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-slate-800 p-6 rounded-lg border border-slate-600 max-w-lg w-full mx-4">
@@ -1035,16 +1029,6 @@ const Level8 = ({ onComplete }) => {
         </div>
       )}
 
-        <div className="block md:hidden">
-          <div className="flex flex-col items-center gap-4">
-            {/* Use the MobileControls component */}
-            <MobileControls 
-              mobileControlsRef={mobileControlsRef}
-              setMobileControls={setMobileControls}
-            />
-            
-          </div>
-        </div>
       <div className="w-full max-w-3xl p-4 bg-black/50 rounded-lg border border-slate-700 text-center">
         <div className="pixel-font text-slate-300 mb-2">🏊 Jungle River Raft Race - Strategic SQL Racing:</div>
         <div className="font-mono text-lg">
@@ -1075,19 +1059,7 @@ const Level8 = ({ onComplete }) => {
         </div>
       </div>
 
-      {/* Use the reusable MobileControls component with custom Query buttons */}
-      <div className="w-full max-w-3xl p-3 hidden md:block bg-slate-800/50 rounded-lg border border-slate-600">
-        <div className="pixel-font hidden md:block text-slate-400 text-sm mb-2 text-center"><strong>JUNGLE RAFT CONTROLS:</strong></div>
-        
-        <div className="hidden md:block">
-          <div className="grid grid-cols-3 gap-2 text-sm text-slate-300 text-center">
-            <div>↑↓←→ Navigate Raft</div>
-            <div>1️⃣2️⃣ During Race</div>
-            <div>3️⃣ After Race Finish</div>
-          </div>
-        </div>
-
-      </div>
+      {/* Replace the inline mobile controls with your MobileControls component */}
 
       <style jsx>{`
         .pixel-font {

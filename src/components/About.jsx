@@ -91,7 +91,7 @@ function About() {
     <div
       className="relative min-h-screen snap-start flex items-center justify-center overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-12 pb-24"
       style={{
-        backgroundImage: `url('/about.png')`,
+        backgroundImage: `url('/about.webp')`,
         backgroundPosition: "center",
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat",
@@ -230,7 +230,7 @@ function About() {
                     ${getGlowEffect(item.glowColor, isActive || isHovered)}
                   `}
                   style={{
-                    backgroundImage: `url('/scroll.png')`,
+                    backgroundImage: `url('/scroll.webp')`,
                     backgroundPosition: "center",
                     backgroundSize: "120% 120%",
                     height: window.innerWidth < 768 ? "auto" : "340px",

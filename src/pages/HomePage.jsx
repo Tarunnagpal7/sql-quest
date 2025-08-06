@@ -83,7 +83,7 @@ function HomePage() {
       ref={containerRef}
       className="min-h-screen w-screen bg-black overflow-hidden relative"
       style={{
-        backgroundImage: `url('/home.png')`,
+        backgroundImage: `url('/home.webp')`,
         bacckgroundPosition: "center",
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat",

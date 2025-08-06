@@ -16,6 +16,12 @@ export const levels = [
     query: "SELECT * FROM jungle_explorers WHERE courage_level > 80;",
     riddle:
       " Find all explorers whose courage level is greater than 80.",
+      schema: `CREATE TABLE jungle_explorers (
+      id INT,
+      name VARCHAR,
+      courage_level INT
+      skill VARCHAR
+    );`,
      
     unlocked: false,
     completed: false,
@@ -40,10 +46,6 @@ export const levels = [
 ,
   {
     id: 4,
-    position: {
-      desktop: { x: 70, y: 36 },
-      mobile: { x: 85, y: 30 },
-    },
     title: "Build the Raft",
     query: "SELECT instructions FROM guide_book WHERE category = 'raft' and instructions LIKE '%bamboo%' OR instructions LIKE '%vines%';",
     riddle:
@@ -61,10 +63,6 @@ export const levels = [
   },
   {
     id: 5,
-    position: {
-      desktop: { x: 51, y: 37 },
-      mobile: { x: 54, y: 29 },
-    },
     title: "Free the Sacred Beast",
     query:"SELECT name, power, durability FROM weapons WHERE agility >= 80 AND power > 70 AND weight < 10;",
     riddle:
@@ -83,44 +81,41 @@ export const levels = [
   },
   {
     id: 6,
-    position: {
-      desktop: { x: 33, y: 37 },
-      mobile: { x: 23, y: 28 },
-    },
-    title: "Restore the Memory Crystal",
+    title: "The Trap Tiles of Truth",
     query:
-      "SELECT name, skill FROM jungle_explorers WHERE name LIKE '%a%' AND skill IN ('magic', 'healing');",
-    riddle:
-      "The shattered memory crystal needs specific souls to repair it. Find explorers whose names contain the letter 'a' and who possess either magic or healing skills.",
-    schema: `CREATE TABLE jungle_explorers (
-      id INT,
-      name VARCHAR,
-      skill VARCHAR
-    );`,
+      `SELECT animal, COUNT(*) as frequency 
+FROM floor_tiles 
+GROUP BY animal 
+HAVING COUNT(*) > 1;`,
+    riddle:"The floor tells lies, but truth repeats.Step only where the animal speaks twice.The rest are traps waiting for fools.",
+    schema: `CREATE TABLE floor_tiles (
+  id INT,
+  tile_x INT,
+  tile_y INT,
+  animal VARCHAR(100)
+);`,
     unlocked: false,
     completed: false,
     type: "intermediate",
   },
   {
     id: 7,
-    position: {
-      desktop: { x: 44, y: 28 },
-      mobile: { x: 41, y: 24 },
-    },
     title: "Arm the Heroes",
     query:
-      "SELECT e.name, w.weapon_name FROM jungle_explorers e JOIN weapons w ON e.id = w.owner_id;",
+      "SELECT  jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element FROM jungle_explorers JOIN spells ON jungle_explorers.id = spells.id;;",
     riddle:
       "The volcano erupts! Find which explorers have weapons to defend the evacuation route.",
     schema: `CREATE TABLE jungle_explorers (
-  id INT,
-  name VARCHAR,
-  courage_level INT
-);
-CREATE TABLE weapons (
-  id INT,
-  weapon_name VARCHAR,
-  owner_id INT
+      id INT,
+      name VARCHAR,
+      courage_level INT
+      skill VARCHAR
+    );
+CREATE TABLE spells (
+  id INT PRIMARY KEY,
+  name VARCHAR(50),
+  power INT,
+ Element VARCHAR    
 );`,
     unlocked: false,
     completed: false,
@@ -128,30 +123,23 @@ CREATE TABLE weapons (
   },
   {
     id: 8,
-    position: {
-      desktop: { x: 58, y: 23 },
-      mobile: { x: 65, y: 22 },
-    },
-    title: "SQL Speed Circuit - Average Courage Race",
+    title: "Jungle River Raft Race ",
     query: "SELECT AVG(courage_level) FROM jungle_explorers;",
     riddle:
       "Calculate the average courage level to determine your racing raft's optimal speed for the rescue from the river.",
     schema: `CREATE TABLE jungle_explorers (
-  id INT,
-  name VARCHAR,
-  courage_level INT
-);`,
+      id INT,
+      name VARCHAR,
+      courage_level INT
+      skill VARCHAR
+    );`,
     unlocked: false,
     completed: false,
     type: "advanced",
   },
   {
-    id: 9,
-    position: {
-      desktop: { x: 67, y: 20 },
-      mobile: { x: 80, y: 20 },
-    },
-    title: "SQL Battle Arena - Mystic Duel",
+    id: 10,
+    title: "FINAL - SQL Battle Arena ",
     query:
       "SELECT damage FROM spells WHERE element = 'fire' ORDER BY power DESC LIMIT 1;",
     riddle:
@@ -190,19 +178,15 @@ CREATE TABLE potions (
 );`,
     unlocked: false,
     completed: false,
-    type: "expert",
+    type: "legendary",
   },
   {
-    id: 10,
-    position: {
-      desktop: { x: 74, y: 14 },
-      mobile: { x: 92, y: 16 },
-    },
+    id: 9,
     title: "Ancient Jungle Temple Quest",
     query:
       "UPDATE royal_treasure SET door = 'opened' WHERE treasure_type = 'GOLD';",
     riddle:
-      "🌿 The final quest awaits! Use UPDATE to open the ancient temple door, then SELECT to claim the legendary jungle treasure!",
+      "🌿 The final quest awaits! Use UPDATE to open the ancient temple door, to reach the final level.",
     schema: `CREATE TABLE royal_treasure (
   id INT,
   treasure_name VARCHAR,
@@ -212,7 +196,7 @@ CREATE TABLE potions (
 );`,
     unlocked: false,
     completed: false,
-    type: "legendary",
+    type: "expert",
   },
 ];
 

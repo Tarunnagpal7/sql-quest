@@ -21,7 +21,7 @@ const StoryCarousel = () => {
   return (
     <section className="relative snap-start w-full min-h-screen  bg-black flex flex-col items-center justify-center overflow-hidden py-12 px-4 sm:px-6 md:px-12"
         style={{
-        backgroundImage: `url('/final.png')`,
+        backgroundImage: `url('/final.webp')`,
         bacckgroundPosition: "center",
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat",

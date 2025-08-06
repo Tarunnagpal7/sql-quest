@@ -105,9 +105,9 @@ const Level2 = ({ onComplete }) => {
     function preload() {
       sceneRef = this;
       
-      this.load.image('fish1', '/fish1.png');
-      this.load.image('fish2', '/fish2.png');
-      this.load.image('fish3', '/fish3.png');
+      this.load.image('fish1', '/fish1.webp');
+      this.load.image('fish2', '/fish2.webp');
+      this.load.image('fish3', '/fish3.webp');
       
       // Create wizard character (changed from explorer to wizard)
       const playerGraphics = this.add.graphics();
@@ -421,7 +421,7 @@ const Level2 = ({ onComplete }) => {
       }).setOrigin(0.5).setDepth(1001);
       
       const instructionText = sceneRef.add.text(400, 320, 'Tap anywhere to continue your jungle adventure', { 
-        fontSize: '18px', 
+        fontSize: '24px', 
         fontFamily: 'Courier New', 
         color: '#ffffff' 
       }).setOrigin(0.5).setDepth(1001);
