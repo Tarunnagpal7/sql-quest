@@ -75,30 +75,51 @@ const Level4 = ({ onComplete }) => {
   // Expected GROUP BY result: Healer (4), Magician (3), Hunter (3), Scout (2)
   const expectedResult = { Healer: 4, Magician: 3, Hunter: 3, Scout: 2 };
 
-  // Memoized mobile control handlers (matching Level3 pattern)
+  // Enhanced mobile control handlers with better touch handling
   const handleMobileControlStart = useCallback((direction) => {
+    // Set the control state
     mobileControlsRef.current[direction] = true;
-    setMobileControls((prev) => {
-      if (prev[direction]) return prev;
-      return { ...prev, [direction]: true };
-    });
+    setMobileControls((prev) => ({ ...prev, [direction]: true }));
+
+    // Setup a safety cleanup in case the end event is missed
+    const cleanup = () => {
+      mobileControlsRef.current[direction] = false;
+      setMobileControls((prev) => ({ ...prev, [direction]: false }));
+      window.removeEventListener("touchend", cleanup);
+      window.removeEventListener("mouseup", cleanup);
+    };
+
+    // Add global event listeners for safety cleanup
+    window.addEventListener("touchend", cleanup, { once: true });
+    window.addEventListener("mouseup", cleanup, { once: true });
   }, []);
 
   const handleMobileControlEnd = useCallback((direction) => {
     mobileControlsRef.current[direction] = false;
-    setMobileControls((prev) => {
-      if (!prev[direction]) return prev;
-      return { ...prev, [direction]: false };
-    });
+    setMobileControls((prev) => ({ ...prev, [direction]: false }));
   }, []);
 
   const handleInteract = useCallback(() => {
     mobileControlsRef.current.interact = true;
     setMobileControls((prev) => ({ ...prev, interact: true }));
-    setTimeout(() => {
+
+    // Ensure interact state is cleared
+    const clearInteract = () => {
       mobileControlsRef.current.interact = false;
       setMobileControls((prev) => ({ ...prev, interact: false }));
-    }, 100);
+    };
+
+    // Clear after short delay and also on touch/mouse up
+    const timeoutId = setTimeout(clearInteract, 100);
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      clearInteract();
+      window.removeEventListener("touchend", cleanup);
+      window.removeEventListener("mouseup", cleanup);
+    };
+
+    window.addEventListener("touchend", cleanup, { once: true });
+    window.addEventListener("mouseup", cleanup, { once: true });
   }, []);
 
   const closeDialogue = () => {
