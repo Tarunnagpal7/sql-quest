@@ -542,7 +542,7 @@ const MapMainView = () => {
                   </div>
                 </div>
               ) : currentLevel && (
-                <div className="bg-black/80 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
+                <div className="bg-black/80 backdrop-blur-lg rounded-3xl mt-4  p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
                   
                   {/* Level Header */}
                   <div className="flex items-center justify-between mb-6">
@@ -575,7 +575,7 @@ const MapMainView = () => {
                   </h4>
 
                   {/* Level Description/Riddle */}
-                  <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-600/30">
+                  {/* <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-600/30">
                     <div className="flex items-start space-x-2 mb-2">
                       <span className="text-yellow-400 text-lg">📜</span>
                       <span className="text-yellow-300 font-semibold text-sm">Quest Description:</span>
@@ -583,7 +583,7 @@ const MapMainView = () => {
                     <p className="text-gray-200 text-sm md:text-base leading-relaxed">
                       {currentLevel.riddle}
                     </p>
-                  </div>
+                  </div> */}
 
                   {/* Start Level Button */}
                   <button
@@ -609,7 +609,7 @@ const MapMainView = () => {
       </div>
 
       {/* CSS Animations */}
-      <style jsx>{`
+      <style >{`
         .speech-bubble.fadeIn {
           animation: fadeInUp 0.5s ease-out forwards;
         }

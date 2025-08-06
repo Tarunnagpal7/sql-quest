@@ -98,7 +98,7 @@ function About() {
       }}
     >
       {/* Enhanced Styles */}
-      <style jsx>{`
+      <style >{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }

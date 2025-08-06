@@ -88,7 +88,7 @@ const Level9 = ({ onComplete }) => {
         "UPDATE royal_treasure SET door = 'opened' WHERE treasure_type = 'gold';",
         "update royal_treasure set door = 'opened' where treasure_type = 'gold'"
       ],
-      description: "Open the jungle temple door by updating 'opened' the royal treasure where I found gold",
+      description: "Open the jungle temple door by updating 'opened' in the royal treasure where I found gold.",
       keywords: "UPDATE, royal_treasure, SET, door, WHERE, treasure_type",
       result: "Door Opened"
     },
@@ -101,7 +101,7 @@ const Level9 = ({ onComplete }) => {
         "SELECT SUM(gold_amount) FROM royal_treasure WHERE door = 'opened' AND treasure_type = 'GOLD' AND treasure_name LIKE '%ANCIENT%';",
         "select sum(gold_amount) from royal_treasure where door = 'opened' and treasure_type = 'GOLD' and treasure_name like '%ANCIENT%';"
       ],
-      description: "Calculate the TOTAL gold amount from all Ancient treasures in opened chambers using SUM and LIKE",
+      description: "Find the total gold where the door is opened, the treasure type is GOLD, and the treasure name contains 'Ancient'",
       keywords: "SELECT, SUM, gold_amount, FROM, royal_treasure, WHERE, door, AND, treasure_type, AND, treasure_name, LIKE, %Ancient%",
       result: "75000"
     }
@@ -773,7 +773,7 @@ const Level9 = ({ onComplete }) => {
         {/* Mobile Controls - Custom for Level9 with Interact button */}
       </div>
 
-      <style jsx>{`
+      <style >{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);

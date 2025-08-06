@@ -5,7 +5,10 @@ export const levels = [
     query: "SELECT * FROM map",
     riddle:
       "The jungle map is lost in data. Use the spell to reveal all hidden paths.",
-    schema: `CREATE TABLE map ( id INT, location VARCHAR );`,
+    schema: `CREATE TABLE map (
+     id INT, 
+     location VARCHAR
+      );`,
     unlocked: true,
     completed: false,
     type: "basic",
@@ -66,7 +69,7 @@ export const levels = [
     title: "Free the Sacred Beast",
     query:"SELECT name, power, durability FROM weapons WHERE agility >= 80 AND power > 70 AND weight < 10;",
     riddle:
-      "Free the monkey trapped in stone. Only the most courageous explorer can do it. Who is it?",
+      "Free the monkey trapped in cage. Navigate to the cage, write SQL to free the monkey !!",
     schema: `CREATE TABLE weapons (
   id INT PRIMARY KEY,
   name VARCHAR(50),
@@ -87,7 +90,7 @@ export const levels = [
 FROM floor_tiles 
 GROUP BY animal 
 HAVING COUNT(*) > 1;`,
-    riddle:"The floor tells lies, but truth repeats.Step only where the animal speaks twice.The rest are traps waiting for fools.",
+    riddle:"There are many paths, but only one is safe. Use your SQL skills to find the correct path that leads to the golden door.",
     schema: `CREATE TABLE floor_tiles (
   id INT,
   tile_x INT,
@@ -102,7 +105,7 @@ HAVING COUNT(*) > 1;`,
     id: 7,
     title: "Arm the Heroes",
     query:
-      "SELECT  jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element FROM jungle_explorers JOIN spells ON jungle_explorers.id = spells.id;;",
+      "SELECT  jungle_explorers.name AS explorer_name, jungle_explorers.skill, spells.name AS spell_name, spells.element FROM jungle_explorers JOIN spells ON jungle_explorers.id = spells.id;",
     riddle:
       "The volcano erupts! Find which explorers have weapons to defend the evacuation route.",
     schema: `CREATE TABLE jungle_explorers (
@@ -126,7 +129,7 @@ CREATE TABLE spells (
     title: "Jungle River Raft Race ",
     query: "SELECT AVG(courage_level) FROM jungle_explorers;",
     riddle:
-      "Calculate the average courage level to determine your racing raft's optimal speed for the rescue from the river.",
+      "To win the raft race, you need brave explorers. Find the average courage level of all racers to rescue!",
     schema: `CREATE TABLE jungle_explorers (
       id INT,
       name VARCHAR,

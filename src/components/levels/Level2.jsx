@@ -589,17 +589,17 @@ const Level2 = ({ onComplete }) => {
           <div className="grid grid-cols-2 gap-4 text-sm text-slate-300 text-center">
             <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
               <div className="text-green-400 font-bold mb-1">Movement</div>
-              <div>← → Move • ↑ SPACE Jump</div>
+              <div>← → ↑ Move  </div>
             </div>
             <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
               <div className="text-purple-400 font-bold mb-1">Magic</div>
-              <div>X : Cast Magic Spell</div>
+              <div>X : Shoot</div>
             </div>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
+      <style >{`
         .pixel-font { 
           font-family: 'Courier New', monospace; 
           text-shadow: 2px 2px 0px rgba(0,0,0,0.8); 

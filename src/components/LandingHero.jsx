@@ -88,7 +88,7 @@ function LandingHero() {
   return (
     <section className="relative h-screen w-full flex items-center justify-center snap-start overflow-hidden">
       {/* Enhanced Styles */}
-      <style jsx>{`
+      <style >{`
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-15px); }
@@ -312,22 +312,6 @@ function LandingHero() {
             {/* Hover glow effect */}
             <div className={`absolute inset-0 rounded-full bg-gradient-to-r from-blue-900/20 via-emerald-900/20 to-purple-900/20 transition-opacity duration-300 ${isHovering ? 'opacity-100' : 'opacity-0'}`}></div>
           </button>
-        </div>
-
-        {/* Additional magical elements */}
-        <div className="flex justify-center gap-8 mt-8 text-sm text-white/60">
-          <div className="flex items-center gap-2">
-            <span className="text-green-400">🌿</span>
-            <span>Mystical Journey</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-400">🧩</span>
-            <span>SQL Riddles</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-purple-400">🏆</span>
-            <span>Epic Rewards</span>
-          </div>
         </div>
       </div>
     </section>

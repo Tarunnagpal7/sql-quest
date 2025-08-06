@@ -809,7 +809,7 @@ const Level8 = ({ onComplete }) => {
       
       
       const instructionText = sceneRef.add.text(400, 420, 'You mastered the Jungle River Race! Click to return to map', {
-        fontSize: '24px',
+        fontSize: '20px',
         fontFamily: 'Courier New',
         color: '#00ff00'
       }).setOrigin(0.5).setDepth(1001);
@@ -1061,7 +1061,7 @@ const Level8 = ({ onComplete }) => {
 
       {/* Replace the inline mobile controls with your MobileControls component */}
 
-      <style jsx>{`
+      <style >{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);

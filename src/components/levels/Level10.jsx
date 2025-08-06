@@ -4,8 +4,7 @@ import { levels } from '../../assets/data/levels';
 import { GiMagicSwirl, GiSwordman, GiShield, GiFire } from "react-icons/gi";
 import { FaPlay, FaBolt, FaShieldAlt } from "react-icons/fa";
 
-const Level10
- = ({ onComplete }) => {
+const Level10 = ({ onComplete }) => {
   const gameContainerRef = useRef(null);
   const gameInstance = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -47,7 +46,7 @@ const Level10
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Battle spell definitions with keywords
+  // Battle spell definitions with keywords - FIXED with proper mana costs
   const spellTypes = {
     attack: {
       correct: [
@@ -58,7 +57,7 @@ const Level10
       ],
       description: "Cast the most powerful FIRE spell to damage your opponent",
       effect: "Deals 30-50 damage based on query accuracy",
-
+      manaCost: 25, // FIXED: Added missing mana cost
       icon: "🔥",
       hint: "Use SELECT damage FROM spells table WHERE element = 'fire'",
       tableHint: "Tables: spells (id, name, element, power, damage, mana_cost)",
@@ -74,7 +73,7 @@ const Level10
       ],
       description: "Create magical shields to protect against attacks",
       effect: "Absorbs 40-60 damage from next attack",
-   
+      manaCost: 20, // FIXED: Added missing mana cost
       icon: "🛡️",
       hint: "Use SELECT shield_strength FROM defenses table WHERE type IN (...)",
       tableHint: "Tables: defenses (id, shield_strength, type)",
@@ -90,7 +89,7 @@ const Level10
       ],
       description: "Summon a LEGENDARY creature to fight alongside you",
       effect: "Summons ally that deals 15 damage per turn",
-  
+      manaCost: 40, // FIXED: Added missing mana cost
       icon: "🐉",
       hint: "Use JOIN to connect creatures with abilities WHERE rarity = 'legendary'",
       tableHint: "Tables: creatures (id, name, rarity, health, attack), abilities (id, creature_id, ability_name, damage)",
@@ -106,7 +105,7 @@ const Level10
       ],
       description: "Use rare healing potions to restore your health",
       effect: "Restores 30-45 health points",
-
+      manaCost: 15, // FIXED: Added missing mana cost
       icon: "💚",
       hint: "Use SELECT healing_power FROM potions WHERE type = 'health' AND rarity >= 'rare'",
       tableHint: "Tables: potions (id, healing_power, type, rarity)",
@@ -116,65 +115,65 @@ const Level10
   };
 
   const handleSpellCast = () => {
-  if (!uiState.spellType) return;
-  
-  // More flexible normalization function
-  const normalizeQuery = (query) => {
-    return query
-      .trim()                           // Remove leading/trailing spaces
-      .toLowerCase()                    // Convert to lowercase
-      .replace(/\s+/g, ' ')            // Replace multiple spaces with single space
-      .replace(/\s*=\s*/g, '=')        // Remove spaces around = signs
-      .replace(/\s*;\s*$/g, '')        // Remove semicolon and spaces at end
-      .replace(/\s*,\s*/g, ',')        // Remove spaces around commas
-      .replace(/\s*\(\s*/g, '(')       // Remove spaces around opening parentheses
-      .replace(/\s*\)\s*/g, ')')       // Remove spaces around closing parentheses
-      .replace(/\s*'\s*/g, "'")        // Remove spaces around single quotes (but keep quotes)
-      .replace(/'\s+/g, "'")           // Remove spaces after opening quotes
-      .replace(/\s+'/g, "'")           // Remove spaces before closing quotes
-      .replace(/\s*>=\s*/g, '>=')      // Remove spaces around >= operator
-      .replace(/\s*<=\s*/g, '<=')      // Remove spaces around <= operator
-      .replace(/\s*<>\s*/g, '<>')      // Remove spaces around <> operator
-      .replace(/\s*!=\s*/g, '!=')      // Remove spaces around != operator
-      .replace(/\s+on\s+/g, ' on ')    // Normalize ON keyword spacing
-      .replace(/\s+in\s+/g, ' in ')    // Normalize IN keyword spacing
-      .replace(/\s+and\s+/g, ' and ')  // Normalize AND keyword spacing
-      .replace(/\s+or\s+/g, ' or ')    // Normalize OR keyword spacing
-      .replace(/\s+where\s+/g, ' where ') // Normalize WHERE keyword spacing
-      .replace(/\s+order\s+by\s+/g, ' order by ') // Normalize ORDER BY
-      .replace(/\s+group\s+by\s+/g, ' group by ') // Normalize GROUP BY
-      .replace(/\s+limit\s+/g, ' limit ') // Normalize LIMIT keyword
-      .replace(/\s+desc\s*/g, ' desc')    // Normalize DESC keyword
-      .replace(/\s+asc\s*/g, ' asc')      // Normalize ASC keyword
-      .replace(/\s+join\s+/g, ' join ')   // Normalize JOIN keyword
-      .replace(/\s+from\s+/g, ' from ')   // Normalize FROM keyword
-      .replace(/\s+select\s+/g, 'select '); // Normalize SELECT keyword
-  };
-
-  const normalizedUserQuery = normalizeQuery(sqlQuery);
-  const currentSpell = spellTypes[uiState.spellType];
-  
-  // Normalize all correct queries for comparison
-  const normalizedCorrectQueries = currentSpell.correct.map(query => normalizeQuery(query));
-  
-  const isCorrect = normalizedCorrectQueries.some(correctQuery => 
-    normalizedUserQuery === correctQuery
-  );
-
-  if (isCorrect) {
-    setQuerySuccess(true);
-    setQueryError('');
-    setUiState(prev => ({ ...prev, showSpellInput: false }));
+    if (!uiState.spellType) return;
     
-    if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
-      gameInstance.current.scene.scenes[0].executeSpell(uiState.spellType);
-    }
-  } else {
-    setQueryError(`Spell failed! ${currentSpell.description}`);
-    setTimeout(() => setQueryError(''), 3000);
-  }
-};
+    // More flexible normalization function
+    const normalizeQuery = (query) => {
+      return query
+        .trim()                           // Remove leading/trailing spaces
+        .toLowerCase()                    // Convert to lowercase
+        .replace(/\s+/g, ' ')            // Replace multiple spaces with single space
+        .replace(/\s*=\s*/g, '=')        // Remove spaces around = signs
+        .replace(/\s*;\s*$/g, '')        // Remove semicolon and spaces at end
+        .replace(/\s*,\s*/g, ',')        // Remove spaces around commas
+        .replace(/\s*\(\s*/g, '(')       // Remove spaces around opening parentheses
+        .replace(/\s*\)\s*/g, ')')       // Remove spaces around closing parentheses
+        .replace(/\s*'\s*/g, "'")        // Remove spaces around single quotes (but keep quotes)
+        .replace(/'\s+/g, "'")           // Remove spaces after opening quotes
+        .replace(/\s+'/g, "'")           // Remove spaces before closing quotes
+        .replace(/\s*>=\s*/g, '>=')      // Remove spaces around >= operator
+        .replace(/\s*<=\s*/g, '<=')      // Remove spaces around <= operator
+        .replace(/\s*<>\s*/g, '<>')      // Remove spaces around <> operator
+        .replace(/\s*!=\s*/g, '!=')      // Remove spaces around != operator
+        .replace(/\s+on\s+/g, ' on ')    // Normalize ON keyword spacing
+        .replace(/\s+in\s+/g, ' in ')    // Normalize IN keyword spacing
+        .replace(/\s+and\s+/g, ' and ')  // Normalize AND keyword spacing
+        .replace(/\s+or\s+/g, ' or ')    // Normalize OR keyword spacing
+        .replace(/\s+where\s+/g, ' where ') // Normalize WHERE keyword spacing
+        .replace(/\s+order\s+by\s+/g, ' order by ') // Normalize ORDER BY
+        .replace(/\s+group\s+by\s+/g, ' group by ') // Normalize GROUP BY
+        .replace(/\s+limit\s+/g, ' limit ') // Normalize LIMIT keyword
+        .replace(/\s+desc\s*/g, ' desc')    // Normalize DESC keyword
+        .replace(/\s+asc\s*/g, ' asc')      // Normalize ASC keyword
+        .replace(/\s+join\s+/g, ' join ')   // Normalize JOIN keyword
+        .replace(/\s+from\s+/g, ' from ')   // Normalize FROM keyword
+        .replace(/\s+select\s+/g, 'select '); // Normalize SELECT keyword
+    };
 
+    const normalizedUserQuery = normalizeQuery(sqlQuery);
+    const currentSpell = spellTypes[uiState.spellType];
+    
+    // Normalize all correct queries for comparison
+    const normalizedCorrectQueries = currentSpell.correct.map(query => normalizeQuery(query));
+    
+    const isCorrect = normalizedCorrectQueries.some(correctQuery => 
+      normalizedUserQuery === correctQuery
+    );
+
+    if (isCorrect) {
+      setQuerySuccess(true);
+      setQueryError('');
+      setUiState(prev => ({ ...prev, showSpellInput: false }));
+      setSqlQuery(''); // Clear the query
+      
+      if (gameInstance.current && gameInstance.current.scene.scenes[0]) {
+        gameInstance.current.scene.scenes[0].executeSpell(uiState.spellType);
+      }
+    } else {
+      setQueryError(`Spell failed! ${currentSpell.description}`);
+      setTimeout(() => setQueryError(''), 3000);
+    }
+  };
 
   const startBattle = () => {
     setUiState(prev => ({ ...prev, battleStarted: true, gamePhase: 'battle' }));
@@ -597,6 +596,8 @@ const Level10
               } else {
                 gameState.currentTurn = 'player';
                 gameState.currentTurnTime = gameState.turnTimer;
+                // FIXED: Add mana regeneration
+                gameState.mana = Math.min(gameState.maxMana, gameState.mana + 10);
               }
             }
             
@@ -668,6 +669,7 @@ const Level10
       gameState.battlePaused = false;
       const spell = spellTypes[type];
       
+      // FIXED: Properly deduct mana using the spell's mana cost
       gameState.mana = Math.max(0, gameState.mana - spell.manaCost);
       gameState.spellsUsed++;
       
@@ -715,13 +717,32 @@ const Level10
       updateReactUI();
     }
     
+    // FIXED: Improved opponent AI logic with better healing strategy
     function opponentTurn() {
       if (gameState.battleFinished) return;
       
-      const availableSpells = ['attack', 'defense', 'heal'];
-      const randomSpell = availableSpells[Math.floor(Math.random() * availableSpells.length)];
+      // IMPROVED: Smarter opponent AI
+      let chosenSpell = 'attack'; // default
       
-      if (randomSpell === 'attack') {
+      // If opponent health is low (below 40%), prioritize healing
+      if (gameState.opponentHealth < 40) {
+        chosenSpell = 'heal';
+      }
+      // If opponent has no shield and player has summoned creature, get shield
+      else if (gameState.opponentShield <= 0 && gameState.summonedCreature) {
+        chosenSpell = 'defense';
+      }
+      // If player has high shield, try to outlast with healing
+      else if (gameState.playerShield > 50) {
+        chosenSpell = Math.random() < 0.6 ? 'heal' : 'attack';
+      }
+      // Random selection with bias towards attack and heal
+      else {
+        const spellOptions = ['attack', 'attack', 'heal', 'defense']; // Weighted towards attack and heal
+        chosenSpell = spellOptions[Math.floor(Math.random() * spellOptions.length)];
+      }
+      
+      if (chosenSpell === 'attack') {
         const damage = 25 + Math.floor(Math.random() * 16);
         const actualDamage = Math.max(0, damage - gameState.playerShield);
         gameState.health = Math.max(0, gameState.health - actualDamage);
@@ -731,7 +752,7 @@ const Level10
         showFloatingText(200, 400, `-${actualDamage}`, '#ff6666');
         showMessage(`🔴 Opponent attacks for ${actualDamage} damage!`, 2000);
         
-      } else if (randomSpell === 'defense') {
+      } else if (chosenSpell === 'defense') {
         const shield = 30 + Math.floor(Math.random() * 21);
         gameState.opponentShield += shield;
         
@@ -739,7 +760,7 @@ const Level10
         showFloatingText(600, 100, `+${shield} 🛡️`, '#00ff00');
         showMessage(`🔴 Opponent casts shield (${shield})!`, 2000);
         
-      } else if (randomSpell === 'heal') {
+      } else if (chosenSpell === 'heal') {
         const healing = 20 + Math.floor(Math.random() * 16);
         gameState.opponentHealth = Math.min(gameState.opponentMaxHealth, gameState.opponentHealth + healing);
         
@@ -753,7 +774,9 @@ const Level10
           gameState.currentTurn = 'player';
           gameState.currentTurnTime = gameState.turnTimer;
           
+          // FIXED: Add mana regeneration for player
           gameState.mana = Math.min(gameState.maxMana, gameState.mana + 10);
+          updateReactUI(); // Update UI after mana regeneration
         }
       });
     }
@@ -1074,9 +1097,6 @@ const Level10
               <p className={`text-green-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
                 <strong>Effect:</strong> {spellTypes[uiState.spellType].effect}
               </p>
-              <p className={`text-cyan-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
-                <strong>Mana Cost:</strong> {spellTypes[uiState.spellType].manaCost}
-              </p>
               <p className={`text-yellow-400 ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>
                 <strong>Goal:</strong> {spellTypes[uiState.spellType].example}
               </p>
@@ -1195,7 +1215,7 @@ const Level10
         </div>
       </div>
 
-      <style jsx>{`
+      <style >{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
@@ -1218,5 +1238,4 @@ const Level10
   );
 };
 
-export default Level10
-;
+export default Level10;

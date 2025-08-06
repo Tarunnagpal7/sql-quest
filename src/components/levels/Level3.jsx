@@ -816,7 +816,7 @@ const Level3 = ({ onComplete }) => {
 
       </div>
 
-      <style jsx>{`
+      <style >{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);

@@ -174,7 +174,7 @@ function LevelPage() {
   }
 
   return (
-    <div className="min-h-screen  bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 text-white pt-20 sm:pt-24 p-4 relative overflow-hidden">
+    <div  className="min-h-screen  bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 text-white pt-20 sm:pt-24 p-4 relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <img
@@ -297,7 +297,7 @@ function LevelPage() {
         </div>
       </main>
 
-      <style jsx>{`
+      <style >{`
         .pixel-font {
           font-family: "Courier New", monospace;
           text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8),

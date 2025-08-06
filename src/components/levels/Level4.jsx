@@ -833,7 +833,7 @@ const handleQuerySubmit = () => {
       <div className="bg-black p-3 rounded border mb-4">
         <p className="text-cyan-400 text-xs font-mono mb-2"><strong>Schema:</strong></p>
         <p className="text-yellow-300 text-xs">guide_book: id, instructions, category, author , page_number</p>
-        <p className="text-slate-400 text-xs mt-1">Find raft instructions containing "bamboo" or "vines"</p>
+        <p className="text-slate-400 text-xs mt-1">Find  instructions containing "bamboo" or "vines" where category is raft.</p>
       </div>
       
       <textarea
@@ -913,7 +913,7 @@ const handleQuerySubmit = () => {
 
       </div>
 
-      <style jsx>{`
+      <style >{`
         .pixel-font {
           font-family: 'Courier New', monospace;
           text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
