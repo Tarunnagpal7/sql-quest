@@ -6,7 +6,7 @@ import { levels } from "../assets/data/levels";
 
 // Asset URLs
 const ASSETS = {
-  wizard: "/wizard-character.png",
+  wizard: "/wiz_vid.webm",
   bgMap: "/jungle_map_bg.png",
 };
 
@@ -270,25 +270,27 @@ const MapMainView = () => {
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           {/* Lives or Reset Button */}
           {!allSkipsUsed ? (
-            <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-red-500/30">
+            <div className="flex flex-col bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-red-500/30">
               <span className="text-white font-bold text-sm">Lives</span>
-              <div className="flex space-x-1">
-                {[...Array(3)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`text-lg transition-all ${
-                      i < remainingLives ? "text-red-400" : "text-gray-600"
-                    }`}
-                  >
-                    {i < remainingLives ? "❤️" : "🖤"}
-                  </div>
-                ))}
-              </div>
-              {gameState.skipCount > 0 && (
-                <div className="ml-2 text-xs text-yellow-400">
-                  ({gameState.skipCount} skips used)
+              <div className="flex items-center space-x-2 mt-1">
+                <div className="flex space-x-1">
+                  {[...Array(3)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`text-lg transition-all ${
+                        i < remainingLives ? "text-red-400" : "text-gray-600"
+                      }`}
+                    >
+                      {i < remainingLives ? "❤️" : "🖤"}
+                    </div>
+                  ))}
                 </div>
-              )}
+                {gameState.skipCount > 0 && (
+                  <div className="ml-2 text-xs text-yellow-400">
+                    ({gameState.skipCount} skips used)
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-orange-500/30">
@@ -303,7 +305,7 @@ const MapMainView = () => {
 
           {/* Level Info */}
           <div className="bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-blue-500/30">
-            <div className="text-white font-bold text-center">
+            <div className="text-white font-bold text-center whitespace-nowrap">
               Level {gameState.currentLevel}
             </div>
             {currentLevel && (
@@ -382,7 +384,7 @@ const MapMainView = () => {
               {/* Speech Bubble */}
               {showSpeechBubble && (
                 <div className={`speech-bubble mb-4 ${speechBubbleAnimation}`}>
-                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-gray-300 relative max-w-sm md:max-w-md">
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl mt-7 p-4 md:p-6 shadow-2xl border-2 border-gray-300 relative max-w-sm md:max-w-md">
                     {/* Close button */}
                     <button
                       onClick={() => setShowSpeechBubble(false)}
@@ -430,16 +432,21 @@ const MapMainView = () => {
                 />
 
                 <div className="relative w-64 h-64 md:w-80 md:h-80">
-                  <img
-                    src={ASSETS.wizard}
+                  <video
+                    src={ASSETS.wizard} // make sure this points to your .gif file
                     alt="Arin the SQL Wizard"
-                    className="w-full h-full object-contain drop-shadow-2xl cursor-pointer transition-transform hover:scale-105"
+                    className="w-full h-full rounded-full object-contain drop-shadow-2xl cursor-pointer transition-transform hover:scale-105"
+                    muted
+                    autoPlay
+                    loop
+                    playsInline
                     onClick={() => setShowSpeechBubble(true)}
                     onError={(e) => {
                       e.target.style.display = "none";
                       e.target.nextSibling.style.display = "block";
                     }}
                   />
+
                   {/* Fallback */}
                   <div
                     className="w-full h-full bg-gradient-to-br from-blue-800 to-purple-800 rounded-full border-4 border-white shadow-2xl hidden items-center justify-center cursor-pointer"
@@ -550,7 +557,7 @@ const MapMainView = () => {
                 </div>
               ) : (
                 currentLevel && (
-                  <div className="bg-black/80 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
+                  <div className="bg-black/80 backdrop-blur-lg rounded-3xl mt-3 md:mt-0 p-6 md:p-8 border-2 border-blue-500/30 shadow-2xl">
                     {/* Level Header */}
                     <div className="flex items-center justify-between mb-6">
                       <div>
