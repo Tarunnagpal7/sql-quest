@@ -4,7 +4,7 @@ import { createSlice } from '@reduxjs/toolkit';
 // Initial/default state
 const initialState = {
   lives: 3,
-  currentLevel: 0,
+  currentLevel: 1,
   progress: [],
   skipCount: 0,
   videoWatched: false,
